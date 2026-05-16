@@ -307,10 +307,14 @@ function nav(el){
   const pg=document.getElementById('tb-crumb-page');
   if(sec) sec.textContent=el.dataset.section||'Section';
   if(pg)  pg.textContent=el.dataset.name||'Page';
-  // Auto-close sidebar on mobile
-  if(window.innerWidth<=720){
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sb-mask').classList.remove('on');
+  // Sync navbar active state
+  document.querySelectorAll('.navbar .nav-dd-item,.navbar .nav-link-direct').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.navbar .nav-link').forEach(n=>n.classList.remove('active'));
+  const navEl=document.querySelector(`.navbar [data-panel="${panelId}"]`);
+  if(navEl){
+    navEl.classList.add('active');
+    const grp=navEl.closest('.nav-group');
+    if(grp) grp.querySelector('.nav-link').classList.add('active');
   }
   // Refresh panel-specific data on navigate
   if(panelId==='home') { _stopRepAutoRefresh(); updateHomeStats(); }
@@ -320,6 +324,10 @@ function nav(el){
 function navTo(panelId){
   const item=document.querySelector('.sb-item[data-panel="'+panelId+'"]');
   if(item) nav(item);
+}
+// Called from navbar items — delegates to existing nav() via hidden sb-items
+function navLink(panelId){
+  navTo(panelId);
 }
 
 // ── Collapsible sidebar groups ────────────────────────────────────────────────
@@ -414,10 +422,10 @@ function _tbHighlight(){
 }
 // Keyboard shortcuts
 document.addEventListener('keydown',e=>{
-  // Ctrl+K / Cmd+K opens search
+  // Ctrl+K / Cmd+K opens command palette
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
     e.preventDefault();
-    document.getElementById('tb-search-input')?.focus();
+    openCmdPalette();
     return;
   }
   // Enter inside the indexing/audit run forms triggers Start
@@ -440,6 +448,72 @@ document.addEventListener('click',e=>{
   const wrap=document.querySelector('.tb-search');
   if(box&&wrap&&!wrap.contains(e.target)) box.classList.remove('on');
 });
+
+// ── Command Palette (Ctrl+K) ──────────────────────────────────────────────────
+let _cmdResults=[], _cmdIdx=-1;
+
+function openCmdPalette(){
+  document.getElementById('cmd-mask').classList.add('open');
+  const inp=document.getElementById('cmd-input');
+  inp.value='';
+  inp.focus();
+  cmdSearch('');
+}
+function closeCmdPalette(){
+  document.getElementById('cmd-mask').classList.remove('open');
+  document.getElementById('cmd-input').value='';
+  _cmdResults=[];_cmdIdx=-1;
+}
+function cmdSearch(q){
+  const box=document.getElementById('cmd-results');
+  q=(q||'').trim().toLowerCase();
+  const all=_allNavItems();
+  const filtered=q
+    ? all.filter(x=>x.name.toLowerCase().includes(q)||x.section.toLowerCase().includes(q))
+    : all;
+  _cmdResults=filtered; _cmdIdx=-1;
+  if(!filtered.length){
+    box.innerHTML='<div class="cmd-empty">No results for "'+q+'"</div>';
+    return;
+  }
+  // Group by section
+  const groups={};
+  filtered.forEach(x=>{
+    const s=x.section||'Other';
+    if(!groups[s]) groups[s]=[];
+    groups[s].push(x);
+  });
+  let idx=0;
+  box.innerHTML=Object.entries(groups).map(([section,items])=>`
+    <div class="cmd-section-label">${section}</div>
+    ${items.map(x=>`
+      <div class="cmd-item" data-i="${idx++}" onclick="cmdJump(${idx-1})">
+        <span>${x.name}</span>
+        <span class="cmd-item-badge">${x.section}</span>
+      </div>`).join('')}
+  `).join('');
+  // Re-map results flat order to match rendered order
+  _cmdResults=filtered;
+}
+function cmdJump(i){
+  const r=_cmdResults[i]; if(!r) return;
+  nav(r.el);
+  if(r.panel==='compare') loadCompare();
+  closeCmdPalette();
+}
+function cmdKey(e){
+  if(e.key==='Escape'){closeCmdPalette();return;}
+  if(!_cmdResults.length) return;
+  if(e.key==='ArrowDown'){e.preventDefault();_cmdIdx=Math.min(_cmdResults.length-1,_cmdIdx+1);_cmdHighlight();}
+  else if(e.key==='ArrowUp'){e.preventDefault();_cmdIdx=Math.max(0,_cmdIdx-1);_cmdHighlight();}
+  else if(e.key==='Enter'){e.preventDefault();cmdJump(_cmdIdx<0?0:_cmdIdx);}
+}
+function _cmdHighlight(){
+  document.querySelectorAll('#cmd-results .cmd-item').forEach((el,i)=>{
+    el.classList.toggle('kb',i===_cmdIdx);
+    if(i===_cmdIdx) el.scrollIntoView({block:'nearest'});
+  });
+}
 
 // ── Home: render use-case cards ───────────────────────────────────────────────
 function renderHomeUC(){
@@ -480,6 +554,18 @@ function runSingleUC(id){
   }
 }
 function openFullAudit(){ selectedUC=new Set(Object.keys(UC_DEFS)); renderUCSelector(); navTo('aud-run'); }
+
+// ── Navbar: Use Cases dropdown — mirrors sidebar UC list ─────────────────────
+function renderNavUC(){
+  const list=document.getElementById('nav-uc-list');
+  if(!list) return;
+  list.innerHTML=Object.entries(UC_DEFS).map(([id,uc])=>`
+    <a class="nav-dd-item" data-panel="uc-runner" data-section="Use Cases" data-name="${uc.label}"
+       onclick="navLink('uc-runner');openUseCase('${id}')">
+      <span style="font-size:15px">${uc.icon}</span>
+      <span>${uc.label}</span>
+    </a>`).join('');
+}
 
 // ── Sidebar: use-case list — driven from UC_DEFS so it stays in sync ──────────
 function renderSidebarUC(){
@@ -2191,6 +2277,7 @@ if(localStorage.getItem('seo-dark')==='1'){
 _initThemePref();
 renderHomeUC();
 renderSidebarUC();
+renderNavUC();
 renderUCSelector();
 renderUCRefTable();
 loadSettings();

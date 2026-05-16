@@ -11,9 +11,6 @@
 
 <!-- ═══ TOP BAR ════════════════════════════════════════════════════════════ -->
 <header class="topbar">
-  <button class="tb-hamburger" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-  </button>
   <a class="topbar-logo" onclick="navTo('home');return false">
     <span class="logo-mark"><span class="logo-dot"></span></span>
     <span class="logo-text">SEO Suite</span>
@@ -26,7 +23,7 @@
     <span class="tb-crumb-page" id="tb-crumb-page">Home</span>
   </div>
 
-  <div class="tb-search" onclick="document.getElementById('tb-search-input').focus()">
+  <div class="tb-search" onclick="openCmdPalette()" style="cursor:pointer">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
     <input id="tb-search-input" placeholder="Jump to…" oninput="tbSearch(this.value)" onkeydown="tbSearchKey(event)">
     <span class="tb-search-kbd">Ctrl K</span>
@@ -60,6 +57,92 @@
     <button class="tb-user-logout" id="tb-user-logout" onclick="doLogout()" title="Sign out">↩ Logout</button>
   </div>
 </header>
+
+<!-- ═══ NAVBAR (MEGA MENU) ══════════════════════════════════════════════════ -->
+<nav class="navbar" id="navbar">
+  <div class="nav-wrap">
+
+    <a class="nav-link nav-link-direct" data-panel="home" data-section="Overview" data-name="Home" onclick="navLink('home');return false" href="#">Home</a>
+
+    <div class="nav-group" id="ngrp-indexing">
+      <button class="nav-link nav-has-dd">Indexing<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-dd">
+        <a class="nav-dd-item" data-panel="idx-run" data-section="Indexing" data-name="Run Check" onclick="navLink('idx-run')">Run Check</a>
+        <a class="nav-dd-item" data-panel="idx-live" data-section="Indexing" data-name="Live Progress" onclick="navLink('idx-live')">Live Progress</a>
+      </div>
+    </div>
+
+    <div class="nav-group" id="ngrp-audit">
+      <button class="nav-link nav-has-dd">Audit<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-dd">
+        <a class="nav-dd-item" data-panel="aud-run" data-section="SEO Audit" data-name="New Audit" onclick="navLink('aud-run')">New Audit</a>
+        <a class="nav-dd-item" data-panel="aud-live" data-section="SEO Audit" data-name="Live Progress" onclick="navLink('aud-live')">Live Progress</a>
+      </div>
+    </div>
+
+    <div class="nav-group" id="ngrp-usecases">
+      <button class="nav-link nav-has-dd">Use Cases<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-dd" id="nav-uc-list"><!-- populated by renderNavUC() --></div>
+    </div>
+
+    <div class="nav-group" id="ngrp-tools">
+      <button class="nav-link nav-has-dd">Tools<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-dd nav-mega">
+        <div class="nav-mega-col">
+          <div class="nav-mega-label">Technical</div>
+          <a class="nav-dd-item" data-panel="tool-serp" data-section="Tools" data-name="SERP Preview" onclick="navLink('tool-serp')">SERP Preview</a>
+          <a class="nav-dd-item" data-panel="tool-redirect" data-section="Tools" data-name="Redirect Chain" onclick="navLink('tool-redirect')">Redirect Chain</a>
+          <a class="nav-dd-item" data-panel="tool-headers" data-section="Tools" data-name="HTTP Headers" onclick="navLink('tool-headers')">HTTP Headers</a>
+          <a class="nav-dd-item" data-panel="tool-schema" data-section="Tools" data-name="Schema Validation" onclick="navLink('tool-schema')">Schema Validation</a>
+          <a class="nav-dd-item" data-panel="tool-compression" data-section="Tools" data-name="GZIP &amp; Cache" onclick="navLink('tool-compression')">GZIP &amp; Cache</a>
+          <a class="nav-dd-item" data-panel="tool-ratio" data-section="Tools" data-name="Code:Text Ratio" onclick="navLink('tool-ratio')">Code:Text Ratio</a>
+          <a class="nav-dd-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" onclick="navLink('tool-sitemap-audit')">Sitemap Audit</a>
+          <a class="nav-dd-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="navLink('tool-bing')">Bing Visibility</a>
+        </div>
+        <div class="nav-mega-col">
+          <div class="nav-mega-label">GSC Tools</div>
+          <a class="nav-dd-item" data-panel="tool-gsc-opps" data-section="Tools" data-name="GSC Opportunities" onclick="navLink('tool-gsc-opps')">GSC Opportunities</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-position" data-section="Tools" data-name="GSC Position Tracker" onclick="navLink('tool-gsc-position')">Position Tracker</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-ctr" data-section="Tools" data-name="GSC CTR Analyzer" onclick="navLink('tool-gsc-ctr')">CTR Analyzer</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-coverage" data-section="Tools" data-name="GSC Coverage Errors" onclick="navLink('tool-gsc-coverage')">Coverage Errors</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-sitemaps" data-section="Tools" data-name="GSC Sitemaps Status" onclick="navLink('tool-gsc-sitemaps')">Sitemaps Status</a>
+          <a class="nav-dd-item" data-panel="tool-phase-runner" data-section="Tools" data-name="Phase Runner" onclick="navLink('tool-phase-runner')">Phase Runner</a>
+        </div>
+        <div class="nav-mega-col">
+          <div class="nav-mega-label">Content &amp; Research</div>
+          <a class="nav-dd-item" data-panel="tool-keywords" data-section="Tools" data-name="Keyword Density" onclick="navLink('tool-keywords')">Keyword Density</a>
+          <a class="nav-dd-item" data-panel="tool-kw-research" data-section="Tools" data-name="Keyword Research" onclick="navLink('tool-kw-research')">Keyword Research</a>
+          <a class="nav-dd-item" data-panel="tool-perf-opps" data-section="Tools" data-name="Perf Opportunities" onclick="navLink('tool-perf-opps')">Perf Opportunities</a>
+          <a class="nav-dd-item" data-panel="tool-indexnow" data-section="Tools" data-name="IndexNow Submit" onclick="navLink('tool-indexnow')">IndexNow Submit</a>
+          <a class="nav-dd-item" data-panel="tool-ai" data-section="Tools" data-name="AI Assistant" onclick="navLink('tool-ai')">AI Assistant</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-group" id="ngrp-generators">
+      <button class="nav-link nav-has-dd">Generators<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-dd">
+        <a class="nav-dd-item" data-panel="gen-schema" data-section="Generators" data-name="Schema Markup" onclick="navLink('gen-schema')">Schema Markup</a>
+        <a class="nav-dd-item" data-panel="gen-robots" data-section="Generators" data-name="robots.txt" onclick="navLink('gen-robots')">robots.txt</a>
+        <a class="nav-dd-item" data-panel="gen-sitemap" data-section="Generators" data-name="XML Sitemap" onclick="navLink('gen-sitemap')">XML Sitemap</a>
+        <a class="nav-dd-item" data-panel="gen-hreflang" data-section="Generators" data-name="Hreflang Tags" onclick="navLink('gen-hreflang')">Hreflang Tags</a>
+        <a class="nav-dd-item" data-panel="gen-metatags" data-section="Generators" data-name="Meta Tags" onclick="navLink('gen-metatags')">Meta Tags</a>
+      </div>
+    </div>
+
+    <div class="nav-group" id="ngrp-data">
+      <button class="nav-link nav-has-dd">Data<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="nav-dd">
+        <a class="nav-dd-item" data-panel="reports" data-section="Data" data-name="Reports" onclick="navLink('reports');loadReports()">Reports</a>
+        <a class="nav-dd-item" data-panel="compare" data-section="Data" data-name="Compare" onclick="navLink('compare');loadCompare()">Compare</a>
+        <a class="nav-dd-item" data-panel="trend" data-section="Data" data-name="Trend" onclick="navLink('trend');loadTrend()">Trend</a>
+      </div>
+    </div>
+
+    <a class="nav-link nav-link-direct" data-panel="settings" data-section="Settings" data-name="Settings" onclick="navLink('settings');return false" href="#">Settings</a>
+
+  </div>
+</nav>
 
 <!-- ═══ HELP MODAL ═════════════════════════════════════════════════════════ -->
 <div class="modal-mask" id="help-mask" onclick="closeHelp()"></div>
@@ -2768,6 +2851,23 @@
     Settings
   </button>
 </nav>
+
+<!-- ═══ COMMAND PALETTE ══════════════════════════════════════════════════════ -->
+<div class="cmd-mask" id="cmd-mask" onclick="if(event.target===this)closeCmdPalette()">
+  <div class="cmd-palette" onclick="event.stopPropagation()">
+    <div class="cmd-search-row">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input class="cmd-search-input" id="cmd-input" placeholder="Jump to anything…" oninput="cmdSearch(this.value)" onkeydown="cmdKey(event)" autocomplete="off" spellcheck="false">
+      <span class="cmd-esc">ESC</span>
+    </div>
+    <div class="cmd-results" id="cmd-results"></div>
+    <div class="cmd-footer">
+      <span><kbd class="cmd-footer-key">↑↓</kbd> navigate</span>
+      <span><kbd class="cmd-footer-key">↵</kbd> select</span>
+      <span><kbd class="cmd-footer-key">ESC</kbd> close</span>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/static/js/dashboard.js"></script>

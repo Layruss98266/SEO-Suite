@@ -18,6 +18,7 @@ Phase 1 SEO Tools — No API required
 """
 
 import json
+import threading
 import time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -25,7 +26,6 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
-import requests
 from bs4 import BeautifulSoup
 
 from core.security import (
@@ -43,34 +43,58 @@ HEADERS = {
 
 _PAGE_TTL = 30 * 60  # 30 minutes
 _ROBOTS_TTL = 60 * 60  # 1 hour
+_CACHE_MAX = 200  # max entries before oldest is evicted
 
 _robots_cache: dict[str, tuple] = {}  # url → (RobotFileParser|None, timestamp)
 _page_cache: dict[str, tuple] = {}  # key → (resp, soup, timestamp)
+_page_cache_lock = threading.Lock()
+_robots_cache_lock = threading.Lock()
+
+
+def _cache_set(cache: dict, lock: threading.Lock, key: str, value: tuple) -> None:
+    """Thread-safe cache insert with LRU eviction at _CACHE_MAX entries."""
+    with lock:
+        if key not in cache and len(cache) >= _CACHE_MAX:
+            cache.pop(next(iter(cache)))
+        cache[key] = value
+
+
+def _cache_get(cache: dict, lock: threading.Lock, key: str) -> tuple | None:
+    """Thread-safe cache read."""
+    with lock:
+        return cache.get(key)
 
 
 # ── Shared fetch ────────────────────────────────────────────────────────
 def fetch_page(url: str, follow_redirects: bool = True) -> tuple:
     """Returns (response, soup). Cached per URL with 30-minute TTL."""
     key = f"{url}|{follow_redirects}"
-    cached = _page_cache.get(key)
+    cached = _cache_get(_page_cache, _page_cache_lock, key)
     if cached and (time.time() - cached[2]) < _PAGE_TTL:
         return cached[0], cached[1]
     try:
         url = validate_public_url(url)
-        resp = (
-            safe_requests_get(url, headers=HEADERS, timeout=8)
-            if follow_redirects
-            else requests.get(url, headers=HEADERS, timeout=8, allow_redirects=False)
-        )
+        if follow_redirects:
+            resp = safe_requests_get(url, headers=HEADERS, timeout=8)
+        else:
+            # safe_requests_head with allow_redirects=False — URL already SSRF-validated above.
+            # We use HEAD to avoid downloading the body when we only need status/headers,
+            # but fall back to GET if HEAD is not allowed (405).
+            try:
+                resp = safe_requests_head(url, headers=HEADERS, timeout=8, allow_redirects=False)
+                if resp.status_code == 405:
+                    resp = safe_requests_get(url, headers=HEADERS, timeout=8, allow_redirects=False)
+            except Exception:
+                resp = safe_requests_get(url, headers=HEADERS, timeout=8, allow_redirects=False)
         soup = (
             BeautifulSoup(resp.text, "html.parser")
             if "text/html" in resp.headers.get("Content-Type", "")
             else None
         )
-        _page_cache[key] = (resp, soup, time.time())
+        _cache_set(_page_cache, _page_cache_lock, key, (resp, soup, time.time()))
         return resp, soup
     except Exception:
-        _page_cache[key] = (None, None, time.time())
+        _cache_set(_page_cache, _page_cache_lock, key, (None, None, time.time()))
         return None, None
 
 
@@ -100,7 +124,7 @@ def robots_check(url: str) -> dict:
     base = f"{parsed.scheme}://{parsed.netloc}"
     robots_url = base + "/robots.txt"
 
-    cached = _robots_cache.get(base)
+    cached = _cache_get(_robots_cache, _robots_cache_lock, base)
     if not cached or (time.time() - cached[1]) > _ROBOTS_TTL:
         try:
             # Fetch via safe_requests_get so every redirect hop is re-validated
@@ -110,11 +134,12 @@ def robots_check(url: str) -> dict:
             rp = RobotFileParser()
             rp.set_url(robots_url)
             rp.parse(r.text.splitlines())
-            _robots_cache[base] = (rp, time.time())
+            _cache_set(_robots_cache, _robots_cache_lock, base, (rp, time.time()))
         except Exception:
-            _robots_cache[base] = (None, time.time())
+            _cache_set(_robots_cache, _robots_cache_lock, base, (None, time.time()))
 
-    rp = _robots_cache[base][0]
+    cached = _cache_get(_robots_cache, _robots_cache_lock, base)
+    rp = cached[0] if cached else None
     if rp is None:
         return result(url, "robots", "warning", None, "Could not fetch robots.txt")
 

@@ -97,6 +97,8 @@
           <a class="nav-dd-item" data-panel="tool-compression" data-section="Tools" data-name="GZIP &amp; Cache" onclick="navLink('tool-compression')">GZIP &amp; Cache</a>
           <a class="nav-dd-item" data-panel="tool-ratio" data-section="Tools" data-name="Code:Text Ratio" onclick="navLink('tool-ratio')">Code:Text Ratio</a>
           <a class="nav-dd-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" onclick="navLink('tool-sitemap-audit')">Sitemap Audit</a>
+          <a class="nav-dd-item" data-panel="tool-robots-tester" data-section="Tools" data-name="robots.txt Tester" onclick="navLink('tool-robots-tester')">robots.txt Tester</a>
+          <a class="nav-dd-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" onclick="navLink('tool-hreflang-validate')">Hreflang Validator</a>
           <a class="nav-dd-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="navLink('tool-bing')">Bing Visibility</a>
         </div>
         <div class="nav-mega-col">
@@ -267,6 +269,14 @@
         <div class="sb-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" onclick="nav(this)">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
           <span class="sb-text">Sitemap Audit</span>
+        </div>
+        <div class="sb-item" data-panel="tool-robots-tester" data-section="Tools" data-name="robots.txt Tester" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+          <span class="sb-text">robots.txt Tester</span>
+        </div>
+        <div class="sb-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+          <span class="sb-text">Hreflang Validator</span>
         </div>
         <!-- Stage 3-A -->
         <div class="sb-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="nav(this)">
@@ -2811,6 +2821,102 @@
     </div>
   </div>
   </div>
+</div>
+
+<!-- ═══ TOOL: ROBOTS.TXT TESTER ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-robots-tester">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">robots.txt Tester</div>
+    <div class="page-sub">Fetch and validate a live robots.txt — parse all directives, detect issues, and verify crawl access for any URL</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🤖</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter any page URL (or just the domain). The tool fetches <code>/robots.txt</code>, parses every User-agent block, checks Sitemap declarations, and flags issues like a fully blocked <code>*</code>, a missing Sitemap directive, conflicting Allow/Disallow rules, or an excessively high Crawl-delay. The verdict panel shows whether the URL you entered would be allowed by <code>*</code> and Googlebot.</div>
+      <div class="tool-guide-example">https://example.com/blog/post</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Googlebot ignores Crawl-delay</span>
+        <span class="tool-guide-tip">Always declare your Sitemap URL</span>
+        <span class="tool-guide-tip">Disallow: / blocks everything</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URL to test (any page on the site)</span>
+        <input class="input" id="robots-test-url" placeholder="https://example.com/any-page" onkeydown="if(event.key==='Enter')runRobotsTester()">
+      </div>
+      <div class="fg-full" style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="runRobotsTester()">Test robots.txt</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearRobotsTester()" title="Clear">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="robots-test-error" class="error-box" style="display:none"></div>
+    <div id="robots-test-spinner" class="spinner" style="display:none"></div>
+  </div>
+
+  <div id="robots-test-result" style="display:none">
+    <!-- Verdict bar -->
+    <div class="card" id="robots-verdict-card"></div>
+    <!-- Summary issues -->
+    <div class="card" id="robots-issues-card"></div>
+    <!-- Agent blocks -->
+    <div class="card" id="robots-agents-card"></div>
+    <!-- Raw content -->
+    <div class="card" id="robots-raw-card" style="display:none">
+      <div class="card-title" style="margin-bottom:8px">Raw robots.txt</div>
+      <textarea id="robots-raw-content" class="gen-output" rows="16" readonly></textarea>
+    </div>
+  </div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: HREFLANG VALIDATOR ═════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-hreflang-validate">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Hreflang Validator</div>
+    <div class="page-sub">Fetch a live page, extract all hreflang tags, check for x-default, duplicate lang codes, and verify each alternate URL is reachable</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🌐</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter a URL for a multilingual page. The tool fetches the page, reads every <code>&lt;link rel="alternate" hreflang="..."&gt;</code> tag (and HTTP Link headers), validates them for correctness, and checks each alternate URL for HTTP reachability. Common issues include missing <code>x-default</code>, duplicate language codes, relative URLs, and unreachable alternates (4xx/5xx).</div>
+      <div class="tool-guide-example">https://example.com/en/about</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">x-default is required by Google</span>
+        <span class="tool-guide-tip">All URLs must be absolute</span>
+        <span class="tool-guide-tip">Page must reference itself</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Page URL to validate</span>
+        <input class="input" id="hreflang-val-url" placeholder="https://example.com/en/page" onkeydown="if(event.key==='Enter')runHreflangValidator()">
+      </div>
+      <div class="fg-full" style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="runHreflangValidator()">Validate</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearHreflangValidator()" title="Clear">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="hreflang-val-error" class="error-box" style="display:none"></div>
+    <div id="hreflang-val-spinner" class="spinner" style="display:none"></div>
+  </div>
+
+  <div id="hreflang-val-result" style="display:none">
+    <div class="card" id="hreflang-summary-card"></div>
+    <div class="card" id="hreflang-issues-card"></div>
+    <div class="card" id="hreflang-entries-card"></div>
+  </div>
+  </div><!-- /tool-page -->
 </div>
 
 </div><!-- /main -->

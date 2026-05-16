@@ -580,3 +580,313 @@ def compression_headers(url: str) -> dict:
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+# ─── Tool: robots.txt Tester ─────────────────────────────────────────────────
+
+def robots_tester(url: str) -> dict:
+    """
+    Fetch and analyse a live robots.txt file.
+    Parses all User-agent blocks, Disallow/Allow directives, Crawl-delay, and
+    Sitemap declarations. Surfaces common issues like full-block of * or Googlebot,
+    missing Sitemap, conflicting rules, and crawl-delay on *.
+    """
+    from urllib.parse import urlparse as _up
+    from urllib.robotparser import RobotFileParser
+
+    try:
+        url = validate_public_url(url)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
+
+    parsed = _up(url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+    robots_url = base.rstrip("/") + "/robots.txt"
+
+    try:
+        resp = safe_requests_get(robots_url, headers=HEADERS, timeout=TIMEOUT)
+    except Exception as exc:
+        return {"ok": False, "error": f"Could not fetch robots.txt: {exc}"}
+
+    status_code = resp.status_code
+    if status_code == 404:
+        return {
+            "ok": True, "url": robots_url, "status_code": 404,
+            "content": "", "agents": [], "sitemaps": [],
+            "issues": [{"level": "warning", "message": "robots.txt not found (HTTP 404) — all crawlers are allowed by default"}],
+            "summary": {"total_agents": 0, "has_sitemap": False, "googlebot_blocked": False, "all_blocked": False},
+        }
+    if status_code >= 400:
+        return {"ok": False, "error": f"HTTP {status_code} from {robots_url}"}
+
+    content = resp.text or ""
+    lines = content.splitlines()
+
+    # Parse manually so we get per-agent data (RobotFileParser collapses them)
+    agents: list[dict] = []
+    current_agents: list[str] = []
+    current_disallows: list[str] = []
+    current_allows: list[str] = []
+    current_delay: str | None = None
+    sitemaps: list[str] = []
+    issues: list[dict] = []
+
+    def _flush():
+        if current_agents:
+            for ua in current_agents:
+                agents.append({
+                    "user_agent": ua,
+                    "disallows": list(current_disallows),
+                    "allows": list(current_allows),
+                    "crawl_delay": current_delay,
+                })
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if ":" not in stripped:
+            continue
+        key, _, val = stripped.partition(":")
+        key = key.strip().lower()
+        val = val.strip()
+
+        if key == "user-agent":
+            # Starting a new block? flush previous if we already have directives
+            if current_disallows or current_allows or current_delay:
+                _flush()
+                current_agents = []
+                current_disallows = []
+                current_allows = []
+                current_delay = None
+            current_agents.append(val)
+        elif key == "disallow":
+            current_disallows.append(val)
+        elif key == "allow":
+            current_allows.append(val)
+        elif key == "crawl-delay":
+            current_delay = val
+        elif key == "sitemap":
+            sitemaps.append(val)
+
+    _flush()
+
+    # ── Issue detection ─────────────────────────────────────────────────────
+    ua_map = {a["user_agent"].lower(): a for a in agents}
+
+    # 1. Full block of everything
+    star_agent = ua_map.get("*")
+    all_blocked = bool(star_agent and "/" in star_agent["disallows"] and not star_agent["allows"])
+    if all_blocked:
+        issues.append({"level": "error", "message": "Disallow: / for * blocks ALL crawlers from the entire site"})
+
+    # 2. Googlebot blocked
+    googlebot_blocked = False
+    for ua_key in ("googlebot", "google", "googlebot-image", "googlebot-mobile"):
+        ag = ua_map.get(ua_key)
+        if ag and "/" in ag["disallows"] and not ag["allows"]:
+            googlebot_blocked = True
+            issues.append({"level": "error", "message": f"Googlebot is fully blocked by User-agent: {ag['user_agent']} / Disallow: /"})
+            break
+
+    # 3. Missing sitemap declaration
+    if not sitemaps:
+        issues.append({"level": "warning", "message": "No Sitemap: directive found — add Sitemap: https://yourdomain.com/sitemap.xml"})
+
+    # 4. Crawl-delay on *
+    if star_agent and star_agent.get("crawl_delay"):
+        try:
+            delay_val = float(star_agent["crawl_delay"])
+            if delay_val > 10:
+                issues.append({"level": "warning", "message": f"Crawl-delay: {delay_val} for * is very high — Googlebot ignores crawl-delay but other bots may slow significantly"})
+        except (ValueError, TypeError):
+            issues.append({"level": "warning", "message": f"Invalid Crawl-delay value: {star_agent['crawl_delay']!r}"})
+
+    # 5. Duplicate user-agent blocks
+    ua_names = [a["user_agent"].lower() for a in agents]
+    dup_uas = {ua for ua in ua_names if ua_names.count(ua) > 1}
+    for dup in dup_uas:
+        issues.append({"level": "warning", "message": f"Duplicate User-agent block: {dup}"})
+
+    # 6. Disallow empty string (allows everything — redundant)
+    for ag in agents:
+        if "" in ag["disallows"] and len(ag["disallows"]) == 1:
+            issues.append({"level": "info", "message": f"Disallow: (empty) for {ag['user_agent']} explicitly allows all — this is the default and can be removed"})
+
+    # 7. Validate sitemap URLs are on same domain or are public
+    for sm in sitemaps:
+        sm_parsed = _up(sm)
+        if sm_parsed.scheme not in ("http", "https"):
+            issues.append({"level": "error", "message": f"Sitemap URL has invalid scheme: {sm}"})
+
+    if not issues:
+        issues.append({"level": "info", "message": "No issues detected — robots.txt looks good"})
+
+    # Use RobotFileParser for the allow/block verdict on the target URL
+    rp = RobotFileParser()
+    rp.set_url(robots_url)
+    rp.parse(lines)
+    star_allowed = rp.can_fetch("*", url)
+    googlebot_allowed = rp.can_fetch("Googlebot", url)
+
+    return {
+        "ok": True,
+        "url": robots_url,
+        "target_url": url,
+        "status_code": status_code,
+        "content": content[:8000],  # cap raw content to avoid bloating the response
+        "agents": agents,
+        "sitemaps": sitemaps,
+        "issues": issues,
+        "verdicts": {
+            "star_allowed": star_allowed,
+            "googlebot_allowed": googlebot_allowed,
+        },
+        "summary": {
+            "total_agents": len(agents),
+            "has_sitemap": bool(sitemaps),
+            "googlebot_blocked": googlebot_blocked,
+            "all_blocked": all_blocked,
+            "issue_count": len([i for i in issues if i["level"] in ("error", "warning")]),
+        },
+    }
+
+
+# ─── Tool: hreflang Validator ────────────────────────────────────────────────
+
+def hreflang_validator(url: str) -> dict:
+    """
+    Fetch a page, extract hreflang tags, validate them, and optionally
+    check each alternate URL for reachability (HTTP status).
+    Surfaces: missing x-default, duplicate lang codes, relative URLs,
+    and unreachable alternates.
+    """
+    from urllib.parse import urlparse as _up, urljoin as _uj
+    from concurrent.futures import ThreadPoolExecutor
+
+    try:
+        url = validate_public_url(url)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
+
+    try:
+        resp = safe_requests_get(url, headers=HEADERS, timeout=TIMEOUT)
+    except Exception as exc:
+        return {"ok": False, "error": f"Could not fetch page: {exc}"}
+
+    if resp.status_code >= 400:
+        return {"ok": False, "error": f"HTTP {resp.status_code} from {url}"}
+
+    from bs4 import BeautifulSoup as _BS
+    soup = _BS(resp.text, "html.parser")
+
+    # Collect from <link rel="alternate" hreflang="..."> in <head>
+    # and HTTP Link headers
+    link_tags = soup.find_all("link", rel="alternate", hreflang=True)
+    entries_raw = [
+        {"lang": t.get("hreflang", "").strip(), "url": t.get("href", "").strip(), "source": "html"}
+        for t in link_tags
+    ]
+
+    # Also check HTTP Link header (some sites use header instead of HTML)
+    link_header = resp.headers.get("Link", "")
+    if link_header and "hreflang=" in link_header:
+        for part in link_header.split(","):
+            part = part.strip()
+            href_match = re.search(r'<([^>]+)>', part)
+            lang_match = re.search(r'hreflang=["\']?([^;"\'>\s]+)', part)
+            if href_match and lang_match:
+                entries_raw.append({
+                    "lang": lang_match.group(1),
+                    "url": href_match.group(1),
+                    "source": "http_header",
+                })
+
+    if not entries_raw:
+        return {
+            "ok": True, "url": url, "entries": [], "issues": [
+                {"level": "info", "message": "No hreflang tags found — only needed for multilingual sites"}
+            ],
+            "summary": {"total": 0, "has_x_default": False, "duplicate_langs": [], "unreachable_count": 0},
+        }
+
+    # Resolve relative URLs
+    for e in entries_raw:
+        if e["url"] and not e["url"].startswith("http"):
+            e["url"] = _uj(url, e["url"])
+
+    # Validate reachability (check HTTP status for each alternate URL, cap at 15 URLs)
+    def _check_url(entry: dict) -> dict:
+        alt_url = entry.get("url", "")
+        if not alt_url:
+            return {**entry, "status": None, "reachable": False, "redirect_to": None}
+        try:
+            validate_public_url(alt_url)  # SSRF guard
+            r = safe_requests_get(alt_url, headers=HEADERS, timeout=8, allow_redirects=True)
+            redirect_to = r.url if r.url != alt_url else None
+            return {**entry, "status": r.status_code, "reachable": r.status_code < 400, "redirect_to": redirect_to}
+        except Exception:
+            return {**entry, "status": None, "reachable": False, "redirect_to": None}
+
+    check_entries = entries_raw[:15]
+    with ThreadPoolExecutor(max_workers=min(len(check_entries), 6)) as ex:
+        entries = list(ex.map(_check_url, check_entries))
+
+    # Add remaining entries unchecked if truncated
+    for e in entries_raw[15:]:
+        entries.append({**e, "status": None, "reachable": None, "redirect_to": None})
+
+    # ── Issue detection ─────────────────────────────────────────────────────
+    issues: list[dict] = []
+    langs = [e["lang"] for e in entries]
+
+    # 1. Missing x-default
+    if "x-default" not in langs:
+        issues.append({"level": "warning", "message": "Missing x-default hreflang — add one pointing to the default language fallback URL"})
+
+    # 2. Duplicate lang codes
+    dup_langs = sorted({lang for lang in langs if langs.count(lang) > 1})
+    if dup_langs:
+        issues.append({"level": "error", "message": f"Duplicate lang codes: {', '.join(dup_langs)} — each language must appear only once"})
+
+    # 3. Self-referencing — the page itself should declare itself
+    page_parsed = _up(url)
+    page_norm = f"{page_parsed.scheme}://{page_parsed.netloc}{page_parsed.path}".rstrip("/")
+    has_self = any(
+        (_up(e["url"]).scheme + "://" + _up(e["url"]).netloc + _up(e["url"]).path).rstrip("/") == page_norm
+        for e in entries if e["url"]
+    )
+    if not has_self:
+        issues.append({"level": "warning", "message": "This page does not declare itself as an alternate — add hreflang for its own language pointing to its own URL"})
+
+    # 4. Unreachable alternates
+    unreachable = [e for e in entries if e["reachable"] is False]
+    for e in unreachable:
+        issues.append({"level": "error", "message": f"Alternate URL unreachable ({e.get('status','no response')}): {e['url']}"})
+
+    # 5. Redirect loops or unexpected redirects
+    redirected = [e for e in entries if e.get("redirect_to")]
+    for e in redirected:
+        issues.append({"level": "warning", "message": f"Alternate URL {e['url']} redirects to {e['redirect_to']} — use the canonical destination directly"})
+
+    # 6. Relative URLs (already resolved above but flag as warning)
+    for e in entries_raw:
+        if e.get("url") and not e["url"].startswith("http"):
+            issues.append({"level": "error", "message": f"Relative URL in hreflang: {e['url']} — must be absolute"})
+
+    if not issues:
+        issues.append({"level": "info", "message": "No issues found — hreflang tags look correct"})
+
+    return {
+        "ok": True,
+        "url": url,
+        "entries": entries,
+        "issues": issues,
+        "summary": {
+            "total": len(entries),
+            "has_x_default": "x-default" in langs,
+            "duplicate_langs": dup_langs,
+            "unreachable_count": len(unreachable),
+            "redirected_count": len(redirected),
+        },
+    }

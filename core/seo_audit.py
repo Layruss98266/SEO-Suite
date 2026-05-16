@@ -3,7 +3,7 @@ SEO Audit Orchestrator
 Runs all Phase 1-4 tools and generates a comprehensive HTML + Excel + CSV report.
 """
 
-import csv, json, sys, time
+import csv, json, logging, sys, time
 from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -46,6 +46,7 @@ _PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 REPORTS_DIR = _PROJECT_ROOT / "data" / "reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 CFG = load_config()
+logger = logging.getLogger(__name__)
 
 STATUS_ICON  = {"pass": "✅", "warning": "⚠️", "fail": "❌", "error": "🔴"}
 STATUS_COLOR = {"pass": "#1a7f37", "warning": "#9a6700", "fail": "#cf222e", "error": "#6e40c9"}
@@ -574,7 +575,10 @@ def format_value(r: dict) -> str:
         return str(value)
 
     if tool == "word_count":
-        count    = int(value) if value else 0
+        try:
+            count = int(value) if value is not None else 0
+        except (ValueError, TypeError):
+            count = 0
         opt_min  = details.get("optimal_min", 600)
         opt_max  = details.get("optimal_max", 2500)
         bar_pct  = min(100, round(count / opt_max * 100))
@@ -1290,8 +1294,11 @@ def main():
     print(f"\n{GREEN}Found {len(urls)} URLs.{RESET}")
     raw = input("How many to audit? (number or 'all'): ").strip()
     if raw.lower() != "all":
-        try: urls = urls[:int(raw)]
-        except: urls = urls[:10]
+        try:
+            urls = urls[:int(raw)]
+        except ValueError:
+            logger.warning("Invalid audit limit %r — defaulting to 10", raw)
+            urls = urls[:10]
 
     pattern = input("Filter by pattern (e.g. /category/) or Enter to skip: ").strip()
     if pattern: urls = [u for u in urls if pattern in u]

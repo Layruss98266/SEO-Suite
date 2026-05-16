@@ -99,13 +99,18 @@ def _int(data: dict, key: str, default: int, lo: int, hi: int) -> int:
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR   = Path(__file__).parent / "static"
 
+# Anchor every filesystem path to the project root so the server behaves the
+# same regardless of cwd.
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+_LOG_DIR = PROJECT_ROOT / "data"
+_LOG_DIR.mkdir(exist_ok=True)
+
 # ── Logging ───────────────────────────────────────────────────────────────────
-Path("data").mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("data/app.log", encoding="utf-8"),
+        logging.FileHandler(_LOG_DIR / "app.log", encoding="utf-8"),
         logging.StreamHandler(),
     ]
 )
@@ -155,10 +160,7 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# Anchor every filesystem path to the project root so the server behaves the
-# same regardless of cwd. Previously `Path("config.json")` could write to the
-# wrong directory when launched outside the repo root.
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+# PROJECT_ROOT is defined near the top of this file, before logging.
 CONFIG_PATH  = PROJECT_ROOT / "config.json"
 CFG = load_config()
 
@@ -557,7 +559,7 @@ def api_audit_run():
             elif input_type == "domain":
                 urls = fetch_from_domain(raw)
             elif input_type == "crawl":
-                urls = crawl_site(raw, max_pages=limit, max_depth=int(data.get("crawl_depth", 2)))
+                urls = crawl_site(raw, max_pages=limit, max_depth=_int(data, "crawl_depth", 2, 1, 20))
             elif input_type in ("paste", "list"):
                 urls = _safe_public_url_list(raw)
             else:  # csv / xlsx — raw is the uploaded file path
@@ -1360,7 +1362,7 @@ def api_http_headers():
 def api_keyword_density():
     data  = request.get_json(force=True) or {}
     url   = _norm_url((data.get("url") or "").strip())
-    top_n = int(data.get("top_n", 20))
+    top_n = _int(data, "top_n", 20, 1, 500)
     if not url:
         return jsonify({"ok": False, "error": "url required"}), 400
     if (rej := _reject_unsafe(url)): return rej
@@ -1618,7 +1620,7 @@ def api_gsc_ctr_analyzer():
     """Find pages with high impressions but low CTR across the whole site."""
     data = request.get_json(force=True) or {}
     site_url        = _norm_url((data.get("site_url") or "").strip())
-    min_impressions = int(data.get("min_impressions") or 100)
+    min_impressions = _int(data, "min_impressions", 100, 0, 1_000_000)
     if not site_url:
         return jsonify({"ok": False, "error": "site_url required"}), 400
     if (rej := _require_public_url(site_url, "site_url"))[1]: return rej[1]
@@ -1927,6 +1929,32 @@ def api_meta_tags_generate():
     data = request.get_json(force=True) or {}
     from tools.generators import generate_meta_tags
     return jsonify(generate_meta_tags(data))
+
+
+@app.route("/api/tools/robots_tester", methods=["POST"])
+@login_required
+def api_robots_tester():
+    """Fetch and analyse a live robots.txt — parse directives, detect issues, validate rules."""
+    data = request.get_json(force=True) or {}
+    url  = _norm_url((data.get("url") or "").strip())
+    if not url:
+        return jsonify({"ok": False, "error": "url required"}), 400
+    if (rej := _reject_unsafe(url)): return rej
+    from tools.quick_tools import robots_tester
+    return jsonify(robots_tester(url))
+
+
+@app.route("/api/tools/hreflang_validate", methods=["POST"])
+@login_required
+def api_hreflang_validate():
+    """Fetch a page, extract hreflang tags, validate them, and check alternate URL reachability."""
+    data = request.get_json(force=True) or {}
+    url  = _norm_url((data.get("url") or "").strip())
+    if not url:
+        return jsonify({"ok": False, "error": "url required"}), 400
+    if (rej := _reject_unsafe(url)): return rej
+    from tools.quick_tools import hreflang_validator
+    return jsonify(hreflang_validator(url))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

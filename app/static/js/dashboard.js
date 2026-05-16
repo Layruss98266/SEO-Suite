@@ -3956,6 +3956,13 @@ function copyOutput(id) {
 
 // ── Clear helpers ─────────────────────────────────────────────────────────────
 function _hide(...ids){ ids.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';}); }
+function _show(id){ const el=document.getElementById(id);if(el)el.style.display=''; }
+function _hideAll(...ids){ _hide(...ids); }
+function _showErr(id, msg){ const el=document.getElementById(id); if(el){el.textContent=msg||'Error';el.style.display='';} }
+async function _api(path, body={}){
+  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return r.json();
+}
 function _clearVal(...ids){ ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
 
 // Tools
@@ -5348,4 +5355,222 @@ async function generateMetaTags() {
   } catch(e) {
     document.getElementById('metatags-output').value = 'Error: ' + e.message;
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ROBOTS.TXT TESTER
+// ════════════════════════════════════════════════════════════════════════════
+
+async function runRobotsTester() {
+  const url = (document.getElementById('robots-test-url').value || '').trim();
+  if (!url) { _showErr('robots-test-error', 'Enter a URL'); return; }
+
+  _show('robots-test-spinner');
+  _hide('robots-test-error', 'robots-test-result');
+
+  try {
+    const r = await fetch('/api/tools/robots_tester', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Unknown error');
+
+    // ── Verdict card ──────────────────────────────────────────────────────
+    const starOk   = d.verdicts?.star_allowed;
+    const gbOk     = d.verdicts?.googlebot_allowed;
+    const verdictHtml = `
+      <div class="card-title" style="margin-bottom:12px">Crawl Verdict for <code style="font-size:12px">${escTool(d.target_url)}</code></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div class="kpi-card" style="flex:1;min-width:140px;text-align:center;padding:14px;background:${starOk?'var(--success-l)':'var(--danger-l)'};border-radius:10px">
+          <div style="font-size:22px">${starOk ? '✅' : '❌'}</div>
+          <div style="font-weight:700;margin-top:4px">All bots (*)</div>
+          <div style="font-size:12px;color:var(--c-muted)">${starOk ? 'Allowed' : 'Blocked'}</div>
+        </div>
+        <div class="kpi-card" style="flex:1;min-width:140px;text-align:center;padding:14px;background:${gbOk?'var(--success-l)':'var(--danger-l)'};border-radius:10px">
+          <div style="font-size:22px">${gbOk ? '✅' : '❌'}</div>
+          <div style="font-weight:700;margin-top:4px">Googlebot</div>
+          <div style="font-size:12px;color:var(--c-muted)">${gbOk ? 'Allowed' : 'Blocked'}</div>
+        </div>
+        <div class="kpi-card" style="flex:1;min-width:140px;text-align:center;padding:14px;background:var(--surface2);border-radius:10px">
+          <div style="font-size:22px">${d.summary?.has_sitemap ? '📋' : '⚠️'}</div>
+          <div style="font-weight:700;margin-top:4px">Sitemap</div>
+          <div style="font-size:12px;color:var(--c-muted)">${d.summary?.has_sitemap ? d.sitemaps.length + ' declared' : 'Not declared'}</div>
+        </div>
+        <div class="kpi-card" style="flex:1;min-width:140px;text-align:center;padding:14px;background:var(--surface2);border-radius:10px">
+          <div style="font-size:22px">🤖</div>
+          <div style="font-weight:700;margin-top:4px">User-agents</div>
+          <div style="font-size:12px;color:var(--c-muted)">${d.summary?.total_agents} defined</div>
+        </div>
+      </div>
+      ${d.sitemaps?.length ? `<div style="margin-top:10px;font-size:12px;color:var(--c-muted)">Sitemap(s): ${d.sitemaps.map(s=>`<a href="${escTool(s)}" target="_blank" style="color:var(--primary)">${escTool(s)}</a>`).join(', ')}</div>` : ''}
+    `;
+    document.getElementById('robots-verdict-card').innerHTML = verdictHtml;
+
+    // ── Issues card ───────────────────────────────────────────────────────
+    const issueHtml = d.issues?.length ? `
+      <div class="card-title" style="margin-bottom:10px">Issues &amp; Recommendations</div>
+      ${d.issues.map(i => {
+        const icon  = i.level==='error' ? '❌' : i.level==='warning' ? '⚠️' : 'ℹ️';
+        const color = i.level==='error' ? 'var(--danger)' : i.level==='warning' ? 'var(--warn)' : 'var(--c-muted)';
+        return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+          <span style="flex-shrink:0">${icon}</span>
+          <span style="color:${color}">${escTool(i.message)}</span>
+        </div>`;
+      }).join('')}
+    ` : '<div style="color:var(--c-muted);font-size:13px">No issues detected.</div>';
+    document.getElementById('robots-issues-card').innerHTML = issueHtml;
+
+    // ── Agent blocks ──────────────────────────────────────────────────────
+    const agentRows = (d.agents || []).map(ag => {
+      const disallowPills = (ag.disallows||[]).map(p => p
+        ? `<span style="display:inline-block;margin:2px;padding:1px 7px;background:var(--danger-l);border-radius:10px;font-size:11px;font-family:monospace;color:var(--danger)">${escTool(p)}</span>`
+        : `<span style="display:inline-block;margin:2px;padding:1px 7px;background:var(--success-l);border-radius:10px;font-size:11px;font-family:monospace;color:var(--success)">(allow all)</span>`
+      ).join('') || '<span style="color:var(--c-muted);font-size:11px">none</span>';
+      const allowPills = (ag.allows||[]).map(p =>
+        `<span style="display:inline-block;margin:2px;padding:1px 7px;background:var(--success-l);border-radius:10px;font-size:11px;font-family:monospace;color:var(--success)">${escTool(p)}</span>`
+      ).join('') || '<span style="color:var(--c-muted);font-size:11px">none</span>';
+      return `<tr>
+        <td style="font-weight:700;font-family:monospace;font-size:12px;white-space:nowrap;padding:8px 10px">${escTool(ag.user_agent)}</td>
+        <td style="padding:8px 10px">${disallowPills}</td>
+        <td style="padding:8px 10px">${allowPills}</td>
+        <td style="padding:8px 10px;font-size:11px;color:var(--c-muted)">${ag.crawl_delay || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('robots-agents-card').innerHTML = agentRows ? `
+      <div class="card-title" style="margin-bottom:10px">User-agent Blocks</div>
+      <div class="table-wrap"><table class="result-table">
+        <thead><tr><th>User-agent</th><th>Disallow</th><th>Allow</th><th>Crawl-delay</th></tr></thead>
+        <tbody>${agentRows}</tbody>
+      </table></div>
+    ` : '<div style="color:var(--c-muted);font-size:13px">No user-agent blocks found.</div>';
+
+    // ── Raw content ────────────────────────────────────────────────────────
+    if (d.content) {
+      document.getElementById('robots-raw-content').value = d.content;
+      showEl('robots-raw-card');
+    }
+
+    _show('robots-test-result');
+  } catch(e) {
+    _showErr('robots-test-error', e.message);
+  } finally {
+    _hide('robots-test-spinner');
+  }
+}
+
+function clearRobotsTester() {
+  _clearVal('robots-test-url');
+  _hide('robots-test-result', 'robots-test-error');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// HREFLANG VALIDATOR
+// ════════════════════════════════════════════════════════════════════════════
+
+async function runHreflangValidator() {
+  const url = (document.getElementById('hreflang-val-url').value || '').trim();
+  if (!url) { _showErr('hreflang-val-error', 'Enter a URL'); return; }
+
+  _show('hreflang-val-spinner');
+  _hide('hreflang-val-error', 'hreflang-val-result');
+
+  try {
+    const r = await fetch('/api/tools/hreflang_validate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Unknown error');
+
+    const sm = d.summary || {};
+    const entries = d.entries || [];
+
+    // ── Summary card ──────────────────────────────────────────────────────
+    const summaryHtml = `
+      <div class="card-title" style="margin-bottom:12px">hreflang Summary</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px;text-align:center;padding:12px;background:var(--surface2);border-radius:10px">
+          <div style="font-size:22px;font-weight:800">${sm.total || 0}</div>
+          <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">Tags found</div>
+        </div>
+        <div style="flex:1;min-width:120px;text-align:center;padding:12px;background:${sm.has_x_default?'var(--success-l)':'var(--danger-l)'};border-radius:10px">
+          <div style="font-size:22px">${sm.has_x_default ? '✅' : '❌'}</div>
+          <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">x-default</div>
+        </div>
+        <div style="flex:1;min-width:120px;text-align:center;padding:12px;background:${sm.unreachable_count?'var(--danger-l)':'var(--success-l)'};border-radius:10px">
+          <div style="font-size:22px;font-weight:800">${sm.unreachable_count || 0}</div>
+          <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">Unreachable</div>
+        </div>
+        <div style="flex:1;min-width:120px;text-align:center;padding:12px;background:${(sm.duplicate_langs||[]).length?'var(--danger-l)':'var(--surface2)'};border-radius:10px">
+          <div style="font-size:22px;font-weight:800">${(sm.duplicate_langs||[]).length}</div>
+          <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">Duplicate langs</div>
+        </div>
+      </div>
+    `;
+    document.getElementById('hreflang-summary-card').innerHTML = summaryHtml;
+
+    // ── Issues card ───────────────────────────────────────────────────────
+    const issues = d.issues || [];
+    const issueHtml = issues.map(i => {
+      const icon  = i.level==='error' ? '❌' : i.level==='warning' ? '⚠️' : 'ℹ️';
+      const color = i.level==='error' ? 'var(--danger)' : i.level==='warning' ? 'var(--warn)' : 'var(--c-muted)';
+      return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+        <span style="flex-shrink:0">${icon}</span>
+        <span style="color:${color}">${escTool(i.message)}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('hreflang-issues-card').innerHTML = issues.length
+      ? `<div class="card-title" style="margin-bottom:10px">Issues &amp; Recommendations</div>${issueHtml}`
+      : '<div style="color:var(--c-muted);font-size:13px">No issues detected.</div>';
+
+    // ── Entries table ─────────────────────────────────────────────────────
+    if (entries.length) {
+      const rows = entries.map(e => {
+        const reachBadge = e.reachable === true
+          ? `<span style="color:var(--success);font-weight:700">${e.status}</span>`
+          : e.reachable === false
+            ? `<span style="color:var(--danger);font-weight:700">${e.status || 'Error'}</span>`
+            : `<span style="color:var(--c-muted)">—</span>`;
+        const redirect = e.redirect_to
+          ? `<div style="font-size:10px;color:var(--warn);margin-top:2px">↪ ${escTool(e.redirect_to.slice(0,60))}</div>`
+          : '';
+        return `<tr>
+          <td style="font-family:monospace;font-weight:700;font-size:12px;white-space:nowrap;padding:7px 10px">
+            ${e.lang === 'x-default' ? '⭐ ' : ''}${escTool(e.lang)}
+          </td>
+          <td style="padding:7px 10px;font-size:12px;word-break:break-all">
+            <a href="${escTool(e.url)}" target="_blank" style="color:var(--primary)">${escTool(e.url)}</a>
+            ${redirect}
+          </td>
+          <td style="padding:7px 10px;text-align:center">${reachBadge}</td>
+          <td style="padding:7px 10px;font-size:11px;color:var(--c-muted)">${escTool(e.source||'html')}</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('hreflang-entries-card').innerHTML = `
+        <div class="card-title" style="margin-bottom:10px">Alternate URLs (${entries.length})</div>
+        <div class="table-wrap"><table class="result-table">
+          <thead><tr><th>Lang</th><th>URL</th><th>Status</th><th>Source</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      `;
+    } else {
+      document.getElementById('hreflang-entries-card').innerHTML =
+        '<div style="color:var(--c-muted);font-size:13px">No hreflang entries found on this page.</div>';
+    }
+
+    _show('hreflang-val-result');
+  } catch(e) {
+    _showErr('hreflang-val-error', e.message);
+  } finally {
+    _hide('hreflang-val-spinner');
+  }
+}
+
+function clearHreflangValidator() {
+  _clearVal('hreflang-val-url');
+  _hide('hreflang-val-result', 'hreflang-val-error');
 }

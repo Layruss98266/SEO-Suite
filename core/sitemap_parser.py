@@ -86,16 +86,22 @@ class SitemapParser:
     def crawl(self, start_url: str, max_pages: int = 50, max_depth: int = 2) -> list[str]:
         """BFS crawl from start_url, following internal <a href> links."""
         try:
-            import requests as _r
             from bs4 import BeautifulSoup as _BS
             from urllib.parse import urljoin as _uj
         except ImportError as e:
-            logger.error("crawl requires requests + beautifulsoup4: %s", e)
+            logger.error("crawl requires beautifulsoup4: %s", e)
             return []
+
+        from core.security import safe_requests_get, validate_public_url
 
         start_url = start_url.strip()
         if not start_url.startswith("http"):
             start_url = "https://" + start_url
+        try:
+            start_url = validate_public_url(start_url)
+        except ValueError as e:
+            logger.error("Refusing non-public crawl start URL %s: %s", start_url, e)
+            return []
         base_host = urlparse(start_url).netloc
 
         seen: set[str] = set()
@@ -109,7 +115,7 @@ class SitemapParser:
                 continue
             seen.add(url)
             try:
-                r = _r.get(url, headers=headers, timeout=8, allow_redirects=True)
+                r = safe_requests_get(url, headers=headers, timeout=8)
                 if r.status_code != 200 or "text/html" not in r.headers.get("Content-Type", ""):
                     continue
             except Exception:

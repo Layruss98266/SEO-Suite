@@ -1784,7 +1784,7 @@ def api_audit_single_phase(phase_num: int):
             if not fns:
                 return jsonify({"ok": False,
                                 "error": "Phase 4 requires at least one of: DataForSEO, Moz, or SerpAPI credentials"}), 400
-            with ThreadPoolExecutor(max_workers=len(fns)) as ex:
+            with ThreadPoolExecutor(max_workers=min(len(fns), 8)) as ex:
                 results = [f.result() for f in [ex.submit(fn) for fn in fns]]
 
         from core.seo_audit import calc_seo_score

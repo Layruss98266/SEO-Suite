@@ -313,7 +313,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         ]
         crawl_fns = [(fn, tid) for fn, tid in crawl_fns if _keep(tid)]
         if crawl_fns:
-            with ThreadPoolExecutor(max_workers=len(crawl_fns)) as ex:
+            with ThreadPoolExecutor(max_workers=min(len(crawl_fns), 8)) as ex:
                 futs = [ex.submit(fn, url) for fn, _ in crawl_fns]
                 all_results += [f.result() for f in futs]
 
@@ -339,7 +339,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         ]
         onpage_fns = [(fn, tid) for fn, tid in onpage_fns if _keep(tid)]
         if onpage_fns:
-            with ThreadPoolExecutor(max_workers=len(onpage_fns)) as ex:
+            with ThreadPoolExecutor(max_workers=min(len(onpage_fns), 8)) as ex:
                 futs = [ex.submit(fn, url) for fn, _ in onpage_fns]
                 all_results += [f.result() for f in futs]
 
@@ -359,7 +359,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         ]
         sh_fns = [(fn, tid) for fn, tid in sh_fns if _keep(tid)]
         if sh_fns:
-            with ThreadPoolExecutor(max_workers=len(sh_fns)) as ex:
+            with ThreadPoolExecutor(max_workers=min(len(sh_fns), 8)) as ex:
                 futs = [ex.submit(fn, url) for fn, _ in sh_fns]
                 all_results += [f.result() for f in futs]
 

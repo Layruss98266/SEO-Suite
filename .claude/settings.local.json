@@ -82,7 +82,17 @@
       "Bash(node --check app/static/js/dashboard.js)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(where repomix *)",
+      "Bash(mkdir -p .agentmaster)",
+      "Bash(repomix --style xml -o .agentmaster/codebase.xml --ignore \"**/node_modules/**,**/dist/**,**/build/**,**/.next/**,**/coverage/**,**/*.lock,**/*.log,**/.agentmaster/**,**/.git/**,**/reports/**,**/__pycache__/**,**/*.pyc\")",
+      "Bash(grep -qxF '.agentmaster/' .gitignore)",
+      "Bash(echo '.agentmaster/')"
     ]
   }
 }

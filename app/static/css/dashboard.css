@@ -2298,3 +2298,68 @@ body.dark .top-issues-panel{background:var(--sb-2);border-color:var(--sb-border)
 .tir-bar-wrap{flex:1;height:5px;background:var(--border);border-radius:4px;overflow:hidden}
 .tir-bar{height:100%;background:var(--danger);border-radius:4px;transition:width .35s ease}
 .tir-count{font-size:11px;font-weight:700;color:var(--danger);flex:0 0 28px;text-align:right}
+
+/* ── Sidebar: Tools sub-divider label ───────────────────────────────────── */
+.sb-divider-label{
+  font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--sb-t);opacity:.6;
+  padding:10px 16px 4px;
+  pointer-events:none;user-select:none;
+}
+.sidebar.collapsed .sb-divider-label{display:none}
+
+/* ── Sidebar: UC emoji icon + badge ─────────────────────────────────────── */
+.sb-uc-emoji{font-size:15px;line-height:1;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+.sb-uc-badge{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;
+  background:rgba(99,102,241,.12);color:var(--sb-t);min-width:18px;text-align:center}
+.sb-item.active .sb-uc-badge{background:rgba(99,102,241,.3);color:#C7CCFF}
+.sidebar.collapsed .sb-uc-badge{display:none}
+
+/* ── Topbar: AI Assistant button ─────────────────────────────────────────── */
+.tb-ai-btn{
+  background:linear-gradient(135deg,#7C3AED,#6366F1);
+  border:none;color:#fff;
+}
+.tb-ai-btn:hover{background:linear-gradient(135deg,#6D28D9,#4F46E5);color:#fff}
+body.dark .tb-ai-btn{background:linear-gradient(135deg,#5B21B6,#4F46E5)}
+
+/* ── Home: Quick Tools + Generators strips ───────────────────────────────── */
+.home-strip-section{
+  margin:0 0 20px;
+}
+.home-strip-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.home-strip-title{
+  font-size:13px;font-weight:700;color:var(--text);letter-spacing:.1px;
+}
+.home-strip-all{
+  font-size:11.5px;font-weight:600;color:var(--primary);cursor:pointer;
+  text-decoration:none;
+}
+.home-strip-all:hover{text-decoration:underline;color:var(--primary-d)}
+.home-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
+  gap:8px;
+}
+.home-strip-item{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:12px 8px;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);
+  cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .12s;
+  text-align:center;
+}
+.home-strip-item:hover{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(99,102,241,.08);
+  transform:translateY(-1px);
+}
+.home-strip-icon{font-size:20px;line-height:1}
+.home-strip-label{font-size:11px;font-weight:600;color:var(--text2);line-height:1.3}
+.home-strip-item-ai{border-color:rgba(99,102,241,.3);background:linear-gradient(135deg,rgba(99,102,241,.05),rgba(139,92,246,.05))}
+.home-strip-item-ai:hover{border-color:var(--primary);background:rgba(99,102,241,.08)}
+body.dark .home-strip-item{background:var(--sb-2);border-color:var(--sb-border)}
+body.dark .home-strip-item:hover{border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+body.dark .home-strip-item-ai{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.4)}

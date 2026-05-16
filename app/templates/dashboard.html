@@ -45,6 +45,11 @@
     <span class="tb-quick-text">Quick Audit</span>
   </button>
 
+  <button class="tb-quick tb-ai-btn" onclick="navTo('tool-ai')" title="AI SEO Assistant">
+    <span class="tb-quick-icon">🤖</span>
+    <span class="tb-quick-text">AI Assistant</span>
+  </button>
+
   <button class="tb-icon-btn" onclick="openHelp()" title="Help & docs (?)" aria-label="Open help">?</button>
   <button class="tb-icon-btn" id="dark-toggle" onclick="toggleDark()" title="Toggle theme" aria-label="Toggle theme">🌙</button>
 
@@ -137,29 +142,6 @@
       </div>
     </div>
 
-    <!-- Data -->
-    <div class="sb-group" id="sbg-data">
-      <div class="sb-group-hd" onclick="sbToggle('sbg-data')">
-        <span class="sb-group-label">Data</span>
-        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
-      </div>
-      <div class="sb-group-body">
-        <div class="sb-item" data-panel="reports" data-section="Data" data-name="Reports" onclick="nav(this);loadReports()">
-          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg></span>
-          <span class="sb-text">Reports</span>
-          <span class="sb-count" id="sb-rep-count" style="display:none">0</span>
-        </div>
-        <div class="sb-item" data-panel="compare" data-section="Data" data-name="Compare" onclick="nav(this);loadCompare()">
-          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg></span>
-          <span class="sb-text">Compare</span>
-        </div>
-        <div class="sb-item" data-panel="trend" data-section="Data" data-name="Trend" onclick="nav(this);loadTrend()">
-          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
-          <span class="sb-text">Trend</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Tools — collapsed by default -->
     <div class="sb-group sb-group-collapsed" id="sbg-tools">
       <div class="sb-group-hd" onclick="sbToggle('sbg-tools')">
@@ -208,7 +190,7 @@
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
           <span class="sb-text">Bing Visibility</span>
         </div>
-        <!-- Stage 3-B -->
+        <div class="sb-divider-label">GSC Tools</div>
         <div class="sb-item" data-panel="tool-gsc-opps" data-section="Tools" data-name="GSC Opportunities" onclick="nav(this)">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
           <span class="sb-text">GSC Opportunities</span>
@@ -237,11 +219,6 @@
         <div class="sb-item" data-panel="tool-perf-opps" data-section="Tools" data-name="Perf Opportunities" onclick="nav(this)">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
           <span class="sb-text">Perf Opportunities</span>
-        </div>
-        <!-- Stage 3-D -->
-        <div class="sb-item" data-panel="tool-ai" data-section="Tools" data-name="AI Assistant" onclick="nav(this)">
-          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-          <span class="sb-text">AI Assistant</span>
         </div>
         <!-- Keyword Research -->
         <div class="sb-item" data-panel="tool-kw-research" data-section="Tools" data-name="Keyword Research" onclick="nav(this)">
@@ -277,6 +254,29 @@
         <div class="sb-item" data-panel="gen-metatags" data-section="Generators" data-name="Meta Tags" onclick="nav(this)">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></span>
           <span class="sb-text">Meta Tags</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data -->
+    <div class="sb-group sb-group-collapsed" id="sbg-data">
+      <div class="sb-group-hd" onclick="sbToggle('sbg-data')">
+        <span class="sb-group-label">Data</span>
+        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="sb-group-body">
+        <div class="sb-item" data-panel="reports" data-section="Data" data-name="Reports" onclick="nav(this);loadReports()">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg></span>
+          <span class="sb-text">Reports</span>
+          <span class="sb-count" id="sb-rep-count" style="display:none">0</span>
+        </div>
+        <div class="sb-item" data-panel="compare" data-section="Data" data-name="Compare" onclick="nav(this);loadCompare()">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg></span>
+          <span class="sb-text">Compare</span>
+        </div>
+        <div class="sb-item" data-panel="trend" data-section="Data" data-name="Trend" onclick="nav(this);loadTrend()">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+          <span class="sb-text">Trend</span>
         </div>
       </div>
     </div>
@@ -339,61 +339,6 @@
     </div>
     <div class="home-side">
 
-      <!-- Quick Tools shortcut card -->
-      <div class="card card-sm">
-        <div class="section-title" style="margin-bottom:10px">Quick Tools</div>
-        <div class="home-qt-grid">
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-serp]'))">
-            <span class="home-qt-icon">📱</span>
-            <span class="home-qt-label">SERP Preview</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-redirect]'))">
-            <span class="home-qt-icon">🔗</span>
-            <span class="home-qt-label">Redirect Chain</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-headers]'))">
-            <span class="home-qt-icon">🔤</span>
-            <span class="home-qt-label">HTTP Headers</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-keywords]'))">
-            <span class="home-qt-icon">📊</span>
-            <span class="home-qt-label">Keyword Density</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-ratio]'))">
-            <span class="home-qt-icon">⚖️</span>
-            <span class="home-qt-label">Code:Text Ratio</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-compression]'))">
-            <span class="home-qt-icon">⚡</span>
-            <span class="home-qt-label">GZIP &amp; Cache</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-schema]'))">
-            <span class="home-qt-icon">🏷️</span>
-            <span class="home-qt-label">Schema Check</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-sitemap-audit]'))">
-            <span class="home-qt-icon">🗺</span>
-            <span class="home-qt-label">Sitemap Audit</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-gsc-opps]'))">
-            <span class="home-qt-icon">📊</span>
-            <span class="home-qt-label">GSC Opportunities</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-perf-opps]'))">
-            <span class="home-qt-icon">⚡</span>
-            <span class="home-qt-label">Perf Opportunities</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-ai]'))">
-            <span class="home-qt-icon">🤖</span>
-            <span class="home-qt-label">AI Assistant</span>
-          </div>
-          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-bing]'))">
-            <span class="home-qt-icon">🔷</span>
-            <span class="home-qt-label">Bing Visibility</span>
-          </div>
-        </div>
-      </div>
-
       <!-- Recent Reports -->
       <div class="card card-sm">
         <div class="section-title" style="margin-bottom:8px">Recent Reports</div>
@@ -405,6 +350,43 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Quick Tools strip -->
+  <div class="home-strip-section">
+    <div class="home-strip-hd">
+      <span class="home-strip-title">Quick Tools</span>
+      <a class="home-strip-all" onclick="navTo('tool-serp')">All Tools →</a>
+    </div>
+    <div class="home-strip">
+      <div class="home-strip-item" onclick="navTo('tool-serp')"><span class="home-strip-icon">📱</span><span class="home-strip-label">SERP Preview</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-redirect')"><span class="home-strip-icon">🔗</span><span class="home-strip-label">Redirect Chain</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-headers')"><span class="home-strip-icon">🔤</span><span class="home-strip-label">HTTP Headers</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-keywords')"><span class="home-strip-icon">📊</span><span class="home-strip-label">Keyword Density</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-schema')"><span class="home-strip-icon">🏷️</span><span class="home-strip-label">Schema Check</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-sitemap-audit')"><span class="home-strip-icon">🗺️</span><span class="home-strip-label">Sitemap Audit</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-gsc-opps')"><span class="home-strip-icon">📈</span><span class="home-strip-label">GSC Opportunities</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-perf-opps')"><span class="home-strip-icon">⚡</span><span class="home-strip-label">Perf Opportunities</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-kw-research')"><span class="home-strip-icon">🔍</span><span class="home-strip-label">Keyword Research</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-bing')"><span class="home-strip-icon">🔷</span><span class="home-strip-label">Bing Visibility</span></div>
+      <div class="home-strip-item" onclick="navTo('tool-indexnow')"><span class="home-strip-icon">📤</span><span class="home-strip-label">IndexNow Submit</span></div>
+      <div class="home-strip-item home-strip-item-ai" onclick="navTo('tool-ai')"><span class="home-strip-icon">🤖</span><span class="home-strip-label">AI Assistant</span></div>
+    </div>
+  </div>
+
+  <!-- Generators strip -->
+  <div class="home-strip-section">
+    <div class="home-strip-hd">
+      <span class="home-strip-title">Generators</span>
+      <a class="home-strip-all" onclick="navTo('gen-schema')">All Generators →</a>
+    </div>
+    <div class="home-strip">
+      <div class="home-strip-item" onclick="navTo('gen-schema')"><span class="home-strip-icon">🧱</span><span class="home-strip-label">Schema Markup</span></div>
+      <div class="home-strip-item" onclick="navTo('gen-robots')"><span class="home-strip-icon">🤖</span><span class="home-strip-label">robots.txt</span></div>
+      <div class="home-strip-item" onclick="navTo('gen-sitemap')"><span class="home-strip-icon">🗺️</span><span class="home-strip-label">XML Sitemap</span></div>
+      <div class="home-strip-item" onclick="navTo('gen-hreflang')"><span class="home-strip-icon">🌐</span><span class="home-strip-label">Hreflang Tags</span></div>
+      <div class="home-strip-item" onclick="navTo('gen-metatags')"><span class="home-strip-icon">🏷️</span><span class="home-strip-label">Meta Tags</span></div>
     </div>
   </div>
 

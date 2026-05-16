@@ -449,9 +449,8 @@ function renderHomeUC(){
     const checkCount=(info.checks||[]).length;
     const preview=(info.checks||[]).slice(0,3);
     const hasApi=!!info.api;
-    const sbItem=document.querySelector(`[data-panel="uc-runner"][data-name="${uc.label}"]`);
     return `
-    <div class="home-uc" style="--uc-accent:${uc.color}" onclick="nav(document.querySelector('[data-panel=uc-runner][data-name=\\'${uc.label}\\']'));openUseCase('${id}')">
+    <div class="home-uc" style="--uc-accent:${uc.color}" data-uc-id="${id}" onclick="runSingleUC(this.dataset.ucId)">
       <div class="home-uc-accent"></div>
       <div class="home-uc-top">
         <div class="home-uc-icon" style="background:${uc.bg};color:${uc.color}">${uc.icon}</div>

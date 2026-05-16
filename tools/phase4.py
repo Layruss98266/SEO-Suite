@@ -514,7 +514,7 @@ def audit_url(url: str, cfg: dict, keywords: list[str] = None, keyword: str = ""
     results = [None] * len(tasks)
     task_names = list(tasks.keys())
 
-    with ThreadPoolExecutor(max_workers=len(tasks)) as ex:
+    with ThreadPoolExecutor(max_workers=min(len(tasks), 8)) as ex:
         futures = {ex.submit(fn): i for i, (_, fn) in enumerate(tasks.items())}
         for fut in as_completed(futures):
             idx = futures[fut]

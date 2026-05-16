@@ -1,0 +1,2 @@
+VERSION = "2.0.0"
+CLI_BANNER = f"SEO Suite v{VERSION}"

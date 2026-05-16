@@ -1,0 +1,2793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SEO Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+
+<!-- ═══ TOP BAR ════════════════════════════════════════════════════════════ -->
+<header class="topbar">
+  <button class="tb-hamburger" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <a class="topbar-logo" onclick="navTo('home');return false">
+    <span class="logo-mark"><span class="logo-dot"></span></span>
+    <span class="logo-text">SEO Suite</span>
+    <span class="logo-ver" id="logo-ver"></span>
+  </a>
+
+  <div class="tb-breadcrumb" id="tb-breadcrumb">
+    <span class="tb-crumb-section" id="tb-crumb-section">Overview</span>
+    <span class="tb-crumb-sep">/</span>
+    <span class="tb-crumb-page" id="tb-crumb-page">Home</span>
+  </div>
+
+  <div class="tb-search" onclick="document.getElementById('tb-search-input').focus()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="tb-search-input" placeholder="Jump to…" oninput="tbSearch(this.value)" onkeydown="tbSearchKey(event)">
+    <span class="tb-search-kbd">Ctrl K</span>
+    <div class="tb-search-results" id="tb-search-results"></div>
+  </div>
+
+  <div class="tb-spacer"></div>
+
+  <div class="tb-status">
+    <span class="tb-badge" id="idx-badge" data-panel="idx-live" onclick="navTo('idx-live')" title="Indexing checker">Indexing · Ready</span>
+    <span class="tb-badge" id="aud-badge" data-panel="aud-live" onclick="navTo('aud-live')" title="SEO audit">Audit · Ready</span>
+  </div>
+
+  <button class="tb-quick" onclick="openFullAudit()" title="Start a full audit">
+    <span class="tb-quick-icon">⚡</span>
+    <span class="tb-quick-text">Quick Audit</span>
+  </button>
+
+  <button class="tb-icon-btn" onclick="openHelp()" title="Help & docs (?)" aria-label="Open help">?</button>
+  <button class="tb-icon-btn" id="dark-toggle" onclick="toggleDark()" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+
+  <!-- User / Auth button — shown when auth is enabled -->
+  <div class="tb-user" id="tb-user" style="display:none">
+    <div class="tb-user-avatar" id="tb-user-avatar">👤</div>
+    <span class="tb-user-name" id="tb-user-name"></span>
+    <button class="tb-user-logout" id="tb-user-logout" onclick="doLogout()" title="Sign out">↩ Logout</button>
+  </div>
+</header>
+
+<!-- ═══ HELP MODAL ═════════════════════════════════════════════════════════ -->
+<div class="modal-mask" id="help-mask" onclick="closeHelp()"></div>
+<div class="modal" id="help-modal">
+  <div class="modal-head">
+    <div>
+      <div class="modal-title">SEO Suite — Help & Reference</div>
+      <div class="modal-sub">Everything you can do here · keyboard shortcuts · setup hints</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeHelp()">✕</button>
+  </div>
+  <div class="modal-tabs">
+    <button class="modal-tab active" data-tab="overview" onclick="helpTab('overview',this)">Overview</button>
+    <button class="modal-tab" data-tab="usecases" onclick="helpTab('usecases',this)">Use Cases</button>
+    <button class="modal-tab" data-tab="keys"     onclick="helpTab('keys',this)">API Keys</button>
+    <button class="modal-tab" data-tab="shortcuts" onclick="helpTab('shortcuts',this)">Shortcuts</button>
+    <button class="modal-tab" data-tab="troubleshoot" onclick="helpTab('troubleshoot',this)">Troubleshoot</button>
+    <button class="modal-tab" data-tab="about"    onclick="helpTab('about',this)">About</button>
+  </div>
+  <div class="modal-body" id="help-body"></div>
+</div>
+
+<div class="app">
+<!-- ═══ SIDEBAR ════════════════════════════════════════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-scroll">
+
+    <!-- Home — always visible, no group -->
+    <div class="sb-item sb-home active" data-panel="home" data-section="Overview" data-name="Home" onclick="nav(this)">
+      <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      <span class="sb-text">Home</span>
+    </div>
+
+    <!-- Indexing -->
+    <div class="sb-group" id="sbg-indexing">
+      <div class="sb-group-hd" onclick="sbToggle('sbg-indexing')">
+        <span class="sb-group-label">Indexing</span>
+        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="sb-group-body">
+        <div class="sb-item" data-panel="idx-run" data-section="Indexing" data-name="Run Check" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+          <span class="sb-text">Run Check</span>
+          <span class="sb-pip" id="pip-idx"></span>
+        </div>
+        <div class="sb-item" data-panel="idx-live" data-section="Indexing" data-name="Live Progress" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 0 1 20 0"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="12" r="1"/></svg></span>
+          <span class="sb-text">Live Progress</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEO Audit -->
+    <div class="sb-group" id="sbg-audit">
+      <div class="sb-group-hd" onclick="sbToggle('sbg-audit')">
+        <span class="sb-group-label">SEO Audit</span>
+        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="sb-group-body">
+        <div class="sb-item" data-panel="aud-run" data-section="SEO Audit" data-name="New Audit" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 4 4 5-5"/></svg></span>
+          <span class="sb-text">New Audit</span>
+          <span class="sb-pip" id="pip-aud"></span>
+        </div>
+        <div class="sb-item" data-panel="aud-live" data-section="SEO Audit" data-name="Live Progress" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 0 1 20 0"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="12" r="1"/></svg></span>
+          <span class="sb-text">Live Progress</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Use Cases -->
+    <div class="sb-group" id="sbg-usecases">
+      <div class="sb-group-hd" onclick="sbToggle('sbg-usecases')">
+        <span class="sb-group-label">Use Cases</span>
+        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="sb-group-body" id="sb-uc-list">
+        <!-- populated by renderSidebarUC() from UC_DEFS in dashboard.js -->
+      </div>
+    </div>
+
+    <!-- Data -->
+    <div class="sb-group" id="sbg-data">
+      <div class="sb-group-hd" onclick="sbToggle('sbg-data')">
+        <span class="sb-group-label">Data</span>
+        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="sb-group-body">
+        <div class="sb-item" data-panel="reports" data-section="Data" data-name="Reports" onclick="nav(this);loadReports()">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg></span>
+          <span class="sb-text">Reports</span>
+          <span class="sb-count" id="sb-rep-count" style="display:none">0</span>
+        </div>
+        <div class="sb-item" data-panel="compare" data-section="Data" data-name="Compare" onclick="nav(this);loadCompare()">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg></span>
+          <span class="sb-text">Compare</span>
+        </div>
+        <div class="sb-item" data-panel="trend" data-section="Data" data-name="Trend" onclick="nav(this);loadTrend()">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+          <span class="sb-text">Trend</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools — collapsed by default -->
+    <div class="sb-group sb-group-collapsed" id="sbg-tools">
+      <div class="sb-group-hd" onclick="sbToggle('sbg-tools')">
+        <span class="sb-group-label">Tools</span>
+        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="sb-group-body">
+        <div class="sb-item" data-panel="tool-serp" data-section="Tools" data-name="SERP Preview" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></span>
+          <span class="sb-text">SERP Preview</span>
+        </div>
+        <div class="sb-item" data-panel="tool-redirect" data-section="Tools" data-name="Redirect Chain" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+          <span class="sb-text">Redirect Chain</span>
+        </div>
+        <div class="sb-item" data-panel="tool-headers" data-section="Tools" data-name="HTTP Headers" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
+          <span class="sb-text">HTTP Headers</span>
+        </div>
+        <div class="sb-item" data-panel="tool-keywords" data-section="Tools" data-name="Keyword Density" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg></span>
+          <span class="sb-text">Keyword Density</span>
+        </div>
+        <div class="sb-item" data-panel="tool-ratio" data-section="Tools" data-name="Code:Text Ratio" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+          <span class="sb-text">Code:Text Ratio</span>
+        </div>
+        <div class="sb-item" data-panel="tool-compression" data-section="Tools" data-name="GZIP &amp; Cache" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+          <span class="sb-text">GZIP &amp; Cache</span>
+        </div>
+        <div class="sb-item" data-panel="tool-schema" data-section="Tools" data-name="Schema Validation" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
+          <span class="sb-text">Schema Validation</span>
+        </div>
+        <div class="sb-item" data-panel="tool-indexnow" data-section="Tools" data-name="IndexNow Submit" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+          <span class="sb-text">IndexNow Submit</span>
+        </div>
+        <div class="sb-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+          <span class="sb-text">Sitemap Audit</span>
+        </div>
+        <!-- Stage 3-A -->
+        <div class="sb-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <span class="sb-text">Bing Visibility</span>
+        </div>
+        <!-- Stage 3-B -->
+        <div class="sb-item" data-panel="tool-gsc-opps" data-section="Tools" data-name="GSC Opportunities" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <span class="sb-text">GSC Opportunities</span>
+        </div>
+        <div class="sb-item" data-panel="tool-gsc-position" data-section="Tools" data-name="GSC Position Tracker" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+          <span class="sb-text">GSC Position Tracker</span>
+        </div>
+        <div class="sb-item" data-panel="tool-gsc-ctr" data-section="Tools" data-name="GSC CTR Analyzer" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></span>
+          <span class="sb-text">GSC CTR Analyzer</span>
+        </div>
+        <div class="sb-item" data-panel="tool-gsc-coverage" data-section="Tools" data-name="GSC Coverage Errors" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+          <span class="sb-text">GSC Coverage Errors</span>
+        </div>
+        <div class="sb-item" data-panel="tool-gsc-sitemaps" data-section="Tools" data-name="GSC Sitemaps Status" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+          <span class="sb-text">GSC Sitemaps Status</span>
+        </div>
+        <div class="sb-item" data-panel="tool-phase-runner" data-section="Tools" data-name="Phase Runner" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
+          <span class="sb-text">Phase Runner</span>
+        </div>
+        <!-- Stage 3-C -->
+        <div class="sb-item" data-panel="tool-perf-opps" data-section="Tools" data-name="Perf Opportunities" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+          <span class="sb-text">Perf Opportunities</span>
+        </div>
+        <!-- Stage 3-D -->
+        <div class="sb-item" data-panel="tool-ai" data-section="Tools" data-name="AI Assistant" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+          <span class="sb-text">AI Assistant</span>
+        </div>
+        <!-- Keyword Research -->
+        <div class="sb-item" data-panel="tool-kw-research" data-section="Tools" data-name="Keyword Research" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></span>
+          <span class="sb-text">Keyword Research</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generators — collapsed by default -->
+    <div class="sb-group sb-group-collapsed" id="sbg-generators">
+      <div class="sb-group-hd" onclick="sbToggle('sbg-generators')">
+        <span class="sb-group-label">Generators</span>
+        <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <div class="sb-group-body">
+        <div class="sb-item" data-panel="gen-schema" data-section="Generators" data-name="Schema Markup" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
+          <span class="sb-text">Schema Markup</span>
+        </div>
+        <div class="sb-item" data-panel="gen-robots" data-section="Generators" data-name="robots.txt" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6"/></svg></span>
+          <span class="sb-text">robots.txt</span>
+        </div>
+        <div class="sb-item" data-panel="gen-sitemap" data-section="Generators" data-name="XML Sitemap" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v4H3z"/><path d="M3 10h18v4H3z"/><path d="M3 17h18v4H3z"/></svg></span>
+          <span class="sb-text">XML Sitemap</span>
+        </div>
+        <div class="sb-item" data-panel="gen-hreflang" data-section="Generators" data-name="Hreflang Tags" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+          <span class="sb-text">Hreflang Tags</span>
+        </div>
+        <div class="sb-item" data-panel="gen-metatags" data-section="Generators" data-name="Meta Tags" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></span>
+          <span class="sb-text">Meta Tags</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings — always visible at bottom -->
+    <div class="sb-item sb-settings" data-panel="settings" data-section="Settings" data-name="Settings" onclick="nav(this)">
+      <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+      <span class="sb-text">Settings</span>
+    </div>
+  </div>
+
+  <div class="sb-foot">
+    <div class="sb-foot-row">
+      <span class="sb-foot-status">
+        <span class="sb-foot-dot"></span>
+        <span class="sb-foot-text" id="sb-server-status">Server online</span>
+      </span>
+      <span class="sb-foot-ver" id="sb-version"></span>
+    </div>
+  </div>
+</aside>
+
+<div class="sb-mask" id="sb-mask" onclick="toggleSidebar()"></div>
+
+<!-- Main -->
+<div class="main">
+
+<!-- ═══ HOME ═══════════════════════════════════════════════════════════════ -->
+<div class="panel active" id="panel-home">
+  <div class="home-hero-card">
+    <div class="home-hero-bg"></div>
+    <div class="home-hero-inner">
+      <div class="home-hero-left">
+        <div class="home-hero-eyebrow">
+          <span class="home-hero-dot"></span>
+          SEO Suite · Ready
+        </div>
+        <div class="page-title" id="h-greeting" style="color:#fff;margin-bottom:6px">Welcome to SEO Suite</div>
+        <div class="page-sub" id="h-greet-sub" style="color:rgba(255,255,255,.72)">Pick a use case to run, or start a full audit</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-self:flex-end">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.14);color:#fff;border:1.5px solid rgba(255,255,255,.22)" onclick="navTo('idx-run')">🔍 Indexing Check</button>
+        <button class="btn btn-primary btn-sm" onclick="openFullAudit()">⚡ Full Audit</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);border:1.5px solid rgba(255,255,255,.15)" onclick="navTo('reports');loadReports()">📄 Reports</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n c-blue" id="h-checked">—</div><div class="stat-l">URLs Checked</div><div class="stat-trend" id="h-trend-checked"></div></div>
+    <div class="stat"><div class="stat-n c-green" id="h-indexed">—</div><div class="stat-l">Indexed</div><div class="stat-trend" id="h-trend-indexed"></div></div>
+    <div class="stat"><div class="stat-n c-purple" id="h-avgscore">—</div><div class="stat-l">Avg SEO Score</div><div class="stat-trend" id="h-trend-score"></div></div>
+    <div class="stat"><div class="stat-n c-red" id="h-issues">—</div><div class="stat-l">Issues Found</div><div class="stat-trend" id="h-trend-issues"></div></div>
+  </div>
+
+  <div class="home-grid">
+    <div>
+      <div class="section-title">Use Cases <span style="color:var(--text3);font-weight:400">— click any card to run it</span></div>
+      <div class="home-uc-grid" id="home-uc-grid"></div>
+    </div>
+    <div class="home-side">
+
+      <!-- Quick Tools shortcut card -->
+      <div class="card card-sm">
+        <div class="section-title" style="margin-bottom:10px">Quick Tools</div>
+        <div class="home-qt-grid">
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-serp]'))">
+            <span class="home-qt-icon">📱</span>
+            <span class="home-qt-label">SERP Preview</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-redirect]'))">
+            <span class="home-qt-icon">🔗</span>
+            <span class="home-qt-label">Redirect Chain</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-headers]'))">
+            <span class="home-qt-icon">🔤</span>
+            <span class="home-qt-label">HTTP Headers</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-keywords]'))">
+            <span class="home-qt-icon">📊</span>
+            <span class="home-qt-label">Keyword Density</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-ratio]'))">
+            <span class="home-qt-icon">⚖️</span>
+            <span class="home-qt-label">Code:Text Ratio</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-compression]'))">
+            <span class="home-qt-icon">⚡</span>
+            <span class="home-qt-label">GZIP &amp; Cache</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-schema]'))">
+            <span class="home-qt-icon">🏷️</span>
+            <span class="home-qt-label">Schema Check</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-sitemap-audit]'))">
+            <span class="home-qt-icon">🗺</span>
+            <span class="home-qt-label">Sitemap Audit</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-gsc-opps]'))">
+            <span class="home-qt-icon">📊</span>
+            <span class="home-qt-label">GSC Opportunities</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-perf-opps]'))">
+            <span class="home-qt-icon">⚡</span>
+            <span class="home-qt-label">Perf Opportunities</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-ai]'))">
+            <span class="home-qt-icon">🤖</span>
+            <span class="home-qt-label">AI Assistant</span>
+          </div>
+          <div class="home-qt-item" onclick="nav(document.querySelector('[data-panel=tool-bing]'))">
+            <span class="home-qt-icon">🔷</span>
+            <span class="home-qt-label">Bing Visibility</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Reports -->
+      <div class="card card-sm">
+        <div class="section-title" style="margin-bottom:8px">Recent Reports</div>
+        <div id="h-recent-reports" class="home-recent-list">
+          <div class="skeleton-list" id="h-recent-skeleton">
+            <div class="skel-row"><div class="skel skel-icon"></div><div class="skel-body"><div class="skel skel-line skel-w80"></div><div class="skel skel-line skel-w50"></div></div></div>
+            <div class="skel-row"><div class="skel skel-icon"></div><div class="skel-body"><div class="skel skel-line skel-w70"></div><div class="skel skel-line skel-w45"></div></div></div>
+            <div class="skel-row"><div class="skel skel-icon"></div><div class="skel-body"><div class="skel skel-line skel-w60"></div><div class="skel skel-line skel-w50"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ INDEXING: RUN ══════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-idx-run">
+  <div class="run-page">
+  <div>
+    <div class="page-title">Indexing Checker</div>
+    <div class="page-sub">Verify which URLs are indexed in Google using a real browser</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔍</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How it works</div>
+      <div class="tool-guide-text">The checker opens each URL in a real Chromium browser via Playwright, performs a Google <code>site:</code> search, and reads the result — no API required. Provide a sitemap, domain, or paste URLs directly. Use the filter pattern to narrow down to a subfolder (e.g. <code>/blog/</code>).</div>
+      <div class="tool-guide-example">Sitemap → https://example.com/sitemap.xml&#10;Domain  → example.com&#10;Filter  → /blog/ or /products/</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">First run? playwright install chromium</span>
+        <span class="tool-guide-tip">Headless = faster, no window</span>
+        <span class="tool-guide-tip">Results saved as CSV + HTML report</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Input type</span>
+        <div class="radio-row">
+          <label><input type="radio" name="idx-type" value="sitemap" checked onchange="idxToggle()"> Sitemap URL</label>
+          <label><input type="radio" name="idx-type" value="domain" onchange="idxToggle()"> Domain</label>
+          <label><input type="radio" name="idx-type" value="multi" onchange="idxToggle()"> Multiple sitemaps</label>
+          <label><input type="radio" name="idx-type" value="csv" onchange="idxToggle()"> CSV / Excel file</label>
+          <label><input type="radio" name="idx-type" value="paste" onchange="idxToggle()"> Paste URLs</label>
+        </div>
+      </div>
+      <div class="fg-full" id="idx-src-row">
+        <span class="label" id="idx-lbl">Sitemap URL</span>
+        <input class="input" id="idx-src" placeholder="https://example.com/sitemap.xml">
+      </div>
+      <div class="fg-full" id="idx-file-row" style="display:none">
+        <span class="label">Upload CSV / Excel</span>
+        <div class="dropzone" id="idx-dropzone"
+             onclick="document.getElementById('idx-file').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="idxFileDrop(event)">
+          <input type="file" id="idx-file" accept=".csv,.xlsx,.xls,.tsv,.txt"
+                 style="display:none" onchange="idxFileChange(event)">
+          <div class="dz-icon">📂</div>
+          <div class="dz-text">
+            <div class="dz-title" id="idx-dz-title">Click or drop a file here</div>
+            <div class="dz-sub" id="idx-dz-sub">CSV · Excel · TSV · TXT — first column should be URLs</div>
+          </div>
+        </div>
+      </div>
+      <div class="fg-full" id="idx-paste-row" style="display:none">
+        <span class="label">Paste URLs <span style="font-weight:400;color:var(--text3)">(one per line, or comma-separated)</span></span>
+        <textarea class="input" id="idx-paste" rows="6"
+                  placeholder="https://example.com/page1&#10;https://example.com/page2&#10;…"></textarea>
+      </div>
+      <div>
+        <span class="label">Filter pattern</span>
+        <input class="input" id="idx-pattern" placeholder="/category/ or /course/">
+      </div>
+      <div>
+        <span class="label">URL limit</span>
+        <input class="input" type="number" id="idx-limit" value="20" min="1">
+      </div>
+      <div class="fg-full">
+        <span class="label">Options</span>
+        <div class="radio-row">
+          <label><input type="checkbox" id="idx-quiet"> Show only Not Indexed</label>
+          <label><input type="checkbox" id="idx-compare"> Compare with last run</label>
+          <label title="Run the browser without showing a window — faster"><input type="checkbox" id="idx-headless" checked> Hide browser window <span style="color:var(--text3);font-weight:400">(headless)</span></label>
+        </div>
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-block" id="idx-btn" onclick="startIndex()">🔍 Start Indexing Check</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearIdxForm()" title="Clear form">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /run-page -->
+</div>
+
+<!-- ═══ INDEXING: LIVE ═════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-idx-live">
+  <div class="live-header">
+    <div>
+      <div class="page-title">Indexing — Live</div>
+      <div class="page-sub" id="idx-live-sub">Waiting to start…</div>
+    </div>
+    <button class="notif-btn" id="idx-notif-btn" onclick="toggleNotif('idx')" title="Enable desktop notification on completion">🔔</button>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(5,1fr)">
+    <div class="stat"><div class="stat-n c-blue"   id="is-checked">0</div><div class="stat-l">Checked</div></div>
+    <div class="stat"><div class="stat-n c-green"  id="is-indexed">0</div><div class="stat-l">Indexed</div></div>
+    <div class="stat"><div class="stat-n c-red"    id="is-not">0</div><div class="stat-l">Not Indexed</div></div>
+    <div class="stat"><div class="stat-n c-amber"  id="is-errors">0</div><div class="stat-l">Errors</div></div>
+    <div class="stat"><div class="stat-n c-purple" id="is-rate">0%</div><div class="stat-l">Index Rate</div></div>
+  </div>
+  <div class="card">
+    <div class="progress-outer">
+      <div class="progress-pct" id="idx-pct">0%</div>
+      <div class="progress-wrap"><div class="progress-bar" id="idx-bar"></div></div>
+    </div>
+    <div class="eta-bar">
+      <span class="eta-elapsed" id="idx-elapsed"></span>
+      <span id="idx-eta"></span>
+      <span class="throughput-badge" id="idx-throughput" style="display:none"></span>
+    </div>
+    <div class="live-controls">
+      <button class="btn btn-danger btn-sm"  id="idx-cancel-btn" onclick="cancelIndex()" style="display:none">⏹ Cancel</button>
+      <button class="btn btn-warn btn-sm"    id="idx-pause-btn"  onclick="pauseIndex()"  style="display:none">⏸ Pause</button>
+      <button class="btn btn-primary btn-sm" id="idx-resume-btn" onclick="resumeIndex()" style="display:none">▶ Resume</button>
+      <button class="btn btn-warn btn-sm"    id="idx-retry-btn"  onclick="retryErrors()" style="display:none">🔄 Retry Errors (<span id="idx-error-count">0</span>)</button>
+      <a id="idx-partial-btn" class="btn btn-ghost btn-sm" href="/api/index/partial" style="display:none;text-decoration:none" title="Download results collected so far">⬇ Export Partial</a>
+    </div>
+    <div class="log-filter">
+      <button class="lf-btn active" onclick="filterIdxLog('all',this)">All <span class="lf-count" id="idx-count-all">0</span></button>
+      <button class="lf-btn"        onclick="filterIdxLog('indexed',this)">✅ Indexed <span class="lf-count" id="idx-count-indexed">0</span></button>
+      <button class="lf-btn"        onclick="filterIdxLog('not-indexed',this)">❌ Not Indexed <span class="lf-count" id="idx-count-not">0</span></button>
+      <button class="lf-btn"        onclick="filterIdxLog('error',this)">⚠ Errors <span class="lf-count" id="idx-count-err">0</span></button>
+      <button class="lf-btn lf-action" onclick="copyIdxUrls()" title="Copy currently-visible URLs">📋 Copy URLs</button>
+      <button class="lf-btn lf-action" onclick="expandIdxLog(this)" title="Expand / shrink log">⛶</button>
+      <label class="log-autoscroll"><input type="checkbox" id="idx-autoscroll" checked> Auto-scroll</label>
+    </div>
+    <div class="log-box" id="idx-log"></div>
+    <div class="done-bar" id="idx-done-bar">
+      <span class="done-bar-text" id="idx-done-text">✓ Indexing complete</span>
+      <button class="btn btn-primary btn-sm" id="idx-open-btn" onclick="openIdxReport()" style="display:none">Open Report ↗</button>
+      <a id="idx-dl-btn" class="btn btn-ghost btn-sm" style="display:none;text-decoration:none">⬇ CSV</a>
+      <button class="btn btn-ghost btn-sm" onclick="navTo('idx-run')">↻ New Check</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AUDIT: RUN ═════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-aud-run">
+  <div class="run-page">
+  <div>
+    <div class="page-title">SEO Audit</div>
+    <div class="page-sub">Select use cases, then pick your URL source</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔬</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How it works</div>
+      <div class="tool-guide-text">Choose one or more use cases (or a preset), provide a URL source, and click Start Audit. Each URL is scored across the selected phases — Technical, Performance, Search Console, and Authority. Results stream live and are saved as an HTML + XLSX report you can open or download.</div>
+      <div class="tool-guide-example">Full Audit → all 7 use cases&#10;Technical only → Crawl Access + On-Page SEO + Site Health&#10;Quick test → paste 3–5 URLs, limit to 5</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Save profiles for repeat audits</span>
+        <span class="tool-guide-tip">Parallel workers: 3 is safe default</span>
+        <span class="tool-guide-tip">GSC &amp; Rankings need API keys</span>
+      </div>
+    </div>
+  </div>
+  <div class="card card-sm">
+    <div class="section-title">Quick presets</div>
+    <div class="pill-row">
+      <button class="btn btn-ghost btn-sm" onclick="applyPreset('all')">⚡ Full Audit</button>
+      <button class="btn btn-ghost btn-sm" onclick="applyPreset('technical')">🏗️ Technical</button>
+      <button class="btn btn-ghost btn-sm" onclick="applyPreset('performance')">🚀 Performance</button>
+      <button class="btn btn-ghost btn-sm" onclick="applyPreset('visibility')">👁️ Visibility</button>
+      <button class="btn btn-ghost btn-sm" onclick="applyPreset('none')" style="margin-left:auto">Clear all</button>
+    </div>
+  </div>
+
+  <!-- Stage 3 analysis tools shortcut -->
+  <div class="card card-sm">
+    <div class="section-title" style="margin-bottom:10px">Deep Analysis Tools</div>
+    <div style="font-size:12.5px;color:var(--text3);margin-bottom:12px">Run after a full audit for deeper insights — these tools go beyond the standard 7 use cases.</div>
+    <div class="pill-row" style="flex-wrap:wrap;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-gsc-opps')" title="Low-CTR pages, position decay, cannibalization">📊 GSC Opportunities</button>
+      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-perf-opps')" title="Core Web Vitals buckets with fix plan">⚡ Perf Opportunities</button>
+      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-ai')" title="AI-powered audit explanation &amp; meta tag drafting">🤖 AI Assistant</button>
+      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-bing')" title="Bing Webmaster Tools — clicks, crawl, sitemaps">🔷 Bing Visibility</button>
+      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-schema')" title="Schema / Rich Results validation">🏷️ Schema Validate</button>
+      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-sitemap-audit')" title="Sitemap orphans, duplicates, oversized">🗺 Sitemap Audit</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">Use cases <span style="color:var(--text3);font-weight:400">(click to toggle)</span></div>
+    <div class="uc-grid" id="uc-selector"></div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text3)" id="uc-summary">0 selected</div>
+  </div>
+  <div class="card">
+    <div class="section-title">URL source</div>
+    <div class="uc-hint" id="aud-uc-hint" style="display:none">
+      <span class="uc-hint-icon">💡</span>
+      <span class="uc-hint-text"></span>
+    </div>
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Input type</span>
+        <div class="radio-row">
+          <label><input type="radio" name="aud-type" value="sitemap" checked onchange="audToggle()"> Sitemap URL</label>
+          <label><input type="radio" name="aud-type" value="domain" onchange="audToggle()"> Domain</label>
+          <label><input type="radio" name="aud-type" value="crawl" onchange="audToggle()"> Crawl from URL</label>
+          <label><input type="radio" name="aud-type" value="csv" onchange="audToggle()"> CSV / Excel file</label>
+          <label><input type="radio" name="aud-type" value="paste" onchange="audToggle()"> Paste URLs</label>
+        </div>
+      </div>
+      <div class="fg-full" id="aud-src-row">
+        <span class="label" id="aud-lbl">Sitemap URL</span>
+        <input class="input" id="aud-src" placeholder="https://example.com/sitemap.xml">
+      </div>
+      <div class="fg-full" id="aud-file-row" style="display:none">
+        <span class="label">Upload CSV / Excel</span>
+        <div class="dropzone" id="aud-dropzone"
+             onclick="document.getElementById('aud-file').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="audFileDrop(event)">
+          <input type="file" id="aud-file" accept=".csv,.xlsx,.xls,.tsv,.txt"
+                 style="display:none" onchange="audFileChange(event)">
+          <div class="dz-icon">📂</div>
+          <div class="dz-text">
+            <div class="dz-title" id="dz-title">Click or drop a file here</div>
+            <div class="dz-sub" id="dz-sub">CSV · Excel · TSV · TXT — first column should be URLs</div>
+          </div>
+        </div>
+      </div>
+      <div class="fg-full" id="aud-paste-row" style="display:none">
+        <span class="label">Paste URLs <span style="font-weight:400;color:var(--text3)">(one per line, or comma-separated)</span></span>
+        <textarea class="input" id="aud-paste" rows="6"
+                  placeholder="https://example.com/page1&#10;https://example.com/page2&#10;…"></textarea>
+      </div>
+      <div>
+        <span class="label">Filter pattern</span>
+        <input class="input" id="aud-pattern" placeholder="/category/">
+      </div>
+      <div>
+        <span class="label">URL limit</span>
+        <input class="input" type="number" id="aud-limit" value="10" min="1">
+      </div>
+      <div>
+        <span class="label">Parallel workers <span style="font-weight:400;color:var(--text3)">(1–8)</span></span>
+        <input class="input" type="number" id="aud-workers" value="3" min="1" max="8">
+      </div>
+      <div class="fg-full" id="aud-crawl-row" style="display:none">
+        <span class="label">Crawl depth <span style="font-weight:400;color:var(--text3)">(how many link levels to follow)</span></span>
+        <input class="input" type="number" id="aud-crawl-depth" value="2" min="1" max="4">
+      </div>
+      <div class="fg-full">
+        <span class="label">Saved profile</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="input" id="aud-profile" style="flex:1;min-width:160px" onchange="loadProfile(this.value)">
+            <option value="">— Select a profile —</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="saveProfile()">💾 Save current</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteProfile()">🗑 Delete</button>
+        </div>
+      </div>
+      <div class="fg-full" id="kw-row" style="display:none">
+        <span class="label">Keywords to track <span style="font-weight:400">(comma-separated, for Rankings)</span></span>
+        <input class="input" id="aud-kw" placeholder="corporate training, leadership training">
+      </div>
+      <div class="fg-full">
+        <button class="btn btn-primary btn-block" id="aud-btn" onclick="startAudit()">🔬 Start Audit</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">What each use case checks</div>
+    <table class="tbl">
+      <thead><tr><th>Use Case</th><th>Checks</th><th>Requires</th></tr></thead>
+      <tbody id="uc-ref-table"></tbody>
+    </table>
+    <div class="section-title" style="margin-top:20px;margin-bottom:8px">Deep Analysis Tools</div>
+    <table class="tbl">
+      <thead><tr><th>Tool</th><th>What it does</th><th>Requires</th></tr></thead>
+      <tbody>
+        <tr><td><span style="margin-right:6px">📊</span><b>GSC Opportunities</b></td><td style="color:#64748B">Low-CTR pages · position decay · keyword cannibalization — 90 days of GSC data</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">GSC API</span></td></tr>
+        <tr><td><span style="margin-right:6px">⚡</span><b>Perf Opportunities</b></td><td style="color:#64748B">Core Web Vitals graded mobile + desktop · critical / quick-win / nice-to-have buckets</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">PageSpeed API</span></td></tr>
+        <tr><td><span style="margin-right:6px">🤖</span><b>AI Assistant</b></td><td style="color:#64748B">Plain-English audit summary · top actions · AI-drafted meta title + description variants</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Groq API (free)</span></td></tr>
+        <tr><td><span style="margin-right:6px">🔷</span><b>Bing Visibility</b></td><td style="color:#64748B">Bing clicks · impressions · crawl issues · sitemap indexation · URL inspection + submission</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Bing WMT API</span></td></tr>
+        <tr><td><span style="margin-right:6px">🏷️</span><b>Schema Validate</b></td><td style="color:#64748B">Rich results eligibility · schema block errors · type detection per page</td><td><span style="background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Free</span></td></tr>
+        <tr><td><span style="margin-right:6px">🗺</span><b>Sitemap Audit</b></td><td style="color:#64748B">Orphan URLs · duplicates · oversized sitemap · HTTP in HTTPS site · non-indexable entries</td><td><span style="background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Free</span></td></tr>
+        <tr><td><span style="margin-right:6px">⚡</span><b>IndexNow Submit</b></td><td style="color:#64748B">Push URLs to Bing &amp; Yandex instantly — single URL or bulk batch</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">IndexNow key</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  </div><!-- /run-page -->
+</div>
+
+<!-- ═══ AUDIT: LIVE ════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-aud-live">
+  <div class="live-header">
+    <div>
+      <div class="page-title">Audit — Live</div>
+      <div class="page-sub" id="aud-live-sub">Waiting to start…</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="worker-util" id="aud-worker-util" style="display:none">
+        <span class="wu-dot" id="aud-wu-dot"></span>
+        <span id="aud-worker-active">0</span>/<span id="aud-worker-total">3</span> workers
+      </div>
+      <button class="notif-btn" id="aud-notif-btn" onclick="toggleNotif('aud')" title="Enable desktop notification on completion">🔔</button>
+    </div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+    <div class="stat"><div class="stat-n c-blue"   id="as-done">0</div><div class="stat-l">Audited</div></div>
+    <div class="stat"><div class="stat-n c-red"    id="as-issues">0</div><div class="stat-l">Issues</div></div>
+    <div class="stat"><div class="stat-n c-amber"  id="as-warns">0</div><div class="stat-l">Warnings</div></div>
+    <div class="stat stat-dist">
+      <div class="stat-n c-purple" id="as-score">—</div>
+      <div class="score-dist-bar" id="sdb-wrap" style="display:none">
+        <div class="sdb-seg sdb-high" id="sdb-high"></div>
+        <div class="sdb-seg sdb-mid"  id="sdb-mid"></div>
+        <div class="sdb-seg sdb-low"  id="sdb-low"></div>
+      </div>
+      <div class="score-dist-labels" id="sdb-labels" style="display:none">
+        <span class="sdl-high"><span id="sdc-high">0</span> ≥80</span>
+        <span class="sdl-mid"><span id="sdc-mid">0</span> 50–79</span>
+        <span class="sdl-low"><span id="sdc-low">0</span> &lt;50</span>
+      </div>
+      <div class="stat-l">Avg Score</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="progress-outer">
+      <div class="progress-pct" id="aud-pct">0%</div>
+      <div class="progress-wrap"><div class="progress-bar" id="aud-bar"></div></div>
+    </div>
+    <div class="eta-bar">
+      <span class="eta-elapsed" id="aud-elapsed"></span>
+      <span id="aud-eta"></span>
+      <span class="throughput-badge" id="aud-throughput" style="display:none"></span>
+    </div>
+    <div class="live-controls">
+      <button class="btn btn-danger btn-sm"  id="aud-cancel-btn"  onclick="cancelAudit()"  style="display:none">⏹ Cancel</button>
+      <button class="btn btn-warn btn-sm"    id="aud-pause-btn"   onclick="pauseAudit()"   style="display:none">⏸ Pause</button>
+      <button class="btn btn-primary btn-sm" id="aud-resume-btn"  onclick="resumeAudit()"  style="display:none">▶ Resume</button>
+      <a id="aud-partial-btn" class="btn btn-ghost btn-sm" href="/api/audit/partial" style="display:none;text-decoration:none" title="Download results collected so far">⬇ Export Partial</a>
+    </div>
+    <div class="log-filter">
+      <button class="lf-btn active" onclick="filterAudLog('all',this)">All <span class="lf-count" id="aud-count-all">0</span></button>
+      <button class="lf-btn"        onclick="filterAudLog('issues',this)">⚠ Has Issues <span class="lf-count" id="aud-count-iss">0</span></button>
+      <button class="lf-btn"        onclick="filterAudLog('low',this)">❌ Low Score (&lt;50) <span class="lf-count" id="aud-count-low">0</span></button>
+      <button class="lf-btn lf-action" onclick="copyAudUrls()" title="Copy currently-visible URLs">📋 Copy URLs</button>
+      <button class="lf-btn lf-action" onclick="expandAudLog(this)" title="Expand log">⛶</button>
+      <label class="log-autoscroll"><input type="checkbox" id="aud-autoscroll" checked> Auto-scroll</label>
+    </div>
+    <div class="log-box" id="aud-log"></div>
+    <div class="top-issues-panel" id="aud-top-issues" style="display:none">
+      <div class="ti-title">Top Failing Checks</div>
+      <div class="ti-list" id="aud-top-issues-list"></div>
+    </div>
+    <div class="done-bar" id="aud-done-bar">
+      <span class="done-bar-text" id="aud-done-text">✓ Audit complete</span>
+      <button class="btn btn-primary btn-sm" id="aud-open-btn" onclick="openAudReport()" style="display:none">Open Report ↗</button>
+      <a id="aud-dl-btn"  class="btn btn-ghost btn-sm" style="display:none;text-decoration:none">⬇ XLSX</a>
+      <a id="aud-pdf-btn" class="btn btn-ghost btn-sm" style="display:none;text-decoration:none">⬇ PDF</a>
+      <button class="btn btn-ghost btn-sm" onclick="navTo('aud-run')">↻ New Audit</button>
+    </div>
+
+    <!-- Next Steps — deep analysis shortcuts shown after audit completes -->
+    <div id="aud-next-steps" style="display:none;margin-top:12px">
+      <div class="section-title" style="margin-bottom:8px;font-size:12px">Go deeper with these tools →</div>
+      <div class="pill-row" style="flex-wrap:wrap;gap:7px">
+        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-gsc-opps')" title="Low-CTR pages, decay, cannibalization">📊 GSC Opportunities</button>
+        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-perf-opps')" title="Core Web Vitals priority buckets">⚡ Perf Opportunities</button>
+        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-ai')" title="AI explanation + meta drafting">🤖 AI Assistant</button>
+        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-bing')" title="Bing visibility, crawl, sitemaps">🔷 Bing Visibility</button>
+        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-schema')" title="Rich results / Schema validation">🏷️ Schema Validate</button>
+        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-sitemap-audit')" title="Orphans, duplicates, oversized">🗺 Sitemap Audit</button>
+        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-kw-research')" title="Keyword ideas via DataForSEO">🔎 Keyword Research</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REPORTS ════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-reports">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div>
+      <div class="page-title">Reports</div>
+      <div class="page-sub">All generated reports — open HTML or download data</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="loadReports()">↻ Refresh</button>
+  </div>
+  <div class="rep-stats">
+    <div class="rep-stat"><div class="rep-stat-n c-blue" id="rep-total">—</div><div class="rep-stat-l">Total Reports</div></div>
+    <div class="rep-stat"><div class="rep-stat-n" style="color:#3B82F6" id="rep-idx-count">—</div><div class="rep-stat-l">Indexing</div></div>
+    <div class="rep-stat"><div class="rep-stat-n c-purple" id="rep-aud-count">—</div><div class="rep-stat-l">SEO Audit</div></div>
+  </div>
+  <div class="rep-toolbar">
+    <div class="tab-row" style="margin:0;border:none;padding-bottom:0">
+      <button class="tab-btn active" onclick="filterReports('all',this)">All</button>
+      <button class="tab-btn" onclick="filterReports('indexing',this)">Indexing</button>
+      <button class="tab-btn" onclick="filterReports('audit',this)">SEO Audit</button>
+    </div>
+    <div style="position:relative;flex:1;min-width:200px">
+      <input class="rep-search" id="rep-search" placeholder="🔍  Search reports…" oninput="renderReports()" style="width:100%;padding-right:32px">
+      <button onclick="clearRepSearch()" title="Clear search" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px;line-height:1" id="rep-search-clear" style="display:none">✕</button>
+    </div>
+    <select class="rep-sort" id="rep-sort" onchange="renderReports()" title="Sort reports">
+      <option value="newest">↓ Newest</option>
+      <option value="oldest">↑ Oldest</option>
+      <option value="score-desc">Score ↓</option>
+      <option value="score-asc">Score ↑</option>
+    </select>
+  </div>
+  <div id="rep-cards-wrap"></div>
+</div>
+
+
+<!-- ═══ COMPARE ════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-compare">
+  <div class="run-page">
+  <div>
+    <div class="page-title">Compare Reports</div>
+    <div class="page-sub">Pick two audit reports — see which URLs gained or lost score</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔀</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How it works</div>
+      <div class="tool-guide-text">Select an older report as <strong>A</strong> and a newer report as <strong>B</strong>. The comparison shows every URL that appears in both runs, the score change (↑ gain / ↓ loss), and which issues were fixed or newly introduced. Pick reports from the same site for a meaningful diff.</div>
+      <div class="tool-guide-example">A = last week's audit  →  B = today's audit&#10;Result: URLs with score Δ, new issues, fixed issues</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">A = older, B = newer</span>
+        <span class="tool-guide-tip">Same site for accurate diff</span>
+        <span class="tool-guide-tip">Green = improved, Red = regressed</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div>
+        <span class="label">Report A (older)</span>
+        <select class="input" id="cmp-a"><option value="">— Pick a report —</option></select>
+      </div>
+      <div>
+        <span class="label">Report B (newer)</span>
+        <select class="input" id="cmp-b"><option value="">— Pick a report —</option></select>
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-block" onclick="runCompare()">🔀 Compare Reports</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearCompare()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="cmp-result"></div>
+  </div><!-- /run-page -->
+</div>
+
+<!-- ═══ TREND ══════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-trend">
+  <div class="gen-page">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div>
+      <div class="page-title">Indexing Trend</div>
+      <div class="page-sub">Historical indexed vs not-indexed over time</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="loadTrend()">↻ Refresh</button>
+  </div>
+  <div class="trend-kpi-row" id="trend-kpi-row" style="display:none">
+    <div class="trend-kpi">
+      <div class="trend-kpi-n c-blue" id="trend-kpi-runs">—</div>
+      <div class="trend-kpi-l">Total Runs</div>
+      <div class="trend-kpi-sub" id="trend-kpi-runs-sub">Run indexing check to see history</div>
+    </div>
+    <div class="trend-kpi">
+      <div class="trend-kpi-n c-green" id="trend-kpi-best">—</div>
+      <div class="trend-kpi-l">Best Index Rate</div>
+      <div class="trend-kpi-sub" id="trend-kpi-best-sub"></div>
+    </div>
+    <div class="trend-kpi">
+      <div class="trend-kpi-n" style="color:#3B82F6" id="trend-kpi-latest">—</div>
+      <div class="trend-kpi-l">Latest Rate</div>
+      <div class="trend-kpi-sub" id="trend-kpi-latest-sub"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <canvas id="trend-chart" height="80"></canvas>
+    <div id="trend-empty" class="empty-state" style="display:none">
+      <div class="empty-state-icon">📈</div>
+      <div class="empty-state-title">Not enough data yet</div>
+      <div class="empty-state-sub">Run at least two indexing checks to see the trend chart</div>
+      <div class="empty-state-action"><button class="btn btn-ghost btn-sm" onclick="navTo('idx-run')">Run Indexing Check →</button></div>
+    </div>
+  </div>
+  <div class="card" id="trend-table" style="display:none">
+    <div class="section-title">Run history</div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Date &amp; Time</th>
+          <th>Total</th>
+          <th>Indexed</th>
+          <th>Not Indexed</th>
+          <th>Index Rate</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="trend-tbody"></tbody>
+    </table>
+  </div>
+  </div><!-- /run-page -->
+</div>
+
+<!-- ═══ SETTINGS ═══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-settings">
+  <div class="gen-page">
+  <div class="settings-header">
+    <div>
+      <div class="page-title">Settings</div>
+      <div class="page-sub">Credentials, API keys &amp; notifications — all stored locally in config.json</div>
+    </div>
+    <button class="btn btn-primary" onclick="saveSettings()" style="flex-shrink:0">💾 Save Settings</button>
+  </div>
+
+  <!-- Config Health summary -->
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="section-title" style="margin-bottom:0">🩺 Configuration Health</div>
+      <button class="btn btn-ghost btn-sm" onclick="renderCfgHealth()">↻ Refresh</button>
+    </div>
+    <div class="cfg-health-grid" id="cfg-health-grid">
+      <div style="color:var(--text3);font-size:12px;padding:6px">Loading…</div>
+    </div>
+  </div>
+
+  <div class="settings-grid">
+
+    <!-- ── Indexing & Crawling ── -->
+    <div class="card">
+      <div class="section-title">🔍 Indexing &amp; Crawling</div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Google Search Console <span class="cfg-badge" id="badge-gsc"></span></div>
+          <div class="s-desc">Enables GSC URL Inspection API for accurate indexing results — more reliable than browser checks</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-gsc"><span class="slider"></span></label>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">GSC Credentials File</div>
+          <div class="s-desc">Path to service account JSON · <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--primary)">Download from GCP</a> → IAM → Service Accounts</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" id="cfg-gsc-creds" placeholder="gsc_credentials.json"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Parallel Browser Tabs</div>
+          <div class="s-desc">Simultaneous tabs for Playwright checks (1–8) · higher = faster but more likely to hit CAPTCHAs</div>
+        </div>
+        <input class="input" type="number" id="cfg-parallel-tabs" style="width:70px;text-align:center" min="1" max="8" value="1">
+      </div>
+    </div>
+
+    <!-- ── Performance Analysis ── -->
+    <div class="card">
+      <div class="section-title">⚡ Performance Analysis</div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">PageSpeed API Key <span class="cfg-badge" id="badge-pagespeed"></span></div>
+          <div class="s-desc">Free · <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--primary)">console.cloud.google.com</a> → Enable PageSpeed Insights API → Create API key</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" id="cfg-pagespeed" placeholder="AIza…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="cfg-info-box">
+        <div class="cfg-info-title">What this unlocks</div>
+        <div class="cfg-info-body">PageSpeed scores · Core Web Vitals (LCP, CLS, INP) · Mobile vs Desktop gap · TTFB benchmarks</div>
+      </div>
+    </div>
+
+    <!-- ── AI & Bing ── -->
+    <div class="card">
+      <div class="section-title">🤖 AI &amp; Platform APIs</div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Groq API Key <span class="cfg-badge" id="badge-groq"></span></div>
+          <div class="s-desc">Free tier · <a href="https://console.groq.com" target="_blank" style="color:var(--primary)">console.groq.com</a> → API Keys — unlocks "Explain with AI" &amp; meta tag drafting</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" type="password" id="cfg-groq" placeholder="gsk_…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Bing Webmaster API Key <span class="cfg-badge" id="badge-bing"></span></div>
+          <div class="s-desc">Free · <a href="https://www.bing.com/webmasters" target="_blank" style="color:var(--primary)">bing.com/webmasters</a> → Settings → API Access — unlocks Bing Visibility panel</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" type="password" id="cfg-bing" placeholder="your_key…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="cfg-info-box">
+        <div class="cfg-info-title">What these unlock</div>
+        <div class="cfg-info-body">Groq: AI audit explanations · AI-drafted meta tags · Summarise findings in plain English<br>Bing: Crawl stats · Traffic overview · Sitemap health · Per-URL inspection</div>
+      </div>
+    </div>
+
+    <!-- ── IndexNow ── -->
+    <div class="card">
+      <div class="section-title">📡 IndexNow</div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">IndexNow API Key <span class="cfg-badge" id="badge-indexnow"></span></div>
+          <div class="s-desc">Free · Generate a key in Tools → IndexNow Submit, then host it at <code>https://yourdomain.com/{key}.txt</code></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="key-wrap" style="width:180px"><input class="input" id="cfg-indexnow-key" placeholder="a1b2c3d4…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+          <button class="btn btn-ghost btn-sm" onclick="generateAndFillIndexNowKey()">Generate</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">IndexNow Host</div>
+          <div class="s-desc">Your site hostname — must match the domain where the key file is hosted</div>
+        </div>
+        <input class="input" id="cfg-indexnow-host" placeholder="example.com" style="width:220px">
+      </div>
+    </div>
+
+    <!-- ── Authority & Rankings ── -->
+    <div class="card">
+      <div class="section-title">🔗 Authority &amp; Rankings</div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">SerpAPI Key <span class="cfg-badge" id="badge-serpapi"></span></div>
+          <div class="s-desc">100 free searches/month · <a href="https://serpapi.com" target="_blank" style="color:var(--primary)">serpapi.com</a> — keyword rank tracking</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" id="cfg-serpapi" placeholder="your_key…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Moz Access ID <span class="cfg-badge" id="badge-moz"></span></div>
+          <div class="s-desc">Free tier · <a href="https://moz.com/products/api" target="_blank" style="color:var(--primary)">moz.com/products/api</a> — domain authority &amp; backlinks</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" id="cfg-moz-id" placeholder="mozscape-…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Moz Secret Key</div>
+          <div class="s-desc">Required alongside Moz Access ID</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" type="password" id="cfg-moz-secret" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">DataForSEO Login <span class="cfg-badge" id="badge-dfs"></span></div>
+          <div class="s-desc">Affordable paid API · <a href="https://dataforseo.com" target="_blank" style="color:var(--primary)">dataforseo.com</a> — backlink data &amp; SERP analysis</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" id="cfg-dfs-login" placeholder="email@example.com"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">DataForSEO Password</div>
+          <div class="s-desc">Required alongside DataForSEO login email</div>
+        </div>
+        <div class="key-wrap" style="width:220px"><input class="input" type="password" id="cfg-dfs-pass" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+    </div>
+
+    <!-- ── Security / Account ── -->
+    <div class="card">
+      <div class="section-title">🔐 Security &amp; Account</div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Authentication Status</div>
+          <div class="s-desc" id="auth-status-desc">Checking…</div>
+        </div>
+        <span class="cfg-badge" id="badge-auth" style="align-self:center"></span>
+      </div>
+
+      <div class="settings-row" style="margin-top:6px">
+        <div class="settings-info">
+          <div class="s-label">Session Secret</div>
+          <div class="s-desc">Set <code>SEO_SUITE_SECRET</code> in your .env file — without it sessions are lost on every server restart</div>
+        </div>
+        <span id="auth-secret-badge" style="font-size:12px;color:var(--c-muted)"></span>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid var(--c-border);padding-top:14px">
+        <div class="s-label" style="margin-bottom:10px">Change Password</div>
+        <div class="form-grid" style="gap:8px">
+          <div class="fg-full"><span class="label">New Username</span><input class="input" id="cfg-auth-user" placeholder="admin"></div>
+          <div class="fg-full"><span class="label">New Password</span><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass" placeholder="min 12 characters"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><span class="label">Confirm Password</span><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass2" placeholder="repeat password"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+        </div>
+        <div id="auth-change-error" style="font-size:12px;color:var(--c-red);margin-top:6px;display:none"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="changeAuthCredentials()">Update Credentials</button>
+        <div class="cfg-info-box" style="margin-top:12px">
+          <div class="cfg-info-title">How auth works</div>
+          <div class="cfg-info-body">Auth activates when <code>SEO_SUITE_PASSWORD_HASH</code> is set in your environment. Run <code>python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('yourpassword'))"</code> to generate a hash, then set it in <code>.env</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Notifications ── -->
+    <div class="card">
+      <div class="section-title">🔔 Notifications</div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Email Reports <span class="cfg-badge" id="badge-email"></span></div>
+          <div class="s-desc">Send full HTML report to your inbox after each indexing run via SMTP</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-email" onchange="updateSettingBadges()"><span class="slider"></span></label>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Slack <span class="cfg-badge" id="badge-slack"></span></div>
+          <div class="s-desc">Post a summary or de-indexing alert to a Slack channel webhook</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-slack" onchange="toggleNotifExpand('slack',this.checked);updateSettingBadges()"><span class="slider"></span></label>
+      </div>
+      <div class="notif-expand" id="notif-expand-slack">
+        <span class="label">Slack Webhook URL</span>
+        <input class="input" id="cfg-slack-webhook" placeholder="https://hooks.slack.com/services/…">
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Microsoft Teams <span class="cfg-badge" id="badge-teams"></span></div>
+          <div class="s-desc">Post run summary card to a Teams channel incoming webhook</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-teams" onchange="toggleNotifExpand('teams',this.checked);updateSettingBadges()"><span class="slider"></span></label>
+      </div>
+      <div class="notif-expand" id="notif-expand-teams">
+        <span class="label">Teams Webhook URL</span>
+        <input class="input" id="cfg-teams-webhook" placeholder="https://outlook.office.com/webhook/…">
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Email — SMTP <span class="cfg-badge" id="badge-email-smtp"></span></div>
+          <div class="s-desc">Outbound mail server credentials for sending HTML reports</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-email-toggle" onchange="toggleNotifExpand('email',this.checked);updateSettingBadges()"><span class="slider"></span></label>
+      </div>
+      <div class="notif-expand" id="notif-expand-email">
+        <div class="form-grid" style="gap:8px">
+          <div><span class="label">SMTP Host</span><input class="input" id="cfg-smtp-host" placeholder="smtp.gmail.com"></div>
+          <div><span class="label">Port</span><input class="input" id="cfg-smtp-port" placeholder="587" style="width:80px"></div>
+          <div class="fg-full"><span class="label">From Address</span><input class="input" id="cfg-smtp-from" placeholder="you@example.com"></div>
+          <div><span class="label">Username</span><input class="input" id="cfg-smtp-user" placeholder="you@example.com"></div>
+          <div><span class="label">Password</span><div class="key-wrap"><input class="input" type="password" id="cfg-smtp-pass" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><span class="label">Report To</span><input class="input" id="cfg-smtp-to" placeholder="team@example.com"></div>
+        </div>
+      </div>
+
+      <!-- Test notification buttons -->
+      <div style="margin-top:14px;border-top:1px solid var(--c-border);padding-top:12px">
+        <div class="s-label" style="margin-bottom:8px">Test Notifications</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="testNotify('email')">✉️ Test Email</button>
+          <button class="btn btn-ghost btn-sm" onclick="testNotify('slack')">💬 Test Slack</button>
+          <button class="btn btn-ghost btn-sm" onclick="testNotify('teams')">🟦 Test Teams</button>
+          <span id="notif-test-msg" style="font-size:12px;color:var(--c-muted)"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Proxy Configuration ── -->
+    <div class="card">
+      <div class="section-title">🔄 Proxy Configuration</div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">HTTP/HTTPS Proxies</div>
+          <div class="s-desc">Rotate through these proxies during indexing checks to avoid rate limits. One proxy per line — <code>http://user:pass@host:port</code> or <code>http://host:port</code></div>
+        </div>
+      </div>
+      <textarea class="input" id="cfg-proxies" rows="4" placeholder="http://proxy1.example.com:8080&#10;http://user:pass@proxy2.example.com:3128" style="width:100%;font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      <div style="font-size:11px;color:var(--c-muted);margin-top:4px">Leave empty to connect directly. Changes take effect on the next indexing run.</div>
+    </div>
+
+    <!-- ── Scheduled Runs ── -->
+    <div class="card">
+      <div class="section-title">⏰ Scheduled Runs</div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Enable Scheduled Indexing <span class="cfg-badge" id="badge-schedule"></span></div>
+          <div class="s-desc">Automatically run indexing checks on a recurring schedule and email results</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-schedule" onchange="toggleScheduleExpand(this.checked);updateSettingBadges()"><span class="slider"></span></label>
+      </div>
+      <div class="notif-expand" id="notif-expand-schedule">
+        <div class="form-grid" style="gap:8px">
+          <div>
+            <span class="label">Interval</span>
+            <select class="input" id="cfg-schedule-interval">
+              <option value="hourly">Hourly</option>
+              <option value="daily" selected>Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+          <div>
+            <span class="label">Time (HH:MM)</span>
+            <input class="input" id="cfg-schedule-time" placeholder="08:00" style="width:90px">
+          </div>
+          <div class="fg-full">
+            <span class="label">Sitemap URL</span>
+            <input class="input" id="cfg-schedule-sitemap" placeholder="https://example.com/sitemap.xml">
+          </div>
+          <div>
+            <span class="label">URL Limit</span>
+            <input class="input" id="cfg-schedule-limit" type="number" placeholder="100" style="width:90px" min="1">
+          </div>
+        </div>
+        <div class="cfg-info-box" style="margin-top:10px">
+          <div class="cfg-info-title">How scheduling works</div>
+          <div class="cfg-info-body">The server checks for scheduled runs on startup and every hour. Results are emailed if Email notifications are enabled. Make sure the server process is kept running (e.g. via a service or screen session).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Appearance ── -->
+    <div class="card">
+      <div class="section-title">🎨 Appearance</div>
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Theme</div>
+          <div class="s-desc">Light, dark, or follow system preference</div>
+        </div>
+      </div>
+      <div class="theme-row">
+        <div class="theme-opt" id="theme-opt-light" onclick="setThemePref('light')">
+          <span class="theme-opt-icon">☀️</span>Light
+        </div>
+        <div class="theme-opt" id="theme-opt-dark" onclick="setThemePref('dark')">
+          <span class="theme-opt-icon">🌙</span>Dark
+        </div>
+        <div class="theme-opt" id="theme-opt-system" onclick="setThemePref('system')">
+          <span class="theme-opt-icon">💻</span>System
+        </div>
+      </div>
+      <div class="settings-row" style="margin-top:14px">
+        <div class="settings-info">
+          <div class="s-label">Compact sidebar</div>
+          <div class="s-desc">Collapse sidebar groups by default on load</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="cfg-compact-sb"><span class="slider"></span></label>
+      </div>
+    </div>
+
+  </div>
+  </div><!-- /run-page -->
+</div>
+
+<!-- ═══ USE CASE RUNNER (shared panel for all 7 use cases) ══════════════════ -->
+<div class="panel" id="panel-uc-runner">
+  <div class="tool-page">
+  <div class="uc-runner-header">
+    <div class="uc-runner-icon" id="uc-icon">📝</div>
+    <div>
+      <div class="page-title" id="uc-title">Use Case</div>
+      <div class="page-sub"  id="uc-desc">Select a use case from the sidebar</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- Input format tabs -->
+    <div class="uc-fmt-tabs" id="uc-fmt-tabs">
+      <button class="uc-fmt-tab active" data-fmt="url"     onclick="setUcFormat('url',this)">🔗 URL</button>
+      <button class="uc-fmt-tab"        data-fmt="domain"  onclick="setUcFormat('domain',this)">🌐 Domain</button>
+      <button class="uc-fmt-tab"        data-fmt="sitemap" onclick="setUcFormat('sitemap',this)">🗺 Sitemap</button>
+      <button class="uc-fmt-tab"        data-fmt="csv"     onclick="setUcFormat('csv',this)">📄 CSV / XLSX</button>
+    </div>
+    <div class="uc-fmt-hint" id="uc-fmt-hint"></div>
+    <div class="form-grid" style="margin-top:12px">
+      <!-- URL / Domain / Sitemap input -->
+      <div class="fg-full" id="uc-text-row">
+        <span class="label" id="uc-input-label">Page URL</span>
+        <input class="input" id="uc-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runUseCase()">
+      </div>
+      <!-- CSV / XLSX file upload -->
+      <div class="fg-full" id="uc-file-row" style="display:none">
+        <span class="label">Upload CSV or XLSX <span style="font-weight:400;color:var(--text3)">(URL column required)</span></span>
+        <input class="input" type="file" id="uc-file" accept=".csv,.xlsx">
+      </div>
+      <div class="fg-full" id="uc-keywords-row" style="display:none">
+        <span class="label">Keywords <span style="font-weight:400;color:var(--text3)">(comma-separated)</span></span>
+        <input class="input" id="uc-keywords" placeholder="seo tools, keyword research">
+      </div>
+      <div class="fg-full" style="display:flex;gap:10px;align-items:center">
+        <button class="btn btn-primary" id="uc-run-btn" onclick="runUseCase()">Run Check</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearUcRunner()" title="Clear input &amp; results">🗑 Clear</button>
+        <div id="uc-req-badges" class="uc-req-badges"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Panel: shown before results, hidden once run completes -->
+  <div id="uc-info-panel" style="display:none;margin-top:14px">
+    <div class="tool-guide" id="uc-info-guide">
+      <div class="tool-guide-icon" id="uc-info-icon">🔍</div>
+      <div class="tool-guide-body">
+        <div class="tool-guide-title" id="uc-info-title">What this checks</div>
+        <div class="tool-guide-text" id="uc-info-desc"></div>
+        <div class="tool-guide-tips" id="uc-info-checks" style="margin-top:8px"></div>
+        <div class="uc-info-when" id="uc-info-when"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="section-title" style="margin-bottom:10px">Example output</div>
+      <div class="help-pre" id="uc-info-example"></div>
+      <div class="tool-guide-tips" id="uc-info-tips" style="margin-top:12px"></div>
+    </div>
+    <div id="uc-api-notice" style="display:none;margin-top:14px">
+      <div class="tool-guide uc-api-notice-guide">
+        <div class="tool-guide-icon">⚠</div>
+        <div class="tool-guide-body">
+          <div class="tool-guide-title uc-api-notice-title" id="uc-api-notice-title">API key required</div>
+          <ol class="help-steps" id="uc-api-notice-steps" style="margin-top:8px"></ol>
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px;font-size:11.5px" onclick="openHelp();helpTab('keys',document.querySelector('[data-tab=\'keys\']'))">📖 Full setup guide → API Keys tab</button>
+        </div>
+      </div>
+    </div>
+    <!-- Related Use Cases -->
+    <div class="uc-related-section" id="uc-related-section" style="display:none">
+      <div class="uc-related-title">Related use cases</div>
+      <div class="uc-related-grid" id="uc-related-grid"></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="uc-results" style="display:none">
+    <!-- Score row -->
+    <div class="uc-score-row" id="uc-score-row"></div>
+
+    <!-- Checks list -->
+    <div class="card" style="margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="section-title" style="margin-bottom:0">Checks</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="copyUcResults()" title="Copy results as text">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" onclick="navTo('aud-run');openFullAudit()" title="Run a full audit for deeper analysis">⚡ Full Audit</button>
+        </div>
+      </div>
+      <div id="uc-checks-list"></div>
+    </div>
+  </div>
+
+  <div id="uc-error" class="empty" style="display:none;padding:24px"></div>
+  <div id="uc-spinner" style="display:none;padding:24px;color:var(--text3);font-size:14px">
+    <span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle"></span>
+    Running checks…
+  </div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ GENERATOR: SCHEMA MARKUP ════════════════════════════════════════════ -->
+<div class="panel" id="panel-gen-schema">
+  <div class="gen-page">
+  <div>
+    <div class="page-title">Schema Markup Generator</div>
+    <div class="page-sub">Generate JSON-LD structured data for Articles, FAQs, Products, Breadcrumbs &amp; Local Business</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🏷️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Select a schema type, fill in the fields, then click Generate. The output is a valid JSON-LD block ready to paste into the &lt;head&gt; of your page. Structured data helps Google display rich results — star ratings, FAQs, breadcrumbs, and business info — directly in search.</div>
+      <div class="tool-guide-example">&lt;script type="application/ld+json"&gt;{"@context":"https://schema.org"...}&lt;/script&gt;</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Paste into &lt;head&gt; or &lt;body&gt;</span>
+        <span class="tool-guide-tip">Test with Google Rich Results tool</span>
+        <span class="tool-guide-tip">One schema block per type</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <span class="label">Schema Type</span>
+    <div class="radio-row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+      <label><input type="radio" name="schema-type" value="article"       onchange="loadSchemaForm(this.value)" checked> Article</label>
+      <label><input type="radio" name="schema-type" value="faq"           onchange="loadSchemaForm(this.value)"> FAQ</label>
+      <label><input type="radio" name="schema-type" value="product"       onchange="loadSchemaForm(this.value)"> Product</label>
+      <label><input type="radio" name="schema-type" value="breadcrumb"    onchange="loadSchemaForm(this.value)"> Breadcrumb</label>
+      <label><input type="radio" name="schema-type" value="localbusiness" onchange="loadSchemaForm(this.value)"> Local Business</label>
+      <label><input type="radio" name="schema-type" value="video"         onchange="loadSchemaForm(this.value)"> Video</label>
+      <label><input type="radio" name="schema-type" value="event"         onchange="loadSchemaForm(this.value)"> Event</label>
+      <label><input type="radio" name="schema-type" value="howto"         onchange="loadSchemaForm(this.value)"> HowTo</label>
+      <label><input type="radio" name="schema-type" value="person"        onchange="loadSchemaForm(this.value)"> Person</label>
+      <label><input type="radio" name="schema-type" value="organization"  onchange="loadSchemaForm(this.value)"> Organization</label>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+    <div class="card" style="flex:1;min-width:300px">
+      <div id="schema-form-fields"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" onclick="generateSchema()">Generate Markup</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearSchemaForm()" title="Clear form &amp; output">🗑 Clear</button>
+      </div>
+    </div>
+    <div class="card" style="flex:1;min-width:300px" id="schema-output-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-title">Generated Markup</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="copyOutput('schema-output')">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('schema-output','schema','json')">⬇ .json</button>
+        </div>
+      </div>
+      <textarea id="schema-output" class="gen-output" rows="20" readonly></textarea>
+      <div id="schema-error" class="empty" style="display:none;padding:12px"></div>
+      <div id="schema-test-link" style="display:none;margin-top:10px">
+        <a id="schema-test-anchor" href="https://search.google.com/test/rich-results" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="text-decoration:none">🧪 Test in Google Rich Results Tool ↗</a>
+      </div>
+    </div>
+  </div>
+  </div><!-- /gen-page -->
+</div>
+
+<!-- ═══ GENERATOR: ROBOTS.TXT ════════════════════════════════════════════════ -->
+<div class="panel" id="panel-gen-robots">
+  <div class="gen-page">
+  <div>
+    <div class="page-title">robots.txt Generator</div>
+    <div class="page-sub">Build a valid robots.txt file from a form — no manual syntax needed</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🤖</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Add one rule per user-agent (crawler). Each rule lets you allow or disallow specific path patterns. Add your sitemap URL at the bottom for Googlebot discovery, then copy the output to your site root at <code>yourdomain.com/robots.txt</code>.</div>
+      <div class="tool-guide-example">User-agent: *&#10;Disallow: /admin/&#10;Allow: /&#10;Sitemap: https://example.com/sitemap.xml</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">* applies to all bots</span>
+        <span class="tool-guide-tip">Disallow: / blocks the whole site</span>
+        <span class="tool-guide-tip">Always add Sitemap: line</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+    <div class="card" style="flex:1;min-width:300px">
+      <div class="form-grid">
+        <div class="fg-full">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span class="section-title">Rules</span>
+            <button class="btn btn-ghost btn-sm" onclick="addRobotsRule()">+ Add Rule</button>
+          </div>
+          <div id="robots-rules"></div>
+        </div>
+        <div class="fg-full">
+          <span class="label">Sitemap URL <span style="font-weight:400;color:var(--text3)">(optional)</span></span>
+          <input class="input" id="robots-sitemap" placeholder="https://example.com/sitemap.xml">
+        </div>
+        <div class="fg-full">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="generateRobots()">Generate robots.txt</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearRobotsForm()" title="Clear all rules &amp; output">🗑 Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="flex:1;min-width:300px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-title">Output</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="copyOutput('robots-output')">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('robots-output','robots','txt')">⬇ robots.txt</button>
+        </div>
+      </div>
+      <div id="robots-disallow-warn" style="display:none;margin-bottom:8px" class="cfg-info-box" style="border-left:3px solid var(--danger);background:var(--danger-l)">
+        <div class="cfg-info-title" style="color:var(--danger)">⚠ Disallow: / detected — this blocks your entire site from all crawlers</div>
+        <div class="cfg-info-body">If this is intentional (e.g. staging), ignore this warning. Otherwise change <code>Disallow: /</code> to a specific path like <code>Disallow: /admin/</code>.</div>
+      </div>
+      <textarea id="robots-output" class="gen-output" rows="14" readonly placeholder="robots.txt will appear here…"></textarea>
+    </div>
+  </div>
+  </div><!-- /gen-page -->
+</div>
+
+<!-- ═══ GENERATOR: XML SITEMAP ═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-gen-sitemap">
+  <div class="gen-page">
+  <div>
+    <div class="page-title">XML Sitemap Generator</div>
+    <div class="page-sub">Paste URLs to generate a valid XML sitemap with changefreq and priority</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🗺️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Paste one URL per line (up to thousands), choose a changefreq and priority that applies to all of them, and optionally set a last-modified date. The generator produces a standards-compliant XML sitemap to submit via Google Search Console or link from robots.txt.</div>
+      <div class="tool-guide-example">https://example.com/&#10;https://example.com/about/&#10;https://example.com/contact/</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Submit in Search Console</span>
+        <span class="tool-guide-tip">Homepage priority: 1.0</span>
+        <span class="tool-guide-tip">Reference in robots.txt</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+    <div class="card" style="flex:1;min-width:300px">
+      <div class="form-grid">
+        <div class="fg-full">
+          <span class="label">URLs <span style="font-weight:400;color:var(--text3)">(one per line)</span></span>
+          <textarea class="input" id="sitemap-urls" rows="8" placeholder="https://example.com/&#10;https://example.com/about/&#10;https://example.com/contact/"></textarea>
+        </div>
+        <div>
+          <span class="label">Changefreq</span>
+          <select class="input" id="sitemap-changefreq">
+            <option value="">— none —</option>
+            <option value="always">always</option>
+            <option value="hourly">hourly</option>
+            <option value="daily" selected>daily</option>
+            <option value="weekly">weekly</option>
+            <option value="monthly">monthly</option>
+            <option value="yearly">yearly</option>
+            <option value="never">never</option>
+          </select>
+        </div>
+        <div>
+          <span class="label">Priority</span>
+          <select class="input" id="sitemap-priority">
+            <option value="">— none —</option>
+            <option value="1.0">1.0 (highest)</option>
+            <option value="0.9">0.9</option>
+            <option value="0.8">0.8</option>
+            <option value="0.7">0.7</option>
+            <option value="0.6">0.6</option>
+            <option value="0.5" selected>0.5 (default)</option>
+            <option value="0.4">0.4</option>
+            <option value="0.3">0.3</option>
+            <option value="0.2">0.2</option>
+            <option value="0.1">0.1 (lowest)</option>
+          </select>
+        </div>
+        <div>
+          <span class="label">Last Modified</span>
+          <input class="input" type="date" id="sitemap-lastmod">
+        </div>
+        <div class="fg-full">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="generateSitemap()">Generate Sitemap</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearSitemapForm()" title="Clear URLs &amp; output">🗑 Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="flex:1;min-width:300px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-title">Output <span id="sitemap-url-count" style="color:var(--text3);font-weight:400;font-size:13px"></span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="copyOutput('sitemap-output')">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('sitemap-output','sitemap','xml')">⬇ .xml</button>
+        </div>
+      </div>
+      <textarea id="sitemap-output" class="gen-output" rows="16" readonly placeholder="XML sitemap will appear here…"></textarea>
+    </div>
+  </div>
+  </div><!-- /gen-page -->
+</div>
+
+<!-- ═══ GENERATOR: HREFLANG TAGS ═════════════════════════════════════════════ -->
+<div class="panel" id="panel-gen-hreflang">
+  <div class="gen-page">
+  <div>
+    <div class="page-title">Hreflang Tag Generator</div>
+    <div class="page-sub">Generate hreflang link tags for multilingual / multiregional pages</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🌐</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Add one row per language/region variant of your page (e.g. en-US, en-GB, fr-FR). Each row maps a language code to the URL for that locale. Optionally add an x-default fallback for users whose language isn't explicitly listed. Copy the generated &lt;link&gt; tags into your &lt;head&gt;.</div>
+      <div class="tool-guide-example">&lt;link rel="alternate" hreflang="en-US" href="https://example.com/en/"&gt;</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Add x-default for unlisted locales</span>
+        <span class="tool-guide-tip">All variants must link each other</span>
+        <span class="tool-guide-tip">Use BCP-47 codes: en-GB, fr-FR</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+    <div class="card" style="flex:1;min-width:300px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="section-title">Language / Region Entries</div>
+        <button class="btn btn-ghost btn-sm" onclick="addHreflangRow()">+ Add</button>
+      </div>
+      <div id="hreflang-rows"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px">
+          <input type="checkbox" id="hreflang-xdefault" onchange="toggleXDefault(this.checked)"> Include x-default fallback
+        </label>
+        <input class="input" id="hreflang-xdefault-url" placeholder="x-default URL" style="display:none">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-primary" onclick="generateHreflang()">Generate Tags</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearHreflangForm()" title="Clear rows &amp; output">🗑 Clear</button>
+      </div>
+    </div>
+    <div class="card" style="flex:1;min-width:300px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-title">Output</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="copyOutput('hreflang-output')">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('hreflang-output','hreflang','html')">⬇ .html</button>
+        </div>
+      </div>
+      <div class="tab-row" style="margin-bottom:10px">
+        <button class="tab-btn active" onclick="hreflangTab('html',this)">HTML &lt;link&gt; tags</button>
+        <button class="tab-btn" onclick="hreflangTab('http',this)">HTTP Header</button>
+      </div>
+      <textarea id="hreflang-output"      class="gen-output" rows="10" readonly placeholder="Hreflang tags will appear here…"></textarea>
+      <textarea id="hreflang-http-output" class="gen-output" rows="4"  readonly placeholder="HTTP header value will appear here…" style="display:none;margin-top:8px"></textarea>
+    </div>
+  </div>
+  </div><!-- /gen-page -->
+</div>
+
+<!-- ═══ GENERATOR: META TAGS ═════════════════════════════════════════════════ -->
+<div class="panel" id="panel-gen-metatags">
+  <div class="gen-page">
+  <div>
+    <div class="page-title">Meta Tags Generator</div>
+    <div class="page-sub">Generate a complete &lt;head&gt; meta block — primary, Open Graph &amp; Twitter/X</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🏷️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Fill in your page title, meta description, canonical URL, and Open Graph/Twitter fields. The generator produces a complete, copy-paste-ready &lt;head&gt; meta block with character count warnings for title and description. OG and Twitter tags ensure correct previews when shared on social media.</div>
+      <div class="tool-guide-example">&lt;meta name="description" content="..."&gt;&#10;&lt;meta property="og:title" content="..."&gt;</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Title: 50–60 chars</span>
+        <span class="tool-guide-tip">Description: 120–160 chars</span>
+        <span class="tool-guide-tip">OG image: 1200×630 px minimum</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+    <div class="card" style="flex:1;min-width:300px">
+      <div class="form-grid">
+        <div class="fg-full">
+          <span class="label">Page Title <span id="meta-title-len" style="font-weight:400;color:var(--text3)"></span></span>
+          <input class="input" id="meta-title" placeholder="My Page Title" oninput="metaLenUpdate()">
+        </div>
+        <div class="fg-full">
+          <span class="label">Meta Description <span id="meta-desc-len" style="font-weight:400;color:var(--text3)"></span></span>
+          <textarea class="input" id="meta-desc" rows="3" placeholder="A short description of the page…" oninput="metaLenUpdate()"></textarea>
+        </div>
+        <div class="fg-full">
+          <span class="label">Keywords <span style="font-weight:400;color:var(--text3)">(comma-separated)</span></span>
+          <input class="input" id="meta-keywords" placeholder="seo, tools, keyword">
+        </div>
+        <div class="fg-full">
+          <span class="label">Canonical URL</span>
+          <input class="input" id="meta-canonical" placeholder="https://example.com/page/" oninput="updateMetaSerpPreview()">
+        </div>
+        <div>
+          <span class="label">Robots directive</span>
+          <select class="input" id="meta-robots">
+            <option value="">— default (index, follow) —</option>
+            <option value="index, follow">index, follow</option>
+            <option value="noindex, follow">noindex, follow</option>
+            <option value="index, nofollow">index, nofollow</option>
+            <option value="noindex, nofollow">noindex, nofollow</option>
+          </select>
+        </div>
+        <div>
+          <span class="label">OG Type</span>
+          <select class="input" id="meta-og-type">
+            <option value="website">website</option>
+            <option value="article">article</option>
+            <option value="product">product</option>
+            <option value="profile">profile</option>
+          </select>
+        </div>
+        <div class="fg-full">
+          <span class="label">OG Image URL</span>
+          <input class="input" id="meta-og-image" placeholder="https://example.com/og-image.jpg">
+        </div>
+        <div class="fg-full">
+          <span class="label">OG Site Name</span>
+          <input class="input" id="meta-og-sitename" placeholder="My Website" oninput="updateMetaSerpPreview()">
+        </div>
+        <div class="fg-full">
+          <span class="label">Twitter Site Handle <span style="font-weight:400;color:var(--text3)">(@handle)</span></span>
+          <input class="input" id="meta-tw-site" placeholder="@mysite">
+        </div>
+        <div class="fg-full">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="generateMetaTags()">Generate Meta Tags</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearMetaTagsForm()" title="Clear form &amp; output">🗑 Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="flex:1;min-width:300px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-title">Output</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="copyOutput('metatags-output')">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('metatags-output','metatags','html')">⬇ .html</button>
+        </div>
+      </div>
+      <textarea id="metatags-output" class="gen-output" rows="20" readonly placeholder="Meta tags will appear here…"></textarea>
+      <div id="metatags-warnings" style="margin-top:10px"></div>
+      <div id="metatags-serp-preview" style="display:none;margin-top:16px">
+        <div class="section-title" style="margin-bottom:10px;font-size:12px">Google SERP Preview</div>
+        <div class="serp-card" id="mt-serp-card">
+          <div class="serp-site-row">
+            <div>
+              <div class="serp-site" id="mt-serp-site"></div>
+              <div class="serp-breadcrumb" id="mt-serp-url"></div>
+            </div>
+          </div>
+          <div class="serp-title" id="mt-serp-title"></div>
+          <div class="serp-desc"  id="mt-serp-desc"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;font-size:11.5px;color:var(--text3)">
+          <span id="mt-title-len-hint"></span>
+          <span id="mt-desc-len-hint"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /gen-page -->
+</div>
+
+<!-- ═══ TOOL: SERP SNIPPET PREVIEW ══════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-serp">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">SERP Snippet Preview</div>
+    <div class="page-sub">See how your page appears in Google search results</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔍</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter any public URL to fetch its &lt;title&gt;, meta description, OG tags, and favicon — then see an accurate Google desktop preview alongside a social media card preview. Character counts and warnings flag over-length titles (&gt;60 chars) and descriptions (&gt;160 chars).</div>
+      <div class="tool-guide-example">https://example.com/blog/my-post</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Title: 50–60 chars ideal</span>
+        <span class="tool-guide-tip">Description: 120–160 chars</span>
+        <span class="tool-guide-tip">OG image: 1200×630 px</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Page URL</span>
+        <input class="input" id="serp-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runSerpPreview()">
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runSerpPreview()" id="serp-btn">Fetch Preview</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearSerp()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="serp-result" style="display:none">
+    <!-- Google SERP preview card -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:12px">Google Desktop Preview</div>
+      <div class="serp-card" id="serp-card-google">
+        <div class="serp-site-row">
+          <img class="serp-favicon" id="serp-favicon" src="" alt="" onerror="this.style.display='none'">
+          <div>
+            <div class="serp-site" id="serp-site-name"></div>
+            <div class="serp-breadcrumb" id="serp-breadcrumb"></div>
+          </div>
+        </div>
+        <div class="serp-title" id="serp-title-text"></div>
+        <div class="serp-desc" id="serp-desc-text"></div>
+      </div>
+    </div>
+
+    <!-- Char counts + warnings -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:10px">Tag Analysis</div>
+      <div class="serp-meta-grid" id="serp-meta-grid"></div>
+      <div id="serp-warnings" style="margin-top:10px"></div>
+    </div>
+
+    <!-- OG / Twitter tabs -->
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px">Social Media Preview</div>
+      <div class="tab-row" style="margin-bottom:12px">
+        <button class="tab-btn active" onclick="serpSocialTab('og',this)">Open Graph (Facebook)</button>
+        <button class="tab-btn" onclick="serpSocialTab('tw',this)">Twitter / X Card</button>
+      </div>
+      <div id="serp-og-panel">
+        <div class="social-preview-card" id="og-preview-card">
+          <img id="og-img" src="" alt="" style="display:none;width:100%;border-radius:6px 6px 0 0;max-height:200px;object-fit:cover">
+          <div class="social-preview-body">
+            <div class="social-preview-site" id="og-site"></div>
+            <div class="social-preview-title" id="og-title"></div>
+            <div class="social-preview-desc" id="og-desc"></div>
+          </div>
+        </div>
+      </div>
+      <div id="serp-tw-panel" style="display:none">
+        <div class="social-preview-card" id="tw-preview-card">
+          <img id="tw-img" src="" alt="" style="display:none;width:100%;border-radius:6px 6px 0 0;max-height:200px;object-fit:cover">
+          <div class="social-preview-body">
+            <div class="social-preview-site" id="tw-site"></div>
+            <div class="social-preview-title" id="tw-title"></div>
+            <div class="social-preview-desc" id="tw-desc"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="serp-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: REDIRECT CHAIN CHECKER ════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-redirect">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Redirect Chain Checker</div>
+    <div class="page-sub">Follow every redirect hop and see status codes, latency, and redirect type</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔗</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter any URL to trace the full redirect chain — the tool follows each hop, recording the HTTP status code, destination URL, latency, and redirect type (301 permanent vs 302 temporary). Long chains or redirect loops are highlighted as issues.</div>
+      <div class="tool-guide-example">https://example.com/old-page</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Chains &gt;3 hops slow crawling</span>
+        <span class="tool-guide-tip">302 passes no link equity</span>
+        <span class="tool-guide-tip">Loops cause crawl budget waste</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URL to check</span>
+        <input class="input" id="redir-url" placeholder="https://example.com/old-page" onkeydown="if(event.key==='Enter')runRedirectChain()">
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runRedirectChain()">Check Redirects</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearRedirect()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="redir-result" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div id="redir-summary" style="display:flex;gap:20px;margin-bottom:14px"></div>
+      <div id="redir-issues" style="margin-bottom:12px"></div>
+      <div class="redir-chain" id="redir-chain"></div>
+    </div>
+  </div>
+  <div id="redir-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: HTTP HEADERS VIEWER ════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-headers">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">HTTP Headers Viewer</div>
+    <div class="page-sub">Inspect all HTTP response headers with SEO-relevant annotations</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">📋</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter any URL to fetch all HTTP response headers. Key SEO headers — X-Robots-Tag, Cache-Control, Content-Type, Vary, and HSTS — are highlighted with explanations. Use the "SEO relevant only" toggle to focus on headers that directly affect crawling and indexing.</div>
+      <div class="tool-guide-example">https://example.com</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">X-Robots-Tag can block indexing</span>
+        <span class="tool-guide-tip">Cache-Control affects crawl speed</span>
+        <span class="tool-guide-tip">Check Vary for CDN issues</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URL</span>
+        <input class="input" id="hdrs-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runHttpHeaders()">
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <button class="btn btn-primary" onclick="runHttpHeaders()">Fetch Headers</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)"><input type="checkbox" id="hdrs-seo-only"> SEO relevant only</label>
+        <button class="btn btn-ghost btn-sm" onclick="clearHeaders()" title="Clear">🗑 Clear</button>
+      </div>
+    </div>
+  </div>
+  <div id="hdrs-result" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div id="hdrs-highlights" style="margin-bottom:12px"></div>
+      <table class="tbl" id="hdrs-table">
+        <thead><tr><th>Header</th><th>Value</th><th>Note</th></tr></thead>
+        <tbody id="hdrs-tbody"></tbody>
+      </table>
+    </div>
+    <div class="card" id="hdrs-missing" style="display:none"></div>
+  </div>
+  <div id="hdrs-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: KEYWORD DENSITY CHECKER ═══════════════════════════════════════ -->
+<div class="panel" id="panel-tool-keywords">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Keyword Density Checker</div>
+    <div class="page-sub">Analyse visible text and find the most frequent keywords</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔑</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter a URL and choose how many top keywords to show (5–100). The tool extracts visible page text, strips stop words, and ranks the remaining terms by frequency. It also shows whether each keyword appears in the page &lt;title&gt; and H1 — key signals for on-page relevance.</div>
+      <div class="tool-guide-example">https://example.com/page  ·  Top 20 keywords</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Target keyword density: 1–3%</span>
+        <span class="tool-guide-tip">Over 5% risks keyword stuffing</span>
+        <span class="tool-guide-tip">Check title &amp; H1 columns</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URL</span>
+        <input class="input" id="kw-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runKeywordDensity()">
+      </div>
+      <div>
+        <span class="label">Top N keywords</span>
+        <input class="input" type="number" id="kw-top" value="20" min="5" max="100" style="width:100px">
+      </div>
+      <div style="align-self:flex-end">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runKeywordDensity()">Analyse</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearKeywords()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="kw-result" style="display:none">
+    <div class="card">
+      <div id="kw-summary" style="display:flex;gap:20px;margin-bottom:14px;flex-wrap:wrap"></div>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Keyword</th><th>Count</th><th>Density</th><th>In Title</th><th>In H1</th></tr></thead>
+        <tbody id="kw-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div id="kw-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: CODE-TO-TEXT RATIO ════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-ratio">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Code-to-Text Ratio</div>
+    <div class="page-sub">Measure how much of the page is visible content vs. HTML/scripts</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">⚖️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter a URL to calculate the percentage of visible text versus total HTML source. A higher ratio means more readable content for search engines. Very low ratios (under 10%) may indicate pages heavy with scripts or boilerplate that make it harder for crawlers to extract meaningful content.</div>
+      <div class="tool-guide-example">https://example.com</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Good ratio: 20–70%</span>
+        <span class="tool-guide-tip">Under 10%: too much code</span>
+        <span class="tool-guide-tip">Minify JS/CSS to improve</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URL</span>
+        <input class="input" id="ratio-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCodeTextRatio()">
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runCodeTextRatio()">Check Ratio</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearRatio()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="ratio-result" style="display:none">
+    <div class="card">
+      <div id="ratio-gauge-wrap" style="text-align:center;padding:16px 0 8px">
+        <div class="ratio-gauge-num" id="ratio-pct">—</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">Text-to-HTML ratio</div>
+      </div>
+      <div id="ratio-bars" style="margin:16px 0"></div>
+      <div id="ratio-advice" style="margin-top:8px"></div>
+    </div>
+  </div>
+  <div id="ratio-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: GZIP & CACHE HEADERS ═══════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-compression">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">GZIP &amp; Cache Headers</div>
+    <div class="page-sub">Check compression, caching, HSTS and performance-critical headers</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">⚡</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter a URL to check whether GZIP/Brotli compression is enabled, how the server sets Cache-Control and Expires headers, and whether HSTS is active. These factors directly affect page speed scores and crawl efficiency — uncompressed pages and missing cache headers are quick wins.</div>
+      <div class="tool-guide-example">https://example.com</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">GZIP saves 60–80% bandwidth</span>
+        <span class="tool-guide-tip">Set Cache-Control: max-age</span>
+        <span class="tool-guide-tip">HSTS prevents redirect hops</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URL</span>
+        <input class="input" id="comp-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCompression()">
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runCompression()">Run Check</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearCompression()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="comp-result" style="display:none">
+    <div class="card">
+      <div id="comp-score-row" style="display:flex;align-items:center;gap:16px;margin-bottom:16px"></div>
+      <div id="comp-checks"></div>
+    </div>
+  </div>
+  <div id="comp-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: SCHEMA VALIDATION ════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-schema">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Schema / Structured Data Validator</div>
+    <div class="page-sub">Extract and validate every JSON-LD block on a page — check for required fields, missing @context, and Google-recommended types</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🧩</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter any public URL. The tool fetches the page, extracts all <code>&lt;script type="application/ld+json"&gt;</code> blocks, validates required Schema.org fields, and flags missing or malformed markup. Each block shows its type, any errors or warnings, and the parsed JSON. A recommendations list highlights high-value types (Product, Article, FAQPage…) that are absent but could improve Rich Result eligibility.</div>
+      <div class="tool-guide-example">https://example.com/product/sneakers</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Google needs @context + @type</span>
+        <span class="tool-guide-tip">FAQPage can earn rich snippets</span>
+        <span class="tool-guide-tip">BreadcrumbList improves SERP CTR</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URL to validate</span>
+        <input class="input" id="schema-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runSchemaValidation()">
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runSchemaValidation()">Validate</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearSchemaValidation()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="schema-result" style="display:none">
+    <!-- Summary bar -->
+    <div class="card" id="schema-summary-card"></div>
+
+    <!-- Recommendations (missing high-value types) -->
+    <div class="card" id="schema-recs-card" style="display:none">
+      <div class="tool-guide-title" style="margin-bottom:10px">💡 Recommended types not found</div>
+      <div id="schema-recs"></div>
+    </div>
+
+    <!-- Per-block details -->
+    <div id="schema-blocks"></div>
+  </div>
+
+  <div id="schema-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: INDEXNOW SUBMIT ═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-indexnow">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">IndexNow URL Submission</div>
+    <div class="page-sub">Instantly notify Bing, Yandex and other IndexNow-compatible engines when you publish or update pages</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">📡</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter your IndexNow API key and hostname, then submit one URL per line (or comma-separated). The key must be hosted at <code>https://yourdomain.com/{key}.txt</code> containing only the key string. Generate a key here, upload the file once, then submit new/updated URLs every time you publish. Bing distributes the ping to all participating engines.</div>
+      <div class="tool-guide-example">https://example.com/new-blog-post</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Free — no API account needed</span>
+        <span class="tool-guide-tip">Works for Bing + Yandex</span>
+        <span class="tool-guide-tip">Up to 10,000 URLs per request</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key setup card -->
+  <div class="card">
+    <div style="font-weight:700;font-size:14px;margin-bottom:12px">API Key Setup</div>
+    <div class="form-grid">
+      <div>
+        <span class="label">IndexNow API Key</span>
+        <div style="display:flex;gap:8px">
+          <input class="input" id="inow-key" placeholder="Paste key or generate one below" style="flex:1">
+          <button class="btn btn-ghost btn-sm" onclick="indexnowGenerateKey()" title="Generate a new key">Generate</button>
+        </div>
+      </div>
+      <div>
+        <span class="label">Your Hostname</span>
+        <input class="input" id="inow-host" placeholder="example.com">
+      </div>
+    </div>
+    <div id="inow-key-hint" style="display:none;margin-top:10px;padding:10px 14px;background:#f0f9ff;border-radius:8px;font-size:12px;color:#0369a1;line-height:1.6"></div>
+  </div>
+
+  <!-- URL submission card -->
+  <div class="card">
+    <div style="font-weight:700;font-size:14px;margin-bottom:12px">Submit URLs</div>
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">URLs (one per line or comma-separated)</span>
+        <textarea class="input" id="inow-urls" rows="5" placeholder="https://example.com/page-1&#10;https://example.com/page-2" style="resize:vertical;font-family:monospace;font-size:13px"></textarea>
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runIndexNow()">Submit to IndexNow</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearIndexNow()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="inow-result" style="display:none">
+    <div class="card" id="inow-result-body"></div>
+  </div>
+  <div id="inow-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ TOOL: SITEMAP AUDIT ══════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-sitemap-audit">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Sitemap Audit</div>
+    <div class="page-sub">Validate your XML sitemap for oversized files, duplicate URLs, HTTP-in-HTTPS entries, and non-indexable content</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🗺️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter the direct URL of an XML sitemap or sitemap index. The tool fetches it (following sitemap-index references), counts entries, and runs structural checks: Google's 50,000 URL and 50 MB limits, duplicate entries after URL normalisation, HTTP links inside an HTTPS sitemap, non-indexable file types (PDFs, images, scripts), and missing optional fields like <code>&lt;lastmod&gt;</code>.</div>
+      <div class="tool-guide-example">https://example.com/sitemap.xml</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Keep sitemaps under 50,000 URLs</span>
+        <span class="tool-guide-tip">Add &lt;lastmod&gt; for smarter re-crawls</span>
+        <span class="tool-guide-tip">Remove non-HTML file URLs</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Sitemap URL</span>
+        <input class="input" id="smap-url" placeholder="https://example.com/sitemap.xml" onkeydown="if(event.key==='Enter')runSitemapAudit()">
+      </div>
+      <div class="fg-full">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="runSitemapAudit()">Audit Sitemap</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearSitemapAudit()" title="Clear">🗑 Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="smap-result" style="display:none">
+    <div class="card" id="smap-summary"></div>
+    <div id="smap-issues"></div>
+  </div>
+  <div id="smap-error" class="empty" style="display:none;padding:24px"></div>
+  </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ STAGE 3-A: BING VISIBILITY ══════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-bing">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Bing Visibility</div>
+    <div class="page-sub">Search performance, crawl stats and sitemap health from Bing Webmaster Tools</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔷</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">Setup</div>
+      <div class="tool-guide-text">Get your Bing Webmaster API key at <strong>bing.com/webmasters → Settings → API Access</strong>. Save it in <em>Settings → bing_api_key</em>. Enter the site URL exactly as verified in Bing Webmaster (including trailing slash if present).</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Site URL must match Bing WMT exactly</span>
+        <span class="tool-guide-tip">Period 2 = last month (recommended)</span>
+        <span class="tool-guide-tip">Submit URLs directly to Bing here</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overview card -->
+  <div class="card">
+    <div class="card-title">Site Overview</div>
+    <div class="tool-row">
+      <input class="input" id="bing-site-url" placeholder="https://example.com/" style="flex:1">
+      <select class="input" id="bing-period" style="width:160px">
+        <option value="1">Last week</option>
+        <option value="2" selected>Last month</option>
+        <option value="3">Last 6 months</option>
+      </select>
+      <button class="btn btn-primary" onclick="runBingOverview()">Fetch</button>
+      <button class="btn btn-ghost" onclick="clearBing()">Clear</button>
+    </div>
+    <div id="bing-error" class="error-box" style="display:none"></div>
+    <div id="bing-spinner" class="spinner" style="display:none"></div>
+
+    <div id="bing-result" style="display:none">
+      <!-- Traffic summary -->
+      <div class="stat-row" id="bing-traffic-row" style="margin-top:16px;gap:12px;display:flex;flex-wrap:wrap"></div>
+      <!-- Crawl issues -->
+      <div id="bing-crawl-issues" style="margin-top:12px"></div>
+      <!-- Sitemaps table -->
+      <div id="bing-sitemaps" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- URL Inspect card -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">Inspect / Submit URL</div>
+    <div class="tool-row">
+      <input class="input" id="bing-inspect-url" placeholder="https://example.com/page" style="flex:1">
+      <button class="btn btn-primary" onclick="runBingInspect()">Inspect</button>
+      <button class="btn btn-ghost btn-sm" onclick="runBingSubmit()">Submit to Bing</button>
+    </div>
+    <div id="bing-inspect-result" style="display:none;margin-top:12px"></div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ STAGE 3-B: GSC OPPORTUNITIES ════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-gsc-opps">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">GSC Opportunities</div>
+    <div class="page-sub">Discover low-CTR pages, position decay, and keyword cannibalization from Search Console data</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">📊</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">Requirements</div>
+      <div class="tool-guide-text">Google Search Console must be enabled in <em>Settings → GSC</em>. The tool analyses the last 90 days of data and returns three reports: (1) pages with high impressions but low CTR — fix the title/description; (2) pages whose ranking position has declined; (3) keyword cannibalization — multiple pages competing for the same query.</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Pages ranking 1-20 with &lt;3% CTR</span>
+        <span class="tool-guide-tip">Position drop &gt;3 places flagged</span>
+        <span class="tool-guide-tip">2+ pages sharing a query = cannibal</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Run Analysis</div>
+    <div class="tool-row">
+      <input class="input" id="gsc-opps-site" placeholder="https://example.com/" style="flex:1">
+      <button class="btn btn-primary" onclick="runGscOpps()">Analyse</button>
+      <button class="btn btn-ghost" onclick="clearGscOpps()">Clear</button>
+    </div>
+    <div id="gsc-opps-error" class="error-box" style="display:none"></div>
+    <div id="gsc-opps-spinner" class="spinner" style="display:none"></div>
+    <div id="gsc-opps-result" style="display:none">
+
+      <!-- Opportunity pages -->
+      <div style="margin-top:16px">
+        <div class="card-title" style="font-size:14px">🎯 Low-CTR Opportunities</div>
+        <div id="gsc-opps-opp-summary" style="color:var(--c-muted);font-size:13px;margin-bottom:8px"></div>
+        <div class="table-wrap"><table class="result-table" id="gsc-opps-opp-table">
+          <thead><tr><th>URL</th><th>Impressions</th><th>CTR</th><th>Position</th><th>Est. Extra Clicks</th><th>Action</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <!-- Position decay -->
+      <div style="margin-top:20px">
+        <div class="card-title" style="font-size:14px">📉 Position Decay</div>
+        <div id="gsc-opps-decay-summary" style="color:var(--c-muted);font-size:13px;margin-bottom:8px"></div>
+        <div class="table-wrap"><table class="result-table" id="gsc-opps-decay-table">
+          <thead><tr><th>URL</th><th>Start Pos</th><th>End Pos</th><th>Drop</th><th>Clicks</th><th>Severity</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <!-- Cannibalization -->
+      <div style="margin-top:20px">
+        <div class="card-title" style="font-size:14px">⚔️ Keyword Cannibalization</div>
+        <div id="gsc-opps-cannibal-summary" style="color:var(--c-muted);font-size:13px;margin-bottom:8px"></div>
+        <div class="table-wrap"><table class="result-table" id="gsc-opps-cannibal-table">
+          <thead><tr><th>Query</th><th>Competing Pages</th><th>Total Impressions</th><th>Winner</th><th>Recommendation</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ GSC POSITION TRACKER ════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-gsc-position">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">GSC Position Tracker</div>
+    <div class="page-sub">Average ranking position trend over 90 days for a specific page</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">📈</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How it works</div>
+      <div class="tool-guide-text">Pulls daily position data from Search Console for the given page and shows whether rankings are improving or declining. Requires GSC enabled in Settings.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tool-row" style="flex-wrap:wrap;gap:8px">
+      <input class="input" id="gsc-pos-url" placeholder="https://example.com/page" style="flex:1;min-width:200px">
+      <input class="input" id="gsc-pos-site" placeholder="https://example.com/" style="flex:1;min-width:180px">
+      <button class="btn btn-primary" onclick="runGscPosition()">Analyse</button>
+      <button class="btn btn-ghost" onclick="clearGscPosition()">Clear</button>
+    </div>
+    <div style="font-size:11px;color:var(--c-muted);margin-top:4px">Page URL &nbsp;·&nbsp; Site URL (GSC property)</div>
+    <div id="gsc-pos-error" class="error-box" style="display:none"></div>
+    <div id="gsc-pos-spinner" class="spinner" style="display:none"></div>
+    <div id="gsc-pos-result" style="display:none;margin-top:16px">
+      <div id="gsc-pos-summary" style="font-size:13px;color:var(--c-muted);margin-bottom:12px"></div>
+      <div class="table-wrap">
+        <table class="result-table" id="gsc-pos-table">
+          <thead><tr><th>Date</th><th>Position</th><th>Clicks</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ GSC CTR ANALYZER ═════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-gsc-ctr">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">GSC CTR Analyzer</div>
+    <div class="page-sub">Find pages with high impressions but low click-through rate — quick-win opportunities</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🎯</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">What it finds</div>
+      <div class="tool-guide-text">Pages ranking in top 20 that get many impressions but under 2% CTR. Fixing the title tag and meta description on these pages can significantly increase traffic without improving rankings.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tool-row" style="flex-wrap:wrap;gap:8px">
+      <input class="input" id="gsc-ctr-site" placeholder="https://example.com/" style="flex:1;min-width:200px">
+      <input class="input" id="gsc-ctr-min" placeholder="Min impressions (100)" style="width:180px" type="number" min="10" value="100">
+      <button class="btn btn-primary" onclick="runGscCtr()">Analyse</button>
+      <button class="btn btn-ghost" onclick="clearGscCtr()">Clear</button>
+    </div>
+    <div id="gsc-ctr-error" class="error-box" style="display:none"></div>
+    <div id="gsc-ctr-spinner" class="spinner" style="display:none"></div>
+    <div id="gsc-ctr-result" style="display:none;margin-top:16px">
+      <div id="gsc-ctr-summary" style="font-size:13px;color:var(--c-muted);margin-bottom:12px"></div>
+      <div class="table-wrap">
+        <table class="result-table" id="gsc-ctr-table">
+          <thead><tr><th>URL</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>Position</th><th>Action</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ GSC COVERAGE ERRORS ═══════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-gsc-coverage">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">GSC Coverage Errors</div>
+    <div class="page-sub">Submitted vs indexed gaps across all sitemaps in Search Console</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">⚠️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">What it checks</div>
+      <div class="tool-guide-text">Compares submitted URL counts against indexed counts for every sitemap registered in GSC. Large gaps indicate pages Google has crawled but declined to index — usually thin content, canonicalization issues, or noindex tags.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tool-row">
+      <input class="input" id="gsc-cov-site" placeholder="https://example.com/" style="flex:1">
+      <button class="btn btn-primary" onclick="runGscCoverage()">Check</button>
+      <button class="btn btn-ghost" onclick="clearGscCoverage()">Clear</button>
+    </div>
+    <div id="gsc-cov-error" class="error-box" style="display:none"></div>
+    <div id="gsc-cov-spinner" class="spinner" style="display:none"></div>
+    <div id="gsc-cov-result" style="display:none;margin-top:16px">
+      <div id="gsc-cov-summary" style="font-size:13px;color:var(--c-muted);margin-bottom:12px"></div>
+      <div class="table-wrap">
+        <table class="result-table" id="gsc-cov-table">
+          <thead><tr><th>Sitemap</th><th>Submitted</th><th>Indexed</th><th>Not Indexed</th><th>Index Rate</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ GSC SITEMAPS STATUS ═══════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-gsc-sitemaps">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">GSC Sitemaps Status</div>
+    <div class="page-sub">All sitemaps submitted to Search Console with submission date and indexing health</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🗺️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">What it shows</div>
+      <div class="tool-guide-text">Lists every sitemap registered in GSC — last submitted date, last downloaded, submitted URL count, indexed count, and any processing errors or warnings. A low index rate flags sitemaps that need attention.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tool-row">
+      <input class="input" id="gsc-sm-site" placeholder="https://example.com/" style="flex:1">
+      <button class="btn btn-primary" onclick="runGscSitemaps()">Check</button>
+      <button class="btn btn-ghost" onclick="clearGscSitemaps()">Clear</button>
+    </div>
+    <div id="gsc-sm-error" class="error-box" style="display:none"></div>
+    <div id="gsc-sm-spinner" class="spinner" style="display:none"></div>
+    <div id="gsc-sm-result" style="display:none;margin-top:16px">
+      <div id="gsc-sm-summary" style="font-size:13px;color:var(--c-muted);margin-bottom:12px"></div>
+      <div class="table-wrap">
+        <table class="result-table" id="gsc-sm-table">
+          <thead><tr><th>Sitemap URL</th><th>Submitted</th><th>Indexed</th><th>Index Rate</th><th>Errors</th><th>Last Submitted</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ PHASE RUNNER ══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-phase-runner">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Phase Runner</div>
+    <div class="page-sub">Run a single audit phase (Technical, Performance, Search Console, or Authority) against any URL</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">⚡</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">When to use</div>
+      <div class="tool-guide-text">Use this when you need fast results for one specific dimension without waiting for all 4 phases. Phase 1 needs no API keys. Phases 2–4 require the respective API keys set in Settings.</div>
+      <div class="tool-guide-tips">
+        <span class="tip-icon">1</span><span class="tip-text">Technical SEO — robots, status, redirects, on-page (no API)</span>
+      </div>
+      <div class="tool-guide-tips">
+        <span class="tip-icon">2</span><span class="tip-text">Performance — PageSpeed, Core Web Vitals (PageSpeed API key)</span>
+      </div>
+      <div class="tool-guide-tips">
+        <span class="tip-icon">3</span><span class="tip-text">Search Console — clicks, queries, positions (GSC enabled)</span>
+      </div>
+      <div class="tool-guide-tips">
+        <span class="tip-icon">4</span><span class="tip-text">Authority — backlinks, domain authority, rankings (DataForSEO/Moz/SerpAPI)</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tool-row" style="flex-wrap:wrap;gap:8px">
+      <input class="input" id="phase-run-url" placeholder="https://example.com/page" style="flex:1;min-width:240px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:12px;color:var(--c-muted);white-space:nowrap">Phase:</span>
+        <select class="input" id="phase-run-num" style="width:80px">
+          <option value="1">1 — Tech</option>
+          <option value="2">2 — Perf</option>
+          <option value="3">3 — GSC</option>
+          <option value="4">4 — Auth</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="runPhaseRunner()">Run Phase</button>
+      <button class="btn btn-ghost" onclick="clearPhaseRunner()">Clear</button>
+    </div>
+    <div id="phase-run-error" class="error-box" style="display:none"></div>
+    <div id="phase-run-spinner" class="spinner" style="display:none"></div>
+    <div id="phase-run-result" style="display:none;margin-top:16px">
+      <div id="phase-run-summary" style="margin-bottom:12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap"></div>
+      <div class="table-wrap">
+        <table class="result-table" id="phase-run-table">
+          <thead><tr><th>Tool</th><th>Status</th><th>Message</th><th>Details</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ STAGE 3-C: PERFORMANCE OPPORTUNITIES ════════════════════════════════ -->
+<div class="panel" id="panel-tool-perf-opps">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Performance Opportunities</div>
+    <div class="page-sub">Core Web Vitals analysis with a prioritised fix plan — critical → quick wins → nice to have</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">⚡</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How it works</div>
+      <div class="tool-guide-text">Runs PageSpeed Insights for both mobile and desktop, extracts all Core Web Vitals (LCP, CLS, INP, TBT, FCP, Speed Index), grades each against Google's official thresholds, and sorts the failing metrics into three buckets: <strong>Critical</strong> (ranking impact, fix first), <strong>Quick Wins</strong> (medium effort, medium gain), and <strong>Nice-to-Have</strong> (polish).</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Needs PageSpeed API key in Settings</span>
+        <span class="tool-guide-tip">LCP &lt; 2.5s = good for ranking</span>
+        <span class="tool-guide-tip">Mobile score drives Core Web Vitals</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tool-row">
+      <input class="input" id="perf-opps-url" placeholder="https://example.com/" style="flex:1">
+      <button class="btn btn-primary" onclick="runPerfOpps()">Analyse</button>
+      <button class="btn btn-ghost" onclick="clearPerfOpps()">Clear</button>
+    </div>
+    <div id="perf-opps-error" class="error-box" style="display:none"></div>
+    <div id="perf-opps-spinner" class="spinner" style="display:none"></div>
+
+    <div id="perf-opps-result" style="display:none">
+      <!-- Score row -->
+      <div class="stat-row" id="perf-opps-scores" style="margin-top:16px;gap:12px;display:flex;flex-wrap:wrap"></div>
+
+      <!-- Bucket: Critical -->
+      <div id="perf-opps-critical" style="margin-top:20px;display:none">
+        <div class="card-title" style="font-size:14px;color:var(--c-red)">🚨 Critical — Fix First (affects ranking)</div>
+        <div class="table-wrap"><table class="result-table" id="perf-critical-table">
+          <thead><tr><th>Metric</th><th>Mobile</th><th>Desktop</th><th>Fix</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <!-- Bucket: Quick Wins -->
+      <div id="perf-opps-quick" style="margin-top:16px;display:none">
+        <div class="card-title" style="font-size:14px;color:var(--c-yellow)">⚡ Quick Wins</div>
+        <div class="table-wrap"><table class="result-table" id="perf-quick-table">
+          <thead><tr><th>Metric</th><th>Mobile</th><th>Desktop</th><th>Fix</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <!-- Bucket: Nice to have -->
+      <div id="perf-opps-nice" style="margin-top:16px;display:none">
+        <div class="card-title" style="font-size:14px;color:var(--c-muted)">✨ Nice to Have</div>
+        <div class="table-wrap"><table class="result-table" id="perf-nice-table">
+          <thead><tr><th>Metric</th><th>Mobile</th><th>Desktop</th><th>Fix</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ STAGE 3-D: AI ASSISTANT ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-ai">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">AI Assistant</div>
+    <div class="page-sub">Plain-English audit summaries and AI-drafted meta tags via Groq LLM (free tier)</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🤖</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">Setup (free)</div>
+      <div class="tool-guide-text">Create a free account at <strong>console.groq.com</strong>, generate an API key, and save it in <em>Settings → groq_api_key</em> (or set <code>GROQ_API_KEY</code> env var). Groq provides ~100 tokens/sec on the free tier — fast enough for real-time explanations. Your data is sent to Groq's API and subject to their privacy policy.</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">100% free tier available</span>
+        <span class="tool-guide-tip">Uses llama-3.1-8b-instant model</span>
+        <span class="tool-guide-tip">Audit data sent to Groq API</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Explain Audit card -->
+  <div class="card">
+    <div class="card-title">Explain Audit Results</div>
+    <div class="page-sub" style="margin-bottom:12px">Paste audit JSON or enter a URL to explain its last saved results</div>
+    <div class="tool-row" style="align-items:flex-start">
+      <textarea class="input" id="ai-audit-json" rows="6" placeholder='Paste audit results JSON here — e.g. from /api/audit/results — or enter a URL below and click "Explain Last Audit"' style="flex:1;resize:vertical;font-family:monospace;font-size:12px"></textarea>
+    </div>
+    <div class="tool-row" style="margin-top:8px">
+      <input class="input" id="ai-audit-url" placeholder="https://example.com/ (optional context)" style="flex:1">
+      <button class="btn btn-primary" onclick="runAiExplain()">Explain</button>
+      <button class="btn btn-ghost" onclick="clearAiExplain()">Clear</button>
+    </div>
+    <div id="ai-explain-error" class="error-box" style="display:none"></div>
+    <div id="ai-explain-spinner" class="spinner" style="display:none"></div>
+    <div id="ai-explain-result" style="display:none;margin-top:16px">
+      <div class="card" style="background:var(--c-surface2);border:1px solid var(--c-border2)">
+        <div class="card-title" style="font-size:13px">Summary</div>
+        <div id="ai-explain-summary" style="color:var(--c-text);line-height:1.6;font-size:14px"></div>
+        <div class="card-title" style="font-size:13px;margin-top:16px">Top Actions</div>
+        <ol id="ai-explain-actions" style="margin:0;padding-left:20px;color:var(--c-text);font-size:14px;line-height:1.8"></ol>
+        <div id="ai-explain-model" style="font-size:11px;color:var(--c-muted);margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Draft Meta Tags card -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">Draft Meta Tags</div>
+    <div class="page-sub" style="margin-bottom:12px">Get 3 AI-written title + description variants optimised for CTR</div>
+    <div class="tool-row">
+      <input class="input" id="ai-meta-url" placeholder="https://example.com/page" style="flex:1">
+    </div>
+    <div class="tool-row" style="margin-top:8px">
+      <input class="input" id="ai-meta-title" placeholder="Current title tag (optional)" style="flex:1">
+    </div>
+    <div class="tool-row" style="margin-top:8px">
+      <input class="input" id="ai-meta-desc" placeholder="Current meta description (optional)" style="flex:1">
+    </div>
+    <div class="tool-row" style="margin-top:8px">
+      <input class="input" id="ai-meta-queries" placeholder="Top GSC queries, comma-separated (optional)" style="flex:1">
+      <button class="btn btn-primary" onclick="runAiDraftMeta()">Draft</button>
+      <button class="btn btn-ghost" onclick="clearAiDraftMeta()">Clear</button>
+    </div>
+    <div id="ai-meta-error" class="error-box" style="display:none"></div>
+    <div id="ai-meta-spinner" class="spinner" style="display:none"></div>
+    <div id="ai-meta-result" style="display:none;margin-top:16px"></div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ KEYWORD RESEARCH ════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-kw-research">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Keyword Research</div>
+    <div class="page-sub">Related keywords, search volume, difficulty &amp; CPC via DataForSEO Labs</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔎</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">Setup</div>
+      <div class="tool-guide-text">Requires a <strong>DataForSEO</strong> account. Sign up free at <a href="https://dataforseo.com/" target="_blank" style="color:var(--primary)">dataforseo.com</a> — pay-as-you-go, ~$0.002 per request. Add your login and password in <em>Settings → DataForSEO</em>. Tip: enter one seed keyword and the tool will return related ideas, competitor queries, and long-tail suggestions.</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">~$0.002 per request (pay-as-you-go)</span>
+        <span class="tool-guide-tip">Returns volume · KD · CPC · intent</span>
+        <span class="tool-guide-tip">Comma-separate multiple seeds</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Find Keywords</div>
+    <div class="tool-row">
+      <input class="input" id="kw-seed" placeholder="seo audit tool, keyword research" style="flex:1">
+      <select class="input" id="kw-mode" style="width:150px" title="Research mode">
+        <option value="suggestions">Suggestions</option>
+        <option value="related">Related</option>
+        <option value="auto" selected>Auto (best)</option>
+      </select>
+      <select class="input" id="kw-location" style="width:130px" title="Country">
+        <option value="2840" selected>🇺🇸 US</option>
+        <option value="2826">🇬🇧 UK</option>
+        <option value="2356">🇮🇳 India</option>
+        <option value="2036">🇦🇺 Australia</option>
+        <option value="2124">🇨🇦 Canada</option>
+      </select>
+      <button class="btn btn-primary" onclick="runKwResearch()">Research</button>
+      <button class="btn btn-ghost" onclick="clearKwResearch()">Clear</button>
+    </div>
+    <div id="kw-error" class="error-box" style="display:none"></div>
+    <div id="kw-spinner" class="spinner" style="display:none"></div>
+
+    <div id="kw-result" style="display:none;margin-top:16px">
+      <div id="kw-summary" style="font-size:13px;color:var(--c-muted);margin-bottom:10px"></div>
+      <div class="table-wrap">
+        <table class="result-table" id="kw-table">
+          <thead>
+            <tr>
+              <th>Keyword</th>
+              <th>Volume / mo</th>
+              <th>Difficulty</th>
+              <th>CPC</th>
+              <th>Competition</th>
+              <th>Intent</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ═══ URL DETAIL DRAWER ══════════════════════════════════════════════════ -->
+<div class="drawer-mask" id="drawer-mask" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <div class="drawer-title" id="drawer-title">URL details</div>
+      <div class="drawer-sub" id="drawer-sub">—</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<!-- ═══ TOASTS ═════════════════════════════════════════════════════════════ -->
+<div class="toast-stack" id="toast-stack"></div>
+
+<!-- ═══ MOBILE BOTTOM NAV ════════════════════════════════════════════════════ -->
+<nav class="mobile-nav" id="mobile-nav">
+  <button class="mobile-nav-btn active" id="mnav-home" onclick="navTo('home');mnavActive('mnav-home')" aria-label="Home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="mobile-nav-btn" id="mnav-uc" onclick="navTo('use-cases');mnavActive('mnav-uc')" aria-label="Run">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+    Run
+  </button>
+  <button class="mobile-nav-btn" id="mnav-rep" onclick="navTo('reports');mnavActive('mnav-rep')" aria-label="Reports">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    Reports
+  </button>
+  <button class="mobile-nav-btn" id="mnav-settings" onclick="navTo('settings');mnavActive('mnav-settings')" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    Settings
+  </button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>

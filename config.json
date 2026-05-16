@@ -1,0 +1,75 @@
+{
+  "parallel_tabs": 1,
+  "proxies": [],
+  "gsc": {
+    "enabled": false,
+    "credentials_file": "gsc_credentials.json"
+  },
+  "email": {
+    "enabled": false,
+    "smtp_host": "",
+    "smtp_port": 587,
+    "smtp_from": "",
+    "smtp_user": "",
+    "smtp_pass": "",
+    "to": ""
+  },
+  "slack": {
+    "enabled": false,
+    "webhook_url": ""
+  },
+  "teams": {
+    "enabled": false,
+    "webhook_url": ""
+  },
+  "schedule": {
+    "enabled": false,
+    "interval": "daily",
+    "time": "08:00",
+    "sitemap_url": "https://www.example.com/sitemap.xml",
+    "limit": 100
+  },
+  "priority": {
+    "high_value_patterns": [
+      "/category/",
+      "/course/"
+    ],
+    "low_value_patterns": [
+      "/tag/",
+      "/author/"
+    ]
+  },
+  "track_keywords": [],
+  "request_timeout_secs": 15,
+  "timings": {
+    "sitemap_fetch_timeout_secs": 15,
+    "crawl_request_timeout_secs": 8,
+    "browser_page_timeout_ms": 20000,
+    "captcha_wait_secs": 60,
+    "rate_limit_break_min_secs": 15,
+    "rate_limit_break_max_secs": 25,
+    "rate_limit_break_every_n": 10,
+    "delay_base_secs": 3.0,
+    "delay_max_secs": 15.0,
+    "webhook_timeout_secs": 10
+  },
+  "thresholds": {
+    "pagespeed_pass": 90,
+    "pagespeed_warn": 50,
+    "mobile_pass": 70,
+    "mobile_warn": 50,
+    "ctr_min_impressions": 100,
+    "ctr_warn_pct": 2.0,
+    "rank_warn_position": 30
+  },
+  "pagespeed_api_key": "",
+  "serpapi_key": "",
+  "dataforseo_login": "",
+  "dataforseo_password": "",
+  "moz_access_id": "",
+  "moz_secret_key": "",
+  "groq_api_key": "",
+  "bing_api_key": "",
+  "indexnow_key": "",
+  "indexnow_host": ""
+}

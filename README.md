@@ -2,6 +2,10 @@
 
 A comprehensive Python-based SEO audit tool with a live web dashboard.
 
+This repository also includes planning and reference documents for product roadmap and cleanup work:
+- `NEW_TOOLS_USECASES.md` — new tool and use case recommendations aligned to the current dashboard and backend routes.
+- `REPO_REVIEW_AND_CLEANUP.md` — merged review findings, blockers, and cleanup recommendations for the active codebase.
+
 ## Features
 
 - **Indexing Checker** — verify which URLs are indexed in Google using a real browser (Playwright); supports sitemap, domain crawl, CSV/XLSX upload, and pasted URL lists
@@ -81,6 +85,11 @@ python main.py
 ```
 
 Open [http://localhost:8080](http://localhost:8080) in your browser.
+
+## Documentation
+- `NEW_TOOLS_USECASES.md`: product and tool roadmap guidance for the current repo surface.
+- `REPO_REVIEW_AND_CLEANUP.md`: current review blockers, cleanup recommendations, and planning notes.
+- `TOOL_ROADMAP.md`: overall project roadmap and implementation gate guidance.
 
 ## Folder Structure
 

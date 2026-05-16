@@ -1,4 +1,4 @@
-# Code Errors
+# Repository Review & Cleanup
 
 ## Review Snapshot
 
@@ -9,6 +9,8 @@
   - these findings are now the blockers referenced by [TOOL_ROADMAP.md](D:/Coding/SEO%20Suite/TOOL_ROADMAP.md)
 - Note:
   - several issues below are not covered by the current test suite
+
+> Note: this file is a review artifact used for planning and documentation only. It is not required by the application runtime and may be deleted if you want to remove review notes. If deleted, consider removing the link from `TOOL_ROADMAP.md`.
 
 ## Why These Matter Now
 
@@ -43,48 +45,7 @@ Suggested direction:
 - preserve task-ID parity between `dashboard.js` and `core/seo_audit.py`
 - add tests whenever task IDs, labels, grouping, or prerequisites change
 
-## 1. High - SSRF bypass in sitemap fetching
-
-- Files:
-  - `core/checker.py`
-  - `app/server.py`
-- Key lines:
-  - `core/checker.py:140-191`
-  - `app/server.py:323-345`
-  - `app/server.py:471-485`
-- Problem:
-  - `fetch_sitemap_urls()` uses `urllib.request.urlopen()` directly instead of `safe_requests_get()`.
-  - Redirect targets and nested sitemap targets are not re-validated hop by hop.
-  - The indexing and audit routes call this function for user-controlled sitemap/domain inputs.
-- Impact:
-  - a public sitemap URL can redirect the server into private or metadata endpoints
-  - Crawl Access and any future Sitemap Audit work inherit this risk
-  - Bing-style sitemap intelligence should not be added on top of this fetch path
-- Recommended fix:
-  - replace raw sitemap HTTP fetches with `safe_requests_get()`
-  - or route all sitemap loading through one hardened sitemap parser
-- Roadmap effect:
-  - blocks `Sitemap Audit`
-  - partially blocks `Bing Visibility Workspace`
-
-## 2. High - SSRF bypass in schema validation
-
-- File:
-  - `tools/schema_validator.py`
-- Key lines:
-  - `tools/schema_validator.py:175-188`
-- Problem:
-  - the initial URL is validated once, then fetched with `requests.get(..., allow_redirects=True)`
-  - redirect targets are not re-checked for public safety
-- Impact:
-  - `/api/tools/schema_validate` can be used to follow a public URL into internal/private addresses
-  - exposing the schema validator as a visible tool would amplify the risk
-- Recommended fix:
-  - replace the raw `requests.get()` call with `safe_requests_get()`
-- Roadmap effect:
-  - blocks `Rich Results / Schema Validation UI`
-
-## 3. Medium - Inconsistent path anchoring splits runtime state
+## 1. Medium - Inconsistent path anchoring splits runtime state
 
 - Files:
   - `app/server.py`
@@ -108,7 +69,7 @@ Suggested direction:
 - Roadmap effect:
   - blocks or partially blocks `Bing Visibility Workspace`, `IndexNow Submission Tool`, and report-heavy new tools
 
-## 4. Medium - Unguarded numeric parsing returns 500 on bad client input
+## 2. Medium - Unguarded numeric parsing returns 500 on bad client input
 
 - File:
   - `app/server.py`
@@ -130,89 +91,56 @@ Suggested direction:
 - Roadmap effect:
   - partially blocks `Bing Visibility Workspace`, `IndexNow Submission Tool`, and `Trend Explorer`
 
-## 5. Medium - Use-case sitemap mode audits the sitemap itself on fetch failure
+## Repository Cleanup Recommendations
 
-- File:
-  - `app/server.py`
-- Key lines:
-  - `app/server.py:1139-1145`
-- Problem:
-  - in `/api/usecase/run`, `input_format == "sitemap"` resolves the first sitemap URL, but if no URLs are found it falls back to `raw_url`
-  - that means the app can run a content audit against the sitemap XML URL itself instead of returning a clear error
-- Impact:
-  - users can get misleading audit results for XML documents instead of the intended page URL
-  - sitemap-driven Crawl Access or future sitemap reporting becomes less trustworthy
-- Recommended fix:
-  - return a `400` when the sitemap resolves to zero valid URLs instead of falling back to the sitemap source URL
-- Roadmap effect:
-  - blocks clean `Sitemap Audit` and weakens Crawl Access trust
+This section summarizes files that look obsolete, redundant, or better archived outside the root of the repository.
 
-## 6. Medium - Upload/profile paths are still cwd-relative in the Flask app
+### Highest-confidence deletions
+These files are safe to remove and are not part of the active application surface.
 
-- File:
-  - `app/server.py`
-- Key lines:
-  - `app/server.py:971-973`
-  - `app/server.py:1027`
-- Problem:
-  - `UPLOAD_DIR` and `PROFILES_PATH` still use `Path("data/...")` instead of the already-established `PROJECT_ROOT` / `DATA_DIR`
-- Impact:
-  - running the server from another working directory can save uploaded files and profiles to a different tree than the rest of the app uses
-  - user-facing profile and file workflows become inconsistent
-- Recommended fix:
-  - rebase both constants onto `DATA_DIR`
-- Roadmap effect:
-  - contributes to the broader path-consistency blocker
+- `dashboard.py`
+  - Legacy entrypoint replaced by `main.py`.
+  - `PROJECT_ANALYSIS.md` explicitly calls this file out as legacy.
+  - No active source references to it exist in the codebase.
 
-## 7. Medium - `robots.txt` fetching still bypasses the SSRF-safe request layer
+- `README.html`
+  - Redundant generated copy of `README.md`.
+  - If the repo is intended to use Markdown-based documentation, the HTML file is not needed.
 
-- File:
-  - `tools/phase1.py`
-- Key lines:
-  - `tools/phase1.py:90-99`
-- Problem:
-  - `robots_check()` relies on `urllib.robotparser.RobotFileParser.read()`, which fetches `robots.txt` internally and does not use `safe_requests_get()`
-  - the base page URL is public, but redirect handling for `/robots.txt` is not controlled by the app's SSRF guards
-- Impact:
-  - a hostile public host can redirect `robots.txt` fetches toward internal addresses
-  - Crawl Access should not expand while this fetch path remains inconsistent
-- Recommended fix:
-  - fetch `robots.txt` through the safe wrapper first
-  - parse the content manually instead of calling `RobotFileParser.read()`
-- Roadmap effect:
-  - blocks safer Crawl Access expansion
-  - makes future `robots.txt` validator/tester work riskier
+### Strong archive/pruning candidates
+These are planning, research, and review artifacts that may still be useful internally, but they clutter the root and can be moved to an `archive/` or `docs/` folder if kept.
 
-## 8. Low - Settings refresh does not propagate through every consumer path
+- `CODE_REVIEW.md`
+- `FREE_TOOLS_RESEARCH.md`
+- `PROJECT_ANALYSIS.md`
+- `GITHUB_REFERENCE.md`
+- `INSTALL_PACKAGES.md`
+- `RECOMMENDED_PACKAGES.md`
+- `agents.md`
 
-- Files:
-  - `app/server.py`
-  - `tools/phase2.py`
-- Key lines:
-  - `app/server.py:961-964`
-  - `tools/phase2.py:16-27`
-- Problem:
-  - `/api/settings` refreshes `CFG` in `app.server`, `core.checker`, and `core.seo_audit`, but some consumers reload config indirectly from `core.checker.load_config()`, which is itself cwd-relative
-- Impact:
-  - threshold-driven behavior can diverge after settings changes when cwd-relative config resolution does not match the Flask app's anchored config path
-- Recommended fix:
-  - fix the central path anchoring first
-  - then make config consumers read from a single canonical source
-- Roadmap effect:
-  - mostly a follow-on cleanup after path normalization
+> Note: Some of these files are still referenced by `TOOL_ROADMAP.md` and possibly by internal planning workflows. If you choose to delete them, update those references first.
 
-## Fix Order
+### Workspace cleanup notes
+These are not likely commits, but are runtime or local metadata files that are already ignored by `.gitignore`:
 
-Use this order unless a higher-priority regression appears:
+- `data/` directory contents
+- `.env`
+- `.vscode/`
+- `.agentmaster/`
+- `.claude/settings.local.json`
 
-1. Sitemap SSRF fix
-2. Schema validation SSRF fix
-3. Path anchoring consistency
-4. Numeric request validation
-5. Use-case sitemap fallback fix
-6. `robots.txt` safe-fetch fix
-7. Upload/profile path cleanup
-8. Settings refresh consistency
+If you want the working folder clean, these can be removed locally, but they should remain ignored in git.
+
+### Recommended action
+1. Delete `dashboard.py` and `README.html` immediately.
+2. Move the planning/research docs into `archive/` or a dedicated docs folder, or keep only the most active ones in root.
+3. Keep `README.md`, `pyproject.toml`, `requirements.txt`, `main.py`, `app/`, `core/`, `tools/`, `tests/`, and `TOOL_ROADMAP.md` as the active codebase.
+4. Optionally delete local runtime artifacts under `data/` and ignored local config files if you want a clean working directory.
+
+### Rationale
+- `dashboard.py` is a true code-level legacy file that no longer matches the current app entrypoint.
+- `README.html` is a generated artifact that duplicates the canonical `README.md`.
+- The other root markdown files are useful for planning, but they are not required for the product and can be archived to reduce repository noise.
 
 ## Test Gaps To Add
 

@@ -12,7 +12,7 @@ This roadmap is intentionally fix-first:
 
 Primary planning inputs:
 
-- [CODE_ERRORS.md](D:/Coding/SEO%20Suite/CODE_ERRORS.md)
+- [REPO_REVIEW_AND_CLEANUP.md](D:/Coding/SEO%20Suite/REPO_REVIEW_AND_CLEANUP.md)
 - [FREE_TOOLS_RESEARCH.md](D:/Coding/SEO%20Suite/FREE_TOOLS_RESEARCH.md)
 - [dashboard.html](D:/Coding/SEO%20Suite/app/templates/dashboard.html:123)
 - [dashboard.html](D:/Coding/SEO%20Suite/app/templates/dashboard.html:190)
@@ -80,7 +80,7 @@ These blockers should be treated as delivery gates, not optional cleanup.
   - Bing Visibility features that compare submitted vs discovered sitemaps
   - any future sitemap ingestion utility
 - Source:
-  - [CODE_ERRORS.md](D:/Coding/SEO%20Suite/CODE_ERRORS.md)
+  - [REPO_REVIEW_AND_CLEANUP.md](D:/Coding/SEO%20Suite/REPO_REVIEW_AND_CLEANUP.md)
 
 ### 2. Schema validation SSRF path
 
@@ -91,7 +91,7 @@ These blockers should be treated as delivery gates, not optional cleanup.
   - Rich Results / Schema Validation UI
   - any future “validate live URL” structured-data tool
 - Source:
-  - [CODE_ERRORS.md](D:/Coding/SEO%20Suite/CODE_ERRORS.md)
+  - [REPO_REVIEW_AND_CLEANUP.md](D:/Coding/SEO%20Suite/REPO_REVIEW_AND_CLEANUP.md)
 
 ### 3. Cwd-relative path drift
 

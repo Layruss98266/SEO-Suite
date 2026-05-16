@@ -1916,7 +1916,11 @@ function initUserBadge(){
     if(!wrap) return;
     if(d.auth_enabled){
       wrap.style.display='flex';
-      if(nameEl) nameEl.textContent = d.username || 'admin';
+      // Show only the first letter of username as avatar initial — don't expose full email in topbar
+      const initial = (d.username || 'A')[0].toUpperCase();
+      const avatarEl = document.getElementById('tb-user-avatar');
+      if(avatarEl) avatarEl.textContent = initial;
+      if(nameEl)   nameEl.style.display = 'none'; // hide full username/email
     } else {
       wrap.style.display='none';
     }

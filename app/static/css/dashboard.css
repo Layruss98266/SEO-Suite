@@ -2530,3 +2530,21 @@ body.dark .home-strip-item:hover{border-color:#6366F1;box-shadow:0 0 0 3px rgba(
   font-family:monospace;font-size:10px;font-style:normal;
 }
 body.dark .home-strip-item-ai{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.4)}
+
+/* ── Tool/Generator landing page cards ─────────────────────────────────── */
+.tool-card{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:16px 18px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;cursor:pointer;
+  transition:background var(--t),border-color var(--t),transform .12s;
+}
+.tool-card:hover{
+  background:var(--primary-l);border-color:var(--primary);
+  transform:translateY(-1px);
+}
+.tc-icon{font-size:22px;flex-shrink:0;margin-top:1px;line-height:1}
+.tc-body{min-width:0}
+.tc-name{font-size:14px;font-weight:700;margin-bottom:4px;color:var(--text)}
+.tc-desc{font-size:12px;color:var(--text2);line-height:1.5}
+.tool-card:hover .tc-name{color:var(--primary)}

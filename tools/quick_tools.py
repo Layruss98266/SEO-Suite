@@ -5,6 +5,7 @@ Phase A: SERP Snippet Preview, Redirect Chain, HTTP Headers,
 """
 
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -762,7 +763,6 @@ def hreflang_validator(url: str) -> dict:
     and unreachable alternates.
     """
     from urllib.parse import urlparse as _up, urljoin as _uj
-    from concurrent.futures import ThreadPoolExecutor
 
     try:
         url = validate_public_url(url)
@@ -810,12 +810,17 @@ def hreflang_validator(url: str) -> dict:
             "summary": {"total": 0, "has_x_default": False, "duplicate_langs": [], "unreachable_count": 0},
         }
 
+    # Cap total entries to prevent unbounded processing and multi-MB responses
+    _HREFLANG_MAX = 100
+    truncated = len(entries_raw) > _HREFLANG_MAX
+    entries_raw = entries_raw[:_HREFLANG_MAX]
+
     # Resolve relative URLs
     for e in entries_raw:
         if e["url"] and not e["url"].startswith("http"):
             e["url"] = _uj(url, e["url"])
 
-    # Validate reachability (check HTTP status for each alternate URL, cap at 15 URLs)
+    # Validate reachability (check HTTP status for each alternate URL, cap checks at 15)
     def _check_url(entry: dict) -> dict:
         alt_url = entry.get("url", "")
         if not alt_url:
@@ -832,7 +837,7 @@ def hreflang_validator(url: str) -> dict:
     with ThreadPoolExecutor(max_workers=min(len(check_entries), 6)) as ex:
         entries = list(ex.map(_check_url, check_entries))
 
-    # Add remaining entries unchecked if truncated
+    # Add remaining entries unchecked (no HTTP probe)
     for e in entries_raw[15:]:
         entries.append({**e, "status": None, "reachable": None, "redirect_to": None})
 
@@ -874,6 +879,9 @@ def hreflang_validator(url: str) -> dict:
         if e.get("url") and not e["url"].startswith("http"):
             issues.append({"level": "error", "message": f"Relative URL in hreflang: {e['url']} — must be absolute"})
 
+    if truncated:
+        issues.append({"level": "warning", "message": f"Page has more than {_HREFLANG_MAX} hreflang entries — only the first {_HREFLANG_MAX} were analysed"})
+
     if not issues:
         issues.append({"level": "info", "message": "No issues found — hreflang tags look correct"})
 
@@ -888,6 +896,7 @@ def hreflang_validator(url: str) -> dict:
             "duplicate_langs": dup_langs,
             "unreachable_count": len(unreachable),
             "redirected_count": len(redirected),
+            "truncated": truncated,
         },
     }
 
@@ -970,15 +979,24 @@ def broken_link_checker(url: str) -> dict:
         if len(hrefs) >= _MAX_LINKS:
             break
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    _WALL_CLOCK = 30  # hard cap: entire link-check run must finish within 30s
     results: list[dict] = []
+    timed_out = False
     with ThreadPoolExecutor(max_workers=_MAX_WORKERS_LH) as pool:
         futs = {pool.submit(_check_link, h, source_orig): h for h in hrefs}
-        for fut in as_completed(futs):
-            try:
-                results.append(fut.result())
-            except Exception:
-                results.append({"url": futs[fut], "type": "external", "status": None, "ok": False})
+        try:
+            for fut in as_completed(futs, timeout=_WALL_CLOCK):
+                try:
+                    results.append(fut.result())
+                except Exception:
+                    results.append({"url": futs[fut], "type": "external", "status": None, "ok": False})
+        except TimeoutError:
+            timed_out = True
+            # Collect whatever completed before the timeout; cancel the rest
+            for fut, href in futs.items():
+                if not fut.done():
+                    fut.cancel()
+                    results.append({"url": href, "type": "skip", "status": None, "ok": True, "error": "timeout"})
 
     # Sort: broken first, then redirects, then ok
     def _sort_key(r: dict) -> int:
@@ -999,10 +1017,11 @@ def broken_link_checker(url: str) -> dict:
     skipped  = [r for r in results if r.get("type") == "skip"]
 
     return {
-        "ok":      True,
-        "url":     url,
-        "links":   results,
-        "capped":  len(hrefs) >= _MAX_LINKS,
+        "ok":        True,
+        "url":       url,
+        "links":     results,
+        "capped":    len(hrefs) >= _MAX_LINKS,
+        "timed_out": timed_out,
         "summary": {
             "total":    len(results),
             "broken":   len(broken),

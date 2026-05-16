@@ -3606,7 +3606,11 @@ async function runCompression() {
 
 function escTool(s) {
   if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+/** Allow only http/https URLs in href attributes — blocks javascript: URIs. */
+function safeHref(u) {
+  return /^https?:\/\//i.test(String(u||'')) ? escTool(u) : '#';
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -5404,7 +5408,7 @@ async function runRobotsTester() {
           <div style="font-size:12px;color:var(--c-muted)">${d.summary?.total_agents} defined</div>
         </div>
       </div>
-      ${d.sitemaps?.length ? `<div style="margin-top:10px;font-size:12px;color:var(--c-muted)">Sitemap(s): ${d.sitemaps.map(s=>`<a href="${escTool(s)}" target="_blank" style="color:var(--primary)">${escTool(s)}</a>`).join(', ')}</div>` : ''}
+      ${d.sitemaps?.length ? `<div style="margin-top:10px;font-size:12px;color:var(--c-muted)">Sitemap(s): ${d.sitemaps.map(s=>`<a href="${safeHref(s)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">${escTool(s)}</a>`).join(', ')}</div>` : ''}
     `;
     document.getElementById('robots-verdict-card').innerHTML = verdictHtml;
 
@@ -5543,7 +5547,7 @@ async function runHreflangValidator() {
             ${e.lang === 'x-default' ? '⭐ ' : ''}${escTool(e.lang)}
           </td>
           <td style="padding:7px 10px;font-size:12px;word-break:break-all">
-            <a href="${escTool(e.url)}" target="_blank" style="color:var(--primary)">${escTool(e.url)}</a>
+            <a href="${safeHref(e.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">${escTool(e.url)}</a>
             ${redirect}
           </td>
           <td style="padding:7px 10px;text-align:center">${reachBadge}</td>
@@ -5578,17 +5582,20 @@ function clearHreflangValidator() {
 // ═══════════════════════════════════════════════════════════════════════════
 // Link Health — broken outbound link checker
 // ═══════════════════════════════════════════════════════════════════════════
+let _lhRun = 0;
 async function runLinkHealth() {
   const url = (document.getElementById('lh-url')?.value || '').trim();
   if (!url) { _showErr('lh-error', 'URL required'); return; }
+  const tok = ++_lhRun;
   _hide('lh-error', 'lh-result'); _show('lh-spinner');
   try {
     const d = await _api('/api/tools/link_health', {url});
+    if (tok !== _lhRun) return; // stale response — user already cleared or re-ran
     _hide('lh-spinner');
     if (!d.ok) { _showErr('lh-error', d.error || 'Error'); return; }
     _renderLinkHealth(d);
     _show('lh-result');
-  } catch(e) { _hide('lh-spinner'); _showErr('lh-error', e.message); }
+  } catch(e) { if (tok !== _lhRun) return; _hide('lh-spinner'); _showErr('lh-error', e.message); }
 }
 
 function _renderLinkHealth(d) {
@@ -5596,7 +5603,7 @@ function _renderLinkHealth(d) {
   const hasBroken = sm.broken > 0 || sm.errors > 0;
   // Summary KPIs
   document.getElementById('lh-summary-card').innerHTML = `
-    <div class="card-title">Scan Results${d.capped ? ' <span style="font-size:11px;font-weight:400;color:var(--c-muted)">(first 60 links)</span>' : ''}</div>
+    <div class="card-title">Scan Results${d.capped ? ' <span style="font-size:11px;font-weight:400;color:var(--c-muted)">(first 60 links)</span>' : ''}${d.timed_out ? ' <span style="font-size:11px;font-weight:400;color:var(--warn)">⚠ 30s limit hit — some links skipped</span>' : ''}</div>
     <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px">
       <div style="flex:1;min-width:100px;text-align:center;padding:12px;background:${hasBroken?'var(--danger-l)':'var(--success-l)'};border-radius:10px">
         <div style="font-size:28px;font-weight:800;color:${hasBroken?'var(--danger)':'var(--success)'}">${sm.broken+sm.errors}</div>
@@ -5636,7 +5643,7 @@ function _renderLinkHealth(d) {
       <td style="padding:6px 10px">${status}</td>
       <td style="padding:6px 10px">${typeBadge}</td>
       <td style="padding:6px 10px;font-size:11px;word-break:break-all">
-        <a href="${escTool(l.url)}" target="_blank" style="color:var(--primary)">${escTool(l.url)}</a>
+        <a href="${safeHref(l.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary)">${escTool(l.url)}</a>
         ${redirect}${errMsg}
       </td>
     </tr>`;
@@ -5658,9 +5665,11 @@ function clearLinkHealth() {
 // ═══════════════════════════════════════════════════════════════════════════
 // Crawl Intelligence — robots.txt + sitemap audit in one view
 // ═══════════════════════════════════════════════════════════════════════════
+let _ciRun = 0;
 async function runCrawlIntel() {
   const url = (document.getElementById('ci-url')?.value || '').trim();
   if (!url) { _showErr('ci-error', 'Site URL required'); return; }
+  const tok = ++_ciRun;
   _hide('ci-error', 'ci-result'); _show('ci-spinner');
   try {
     // Run robots tester and sitemap audit in parallel
@@ -5668,6 +5677,7 @@ async function runCrawlIntel() {
       _api('/api/tools/robots_tester', {url}),
       _api('/api/tools/sitemap_audit', {url}),
     ]);
+    if (tok !== _ciRun) return; // stale — user cleared or re-ran
     _hide('ci-spinner');
     if (!robots.ok && !sitemap.ok) {
       _showErr('ci-error', robots.error || sitemap.error || 'Both checks failed');
@@ -5675,7 +5685,7 @@ async function runCrawlIntel() {
     }
     _renderCrawlIntel(robots, sitemap, url);
     _show('ci-result');
-  } catch(e) { _hide('ci-spinner'); _showErr('ci-error', e.message); }
+  } catch(e) { if (tok !== _ciRun) return; _hide('ci-spinner'); _showErr('ci-error', e.message); }
 }
 
 function _renderCrawlIntel(robots, sitemap, url) {
@@ -5727,6 +5737,9 @@ function _renderCrawlIntel(robots, sitemap, url) {
 
   // ── Combined issues / verdict card ───────────────────────────────────────
   const allIssues = [
+    // Synthetic errors for failed checks — prevent false "healthy" verdict
+    ...(!robots.ok  ? [{level:'error', message: `robots.txt check failed: ${escTool(robots.error||'unknown error')}`,  src:'robots.txt'}] : []),
+    ...(!sitemap.ok ? [{level:'error', message: `Sitemap check failed: ${escTool(sitemap.error||'unknown error')}`, src:'sitemap'}]      : []),
     ...(robots.issues||[]).filter(i=>i.level!=='info').map(i=>({...i, src:'robots.txt'})),
     ...(sitemap.issues||[]).filter(i=>i.level!=='info').map(i=>({...i, src:'sitemap'})),
   ];
@@ -5762,17 +5775,20 @@ function clearCrawlIntel() {
 // ═══════════════════════════════════════════════════════════════════════════
 // Content + SERP Optimizer — snippet quality + keyword fit in one view
 // ═══════════════════════════════════════════════════════════════════════════
+let _csRun = 0;
 async function runContentSerp() {
   const url = (document.getElementById('cs-url')?.value || '').trim();
   const kw  = (document.getElementById('cs-kw')?.value  || '').trim();
   if (!url) { _showErr('cs-error', 'URL required'); return; }
   if (!kw)  { _showErr('cs-error', 'Target keyword required'); return; }
+  const tok = ++_csRun;
   _hide('cs-error', 'cs-result'); _show('cs-spinner');
   try {
     const [snippet, density] = await Promise.all([
       _api('/api/tools/serp_preview', {url}),
       _api('/api/tools/keyword_density', {url, top_n: 30}),
     ]);
+    if (tok !== _csRun) return; // stale — user cleared or re-ran
     _hide('cs-spinner');
     if (!snippet.ok && !density.ok) {
       _showErr('cs-error', snippet.error || density.error || 'Both checks failed');
@@ -5780,7 +5796,7 @@ async function runContentSerp() {
     }
     _renderContentSerp(snippet, density, kw);
     _show('cs-result');
-  } catch(e) { _hide('cs-spinner'); _showErr('cs-error', e.message); }
+  } catch(e) { if (tok !== _csRun) return; _hide('cs-spinner'); _showErr('cs-error', e.message); }
 }
 
 function _renderContentSerp(snippet, density, kw) {
@@ -5826,19 +5842,19 @@ function _renderContentSerp(snippet, density, kw) {
   }
 
   // ── Keyword Density card ─────────────────────────────────────────────────
+  // Backend returns top_keywords:[{keyword, count, density}] — not "words"/"word"
   if (density.ok) {
-    const words   = density.words || [];
-    const kwEntry = words.find(w => w.word?.toLowerCase() === kwLow)
-                 || words.find(w => w.word?.toLowerCase().includes(kwLow));
+    const words   = density.top_keywords || [];
+    const kwEntry = words.find(w => w.keyword?.toLowerCase() === kwLow); // exact match only — no substring
     const kwCount = kwEntry?.count || 0;
     const kwDens  = kwEntry?.density || 0;
     const densOk  = kwDens >= 0.5 && kwDens <= 3.5;
     const topWords = words.slice(0, 15);
     const rows = topWords.map((w, i) => {
-      const isKw = w.word?.toLowerCase() === kwLow || w.word?.toLowerCase().includes(kwLow);
+      const isKw = w.keyword?.toLowerCase() === kwLow; // exact match only
       return `<tr style="${isKw?'background:var(--primary-l)':''}">
         <td style="padding:5px 10px;color:var(--c-muted)">${i+1}</td>
-        <td style="padding:5px 10px;font-weight:${isKw?700:400}">${escTool(w.word)}</td>
+        <td style="padding:5px 10px;font-weight:${isKw?700:400}">${escTool(w.keyword)}</td>
         <td style="padding:5px 10px">${w.count}</td>
         <td style="padding:5px 10px">${w.density}%</td>
       </tr>`;
@@ -5888,7 +5904,8 @@ function _renderContentSerp(snippet, density, kw) {
       recs.push({level:'warn', msg:`Description may be truncated (${snippet.desc_len} chars) — keep under 165`});
   }
   if (density.ok) {
-    const kwDens = density.words?.find(w=>w.word?.toLowerCase()===kwLow || w.word?.toLowerCase().includes(kwLow))?.density || 0;
+    // Use correct backend field name: top_keywords[].keyword (not words[].word)
+    const kwDens = (density.top_keywords||[]).find(w=>w.keyword?.toLowerCase()===kwLow)?.density || 0;
     if (kwDens === 0)
       recs.push({level:'error', msg:`Keyword "${kw}" not found in page content — add it to headings and body text`});
     else if (kwDens < 0.5)
@@ -5897,6 +5914,12 @@ function _renderContentSerp(snippet, density, kw) {
       recs.push({level:'warn', msg:`Keyword density is high (${kwDens}%) — keyword stuffing can hurt rankings; aim for 1-3%`});
     else
       recs.push({level:'ok', msg:`Keyword density is healthy (${kwDens}%) — good balance of keyword usage`});
+  }
+  // Guard: if both APIs failed, no recs were generated — show failure state, not a perfect score
+  if (!snippet.ok && !density.ok) {
+    document.getElementById('cs-score-card').innerHTML =
+      '<div class="error-box">Both checks failed — cannot compute optimisation score.</div>';
+    return;
   }
   if (!recs.length) recs.push({level:'ok', msg:'No obvious optimisation issues found'});
 

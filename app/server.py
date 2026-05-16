@@ -1957,6 +1957,19 @@ def api_hreflang_validate():
     return jsonify(hreflang_validator(url))
 
 
+@app.route("/api/tools/link_health", methods=["POST"])
+@login_required
+def api_link_health():
+    """Fetch a page and probe every outbound link for broken (4xx/5xx) or redirect status."""
+    data = request.get_json(force=True) or {}
+    url  = _norm_url((data.get("url") or "").strip())
+    if not url:
+        return jsonify({"ok": False, "error": "url required"}), 400
+    if (rej := _reject_unsafe(url)): return rej
+    from tools.quick_tools import broken_link_checker
+    return jsonify(broken_link_checker(url))
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 
 @app.route("/api/auth_status")

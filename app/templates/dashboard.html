@@ -99,6 +99,9 @@
           <a class="nav-dd-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" onclick="navLink('tool-sitemap-audit')">Sitemap Audit</a>
           <a class="nav-dd-item" data-panel="tool-robots-tester" data-section="Tools" data-name="robots.txt Tester" onclick="navLink('tool-robots-tester')">robots.txt Tester</a>
           <a class="nav-dd-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" onclick="navLink('tool-hreflang-validate')">Hreflang Validator</a>
+          <a class="nav-dd-item" data-panel="tool-link-health" data-section="Tools" data-name="Link Health" onclick="navLink('tool-link-health')">Link Health</a>
+          <a class="nav-dd-item" data-panel="tool-crawl-intel" data-section="Tools" data-name="Crawl Intelligence" onclick="navLink('tool-crawl-intel')">Crawl Intelligence</a>
+          <a class="nav-dd-item" data-panel="tool-content-serp" data-section="Tools" data-name="Content + SERP" onclick="navLink('tool-content-serp')">Content + SERP</a>
           <a class="nav-dd-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="navLink('tool-bing')">Bing Visibility</a>
         </div>
         <div class="nav-mega-col">
@@ -277,6 +280,18 @@
         <div class="sb-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" onclick="nav(this)">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
           <span class="sb-text">Hreflang Validator</span>
+        </div>
+        <div class="sb-item" data-panel="tool-link-health" data-section="Tools" data-name="Link Health" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+          <span class="sb-text">Link Health</span>
+        </div>
+        <div class="sb-item" data-panel="tool-crawl-intel" data-section="Tools" data-name="Crawl Intelligence" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg></span>
+          <span class="sb-text">Crawl Intelligence</span>
+        </div>
+        <div class="sb-item" data-panel="tool-content-serp" data-section="Tools" data-name="Content + SERP" onclick="nav(this)">
+          <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
+          <span class="sb-text">Content + SERP</span>
         </div>
         <!-- Stage 3-A -->
         <div class="sb-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="nav(this)">
@@ -2917,6 +2932,143 @@
     <div class="card" id="hreflang-entries-card"></div>
   </div>
   </div><!-- /tool-page -->
+</div>
+
+<!-- ═══ LINK HEALTH ══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-link-health">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Link Health</div>
+    <div class="page-sub">Scan every outbound link on a page and flag broken (4xx/5xx), redirected, and unreachable URLs</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🔗</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How it works</div>
+      <div class="tool-guide-text">Enter any URL. The tool fetches the page HTML, extracts all <code>&lt;a href&gt;</code> links (up to 60), and concurrently checks each one with a HEAD request. Broken links (4xx/5xx), connection errors, and unexpected redirects are surfaced immediately — both internal and external links are checked.</div>
+      <div class="tool-guide-example">https://example.com/about</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">4xx = broken — fix or redirect</span>
+        <span class="tool-guide-tip">Redirects lose a small amount of link equity</span>
+        <span class="tool-guide-tip">Up to 60 links checked per page</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Page URL to scan</span>
+        <input class="input" id="lh-url" placeholder="https://example.com/about" onkeydown="if(event.key==='Enter')runLinkHealth()">
+      </div>
+      <div class="fg-full" style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="runLinkHealth()">Scan Links</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearLinkHealth()">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="lh-error" class="error-box" style="display:none"></div>
+    <div id="lh-spinner" class="spinner" style="display:none"></div>
+  </div>
+
+  <div id="lh-result" style="display:none">
+    <div class="card" id="lh-summary-card"></div>
+    <div class="card" id="lh-links-card"></div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ CRAWL INTELLIGENCE ═══════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-crawl-intel">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Crawl Intelligence</div>
+    <div class="page-sub">Unified crawl analysis — robots.txt rules + sitemap health in one view</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">🕷️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">What it does</div>
+      <div class="tool-guide-text">Enter a site's root URL. The tool runs two checks simultaneously: (1) fetches and analyses the <code>robots.txt</code> file — directive coverage, blocked bots, sitemap declarations, and crawl-delay; (2) fetches and audits the XML sitemap — size, duplicates, non-200 URLs, and index coverage. Both results are surfaced together so you can see crawl access and discovery issues at a glance.</div>
+      <div class="tool-guide-example">https://example.com</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">robots.txt controls crawler access</span>
+        <span class="tool-guide-tip">Sitemap controls discovery</span>
+        <span class="tool-guide-tip">Both must be consistent</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Site URL (root domain)</span>
+        <input class="input" id="ci-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCrawlIntel()">
+      </div>
+      <div class="fg-full" style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="runCrawlIntel()">Analyse Crawl Access</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearCrawlIntel()">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="ci-error" class="error-box" style="display:none"></div>
+    <div id="ci-spinner" class="spinner" style="display:none"></div>
+  </div>
+
+  <div id="ci-result" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:0" id="ci-grid">
+      <div class="card" id="ci-robots-card"></div>
+      <div class="card" id="ci-sitemap-card"></div>
+    </div>
+    <div class="card" id="ci-issues-card"></div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ CONTENT + SERP OPTIMIZER ═════════════════════════════════════════════ -->
+<div class="panel" id="panel-tool-content-serp">
+  <div class="tool-page">
+  <div>
+    <div class="page-title">Content + SERP Optimizer</div>
+    <div class="page-sub">Check how well a page's content aligns with a target keyword — snippet quality + keyword distribution in one view</div>
+  </div>
+  <div class="tool-guide">
+    <div class="tool-guide-icon">✍️</div>
+    <div class="tool-guide-body">
+      <div class="tool-guide-title">How to use</div>
+      <div class="tool-guide-text">Enter a URL and your target keyword. The tool fetches the page and simultaneously runs a SERP snippet preview (checking title and description length and keyword presence) and a keyword density analysis (how prominently the keyword appears in headings, body, and metadata). Together these tell you whether the page is optimised for its keyword in Google's eyes.</div>
+      <div class="tool-guide-example">https://example.com/blog/post + "target keyword"</div>
+      <div class="tool-guide-tips">
+        <span class="tool-guide-tip">Title should contain keyword</span>
+        <span class="tool-guide-tip">Description should explain value</span>
+        <span class="tool-guide-tip">Keyword density 1-3% is healthy</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-grid">
+      <div class="fg-full">
+        <span class="label">Page URL</span>
+        <input class="input" id="cs-url" placeholder="https://example.com/page">
+      </div>
+      <div class="fg-full">
+        <span class="label">Target keyword</span>
+        <input class="input" id="cs-kw" placeholder="your target keyword" onkeydown="if(event.key==='Enter')runContentSerp()">
+      </div>
+      <div class="fg-full" style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="runContentSerp()">Analyse</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearContentSerp()">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="cs-error" class="error-box" style="display:none"></div>
+    <div id="cs-spinner" class="spinner" style="display:none"></div>
+  </div>
+
+  <div id="cs-result" style="display:none">
+    <div class="card" id="cs-snippet-card"></div>
+    <div class="card" id="cs-kw-card"></div>
+    <div class="card" id="cs-score-card"></div>
+  </div>
+  </div>
 </div>
 
 </div><!-- /main -->

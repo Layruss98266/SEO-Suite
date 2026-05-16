@@ -5574,3 +5574,354 @@ function clearHreflangValidator() {
   _clearVal('hreflang-val-url');
   _hide('hreflang-val-result', 'hreflang-val-error');
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Link Health — broken outbound link checker
+// ═══════════════════════════════════════════════════════════════════════════
+async function runLinkHealth() {
+  const url = (document.getElementById('lh-url')?.value || '').trim();
+  if (!url) { _showErr('lh-error', 'URL required'); return; }
+  _hide('lh-error', 'lh-result'); _show('lh-spinner');
+  try {
+    const d = await _api('/api/tools/link_health', {url});
+    _hide('lh-spinner');
+    if (!d.ok) { _showErr('lh-error', d.error || 'Error'); return; }
+    _renderLinkHealth(d);
+    _show('lh-result');
+  } catch(e) { _hide('lh-spinner'); _showErr('lh-error', e.message); }
+}
+
+function _renderLinkHealth(d) {
+  const sm = d.summary || {};
+  const hasBroken = sm.broken > 0 || sm.errors > 0;
+  // Summary KPIs
+  document.getElementById('lh-summary-card').innerHTML = `
+    <div class="card-title">Scan Results${d.capped ? ' <span style="font-size:11px;font-weight:400;color:var(--c-muted)">(first 60 links)</span>' : ''}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px">
+      <div style="flex:1;min-width:100px;text-align:center;padding:12px;background:${hasBroken?'var(--danger-l)':'var(--success-l)'};border-radius:10px">
+        <div style="font-size:28px;font-weight:800;color:${hasBroken?'var(--danger)':'var(--success)'}">${sm.broken+sm.errors}</div>
+        <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">Broken</div>
+      </div>
+      <div style="flex:1;min-width:100px;text-align:center;padding:12px;background:${sm.redirect?'var(--warn-l)':'var(--surface2)'};border-radius:10px">
+        <div style="font-size:28px;font-weight:800;color:${sm.redirect?'var(--warn)':'var(--text2)'}">${sm.redirect}</div>
+        <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">Redirects</div>
+      </div>
+      <div style="flex:1;min-width:100px;text-align:center;padding:12px;background:var(--success-l);border-radius:10px">
+        <div style="font-size:28px;font-weight:800;color:var(--success)">${sm.ok}</div>
+        <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">OK</div>
+      </div>
+      <div style="flex:1;min-width:100px;text-align:center;padding:12px;background:var(--surface2);border-radius:10px">
+        <div style="font-size:28px;font-weight:800">${sm.total}</div>
+        <div style="font-size:11px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px">Total</div>
+      </div>
+    </div>
+  `;
+  // Links table
+  const links = d.links || [];
+  const visible = links.filter(l => l.type !== 'skip');
+  const rows = visible.map(l => {
+    const status = l.status
+      ? `<span style="font-weight:700;color:${l.status>=400?'var(--danger)':l.status>=300?'var(--warn)':'var(--success)'}">${l.status}</span>`
+      : `<span style="color:var(--danger)">Error</span>`;
+    const typeBadge = l.type === 'internal'
+      ? `<span style="background:var(--primary-l);color:var(--primary);border-radius:4px;padding:1px 5px;font-size:10px">int</span>`
+      : `<span style="background:var(--surface3);color:var(--text2);border-radius:4px;padding:1px 5px;font-size:10px">ext</span>`;
+    const redirect = l.redirect_to
+      ? `<div style="font-size:10px;color:var(--warn);margin-top:2px">↪ ${escTool(l.redirect_to.slice(0,70))}</div>`
+      : '';
+    const errMsg = l.error
+      ? `<div style="font-size:10px;color:var(--danger)">${escTool(l.error)}</div>`
+      : '';
+    return `<tr>
+      <td style="padding:6px 10px">${status}</td>
+      <td style="padding:6px 10px">${typeBadge}</td>
+      <td style="padding:6px 10px;font-size:11px;word-break:break-all">
+        <a href="${escTool(l.url)}" target="_blank" style="color:var(--primary)">${escTool(l.url)}</a>
+        ${redirect}${errMsg}
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('lh-links-card').innerHTML = visible.length
+    ? `<div class="card-title" style="margin-bottom:10px">Links (${visible.length})</div>
+       <div class="table-wrap"><table class="result-table">
+         <thead><tr><th>Status</th><th>Type</th><th>URL</th></tr></thead>
+         <tbody>${rows}</tbody>
+       </table></div>`
+    : '<div style="color:var(--c-muted);font-size:13px">No links found on this page.</div>';
+}
+
+function clearLinkHealth() {
+  _clearVal('lh-url');
+  _hide('lh-result', 'lh-error');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Crawl Intelligence — robots.txt + sitemap audit in one view
+// ═══════════════════════════════════════════════════════════════════════════
+async function runCrawlIntel() {
+  const url = (document.getElementById('ci-url')?.value || '').trim();
+  if (!url) { _showErr('ci-error', 'Site URL required'); return; }
+  _hide('ci-error', 'ci-result'); _show('ci-spinner');
+  try {
+    // Run robots tester and sitemap audit in parallel
+    const [robots, sitemap] = await Promise.all([
+      _api('/api/tools/robots_tester', {url}),
+      _api('/api/tools/sitemap_audit', {url}),
+    ]);
+    _hide('ci-spinner');
+    if (!robots.ok && !sitemap.ok) {
+      _showErr('ci-error', robots.error || sitemap.error || 'Both checks failed');
+      return;
+    }
+    _renderCrawlIntel(robots, sitemap, url);
+    _show('ci-result');
+  } catch(e) { _hide('ci-spinner'); _showErr('ci-error', e.message); }
+}
+
+function _renderCrawlIntel(robots, sitemap, url) {
+  // ── Robots card ──────────────────────────────────────────────────────────
+  const rm = robots.summary || {};
+  const robotsHtml = robots.ok ? `
+    <div class="card-title" style="margin-bottom:10px">🤖 robots.txt</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div style="flex:1;min-width:80px;text-align:center;padding:10px;background:${rm.all_blocked?'var(--danger-l)':rm.googlebot_blocked?'var(--warn-l)':'var(--success-l)'};border-radius:8px">
+        <div style="font-size:16px">${rm.all_blocked?'❌':rm.googlebot_blocked?'⚠️':'✅'}</div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:2px">Googlebot</div>
+      </div>
+      <div style="flex:1;min-width:80px;text-align:center;padding:10px;background:${rm.has_sitemap?'var(--success-l)':'var(--warn-l)'};border-radius:8px">
+        <div style="font-size:16px">${rm.has_sitemap?'✅':'❌'}</div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:2px">Sitemap</div>
+      </div>
+      <div style="flex:1;min-width:80px;text-align:center;padding:10px;background:${rm.issue_count?'var(--warn-l)':'var(--surface2)'};border-radius:8px">
+        <div style="font-size:20px;font-weight:700">${rm.issue_count||0}</div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:2px">Issues</div>
+      </div>
+    </div>
+    ${(robots.issues||[]).slice(0,6).map(i=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
+      ${i.level==='error'?'❌':i.level==='warning'?'⚠️':'ℹ️'} ${escTool(i.message)}</div>`).join('')}
+  ` : `<div class="card-title">🤖 robots.txt</div><div class="error-box" style="margin-top:8px">${escTool(robots.error||'Failed')}</div>`;
+  document.getElementById('ci-robots-card').innerHTML = robotsHtml;
+
+  // ── Sitemap card ─────────────────────────────────────────────────────────
+  const ss = sitemap.summary || {};
+  const sitemapHtml = sitemap.ok ? `
+    <div class="card-title" style="margin-bottom:10px">🗺️ Sitemap</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div style="flex:1;min-width:80px;text-align:center;padding:10px;background:var(--surface2);border-radius:8px">
+        <div style="font-size:20px;font-weight:700">${ss.total_urls||0}</div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:2px">URLs</div>
+      </div>
+      <div style="flex:1;min-width:80px;text-align:center;padding:10px;background:${ss.broken_count?'var(--danger-l)':'var(--success-l)'};border-radius:8px">
+        <div style="font-size:20px;font-weight:700;color:${ss.broken_count?'var(--danger)':'var(--success)'}">${ss.broken_count||0}</div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:2px">Broken</div>
+      </div>
+      <div style="flex:1;min-width:80px;text-align:center;padding:10px;background:${ss.duplicate_count?'var(--warn-l)':'var(--surface2)'};border-radius:8px">
+        <div style="font-size:20px;font-weight:700">${ss.duplicate_count||0}</div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:2px">Dupes</div>
+      </div>
+    </div>
+    ${(sitemap.issues||[]).slice(0,6).map(i=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
+      ${i.level==='error'?'❌':i.level==='warning'?'⚠️':'ℹ️'} ${escTool(i.message)}</div>`).join('')}
+  ` : `<div class="card-title">🗺️ Sitemap</div><div class="error-box" style="margin-top:8px">${escTool(sitemap.error||'Failed')}</div>`;
+  document.getElementById('ci-sitemap-card').innerHTML = sitemapHtml;
+
+  // ── Combined issues / verdict card ───────────────────────────────────────
+  const allIssues = [
+    ...(robots.issues||[]).filter(i=>i.level!=='info').map(i=>({...i, src:'robots.txt'})),
+    ...(sitemap.issues||[]).filter(i=>i.level!=='info').map(i=>({...i, src:'sitemap'})),
+  ];
+  const errCount  = allIssues.filter(i=>i.level==='error').length;
+  const warnCount = allIssues.filter(i=>i.level==='warning').length;
+  const verdict   = errCount ? '🔴 Critical crawl issues — fix before next crawl'
+                  : warnCount ? '🟡 Crawl warnings — review and improve'
+                  : '🟢 Crawl access looks healthy';
+  const issueRows = allIssues.slice(0,20).map(i => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <span style="flex-shrink:0">${i.level==='error'?'❌':'⚠️'}</span>
+      <span style="flex:1">${escTool(i.message)}</span>
+      <span style="font-size:10px;color:var(--c-muted);white-space:nowrap">${i.src}</span>
+    </div>`).join('');
+  document.getElementById('ci-issues-card').innerHTML = `
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">${verdict}</div>
+    ${allIssues.length
+      ? issueRows
+      : '<div style="color:var(--c-muted);font-size:13px">No issues detected across robots.txt and sitemap.</div>'}
+  `;
+
+  // Make grid single-column on narrow screens (already handled by CSS grid auto-fit,
+  // but we remove the grid wrapper on mobile < 640px via inline style)
+  const grid = document.getElementById('ci-grid');
+  if (grid && window.innerWidth < 640) grid.style.gridTemplateColumns = '1fr';
+}
+
+function clearCrawlIntel() {
+  _clearVal('ci-url');
+  _hide('ci-result', 'ci-error');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Content + SERP Optimizer — snippet quality + keyword fit in one view
+// ═══════════════════════════════════════════════════════════════════════════
+async function runContentSerp() {
+  const url = (document.getElementById('cs-url')?.value || '').trim();
+  const kw  = (document.getElementById('cs-kw')?.value  || '').trim();
+  if (!url) { _showErr('cs-error', 'URL required'); return; }
+  if (!kw)  { _showErr('cs-error', 'Target keyword required'); return; }
+  _hide('cs-error', 'cs-result'); _show('cs-spinner');
+  try {
+    const [snippet, density] = await Promise.all([
+      _api('/api/tools/serp_preview', {url}),
+      _api('/api/tools/keyword_density', {url, top_n: 30}),
+    ]);
+    _hide('cs-spinner');
+    if (!snippet.ok && !density.ok) {
+      _showErr('cs-error', snippet.error || density.error || 'Both checks failed');
+      return;
+    }
+    _renderContentSerp(snippet, density, kw);
+    _show('cs-result');
+  } catch(e) { _hide('cs-spinner'); _showErr('cs-error', e.message); }
+}
+
+function _renderContentSerp(snippet, density, kw) {
+  const kwLow = kw.toLowerCase();
+
+  // ── SERP Snippet card ────────────────────────────────────────────────────
+  if (snippet.ok) {
+    const title = snippet.title || '';
+    const desc  = snippet.description || '';
+    const titleHasKw  = title.toLowerCase().includes(kwLow);
+    const descHasKw   = desc.toLowerCase().includes(kwLow);
+    const titleWarn   = snippet.title_warnings?.length ? snippet.title_warnings.join('; ') : null;
+    const descWarn    = snippet.desc_warnings?.length  ? snippet.desc_warnings.join('; ')  : null;
+
+    document.getElementById('cs-snippet-card').innerHTML = `
+      <div class="card-title" style="margin-bottom:12px">🔍 SERP Snippet</div>
+      <!-- Google-style preview -->
+      <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:14px;max-width:600px">
+        <div style="font-size:12px;color:var(--c-muted);margin-bottom:2px">${escTool(snippet.display_url||'')}</div>
+        <div style="font-size:18px;color:#1a0dab;font-weight:500;line-height:1.3">${escTool(title||'(No title)')}</div>
+        <div style="font-size:13.5px;color:#4d5156;margin-top:4px;line-height:1.5">${escTool(desc||'(No description)')}</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <span style="padding:3px 10px;border-radius:20px;font-size:12px;background:${titleHasKw?'var(--success-l)':'var(--danger-l)'};color:${titleHasKw?'var(--success)':'var(--danger)'}">
+          ${titleHasKw?'✅':'❌'} Keyword in title
+        </span>
+        <span style="padding:3px 10px;border-radius:20px;font-size:12px;background:${descHasKw?'var(--success-l)':'var(--warn-l)'};color:${descHasKw?'var(--success)':'var(--warn)'}">
+          ${descHasKw?'✅':'⚠️'} Keyword in description
+        </span>
+        <span style="padding:3px 10px;border-radius:20px;font-size:12px;background:var(--surface3)">
+          Title: ${snippet.title_len||0} chars
+        </span>
+        <span style="padding:3px 10px;border-radius:20px;font-size:12px;background:var(--surface3)">
+          Desc: ${snippet.desc_len||0} chars
+        </span>
+      </div>
+      ${titleWarn ? `<div style="font-size:12px;color:var(--warn);margin-top:4px">⚠️ ${escTool(titleWarn)}</div>` : ''}
+      ${descWarn  ? `<div style="font-size:12px;color:var(--warn);margin-top:4px">⚠️ ${escTool(descWarn)}</div>`  : ''}
+    `;
+  } else {
+    document.getElementById('cs-snippet-card').innerHTML =
+      `<div class="card-title">🔍 SERP Snippet</div><div class="error-box" style="margin-top:8px">${escTool(snippet.error||'Failed')}</div>`;
+  }
+
+  // ── Keyword Density card ─────────────────────────────────────────────────
+  if (density.ok) {
+    const words   = density.words || [];
+    const kwEntry = words.find(w => w.word?.toLowerCase() === kwLow)
+                 || words.find(w => w.word?.toLowerCase().includes(kwLow));
+    const kwCount = kwEntry?.count || 0;
+    const kwDens  = kwEntry?.density || 0;
+    const densOk  = kwDens >= 0.5 && kwDens <= 3.5;
+    const topWords = words.slice(0, 15);
+    const rows = topWords.map((w, i) => {
+      const isKw = w.word?.toLowerCase() === kwLow || w.word?.toLowerCase().includes(kwLow);
+      return `<tr style="${isKw?'background:var(--primary-l)':''}">
+        <td style="padding:5px 10px;color:var(--c-muted)">${i+1}</td>
+        <td style="padding:5px 10px;font-weight:${isKw?700:400}">${escTool(w.word)}</td>
+        <td style="padding:5px 10px">${w.count}</td>
+        <td style="padding:5px 10px">${w.density}%</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('cs-kw-card').innerHTML = `
+      <div class="card-title" style="margin-bottom:12px">📊 Keyword Density</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <div style="flex:1;min-width:120px;text-align:center;padding:10px;background:${kwCount?'var(--primary-l)':'var(--danger-l)'};border-radius:8px">
+          <div style="font-size:24px;font-weight:800">${kwCount}</div>
+          <div style="font-size:11px;color:var(--c-muted)">Occurrences of "${escTool(kw)}"</div>
+        </div>
+        <div style="flex:1;min-width:120px;text-align:center;padding:10px;background:${densOk?'var(--success-l)':kwDens>3.5?'var(--warn-l)':'var(--danger-l)'};border-radius:8px">
+          <div style="font-size:24px;font-weight:800">${kwDens}%</div>
+          <div style="font-size:11px;color:var(--c-muted)">Keyword density</div>
+        </div>
+        <div style="flex:1;min-width:120px;text-align:center;padding:10px;background:var(--surface2);border-radius:8px">
+          <div style="font-size:24px;font-weight:800">${density.total_words||0}</div>
+          <div style="font-size:11px;color:var(--c-muted)">Total words</div>
+        </div>
+      </div>
+      <div class="table-wrap"><table class="result-table">
+        <thead><tr><th>#</th><th>Word</th><th>Count</th><th>Density</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    `;
+  } else {
+    document.getElementById('cs-kw-card').innerHTML =
+      `<div class="card-title">📊 Keyword Density</div><div class="error-box" style="margin-top:8px">${escTool(density.error||'Failed')}</div>`;
+  }
+
+  // ── Combined Score / Recommendations card ─────────────────────────────────
+  const recs = [];
+  if (snippet.ok) {
+    const title = snippet.title || '';
+    const desc  = snippet.description || '';
+    if (!title.toLowerCase().includes(kwLow))
+      recs.push({level:'error', msg:`Add "${kw}" to your title tag for better keyword targeting`});
+    if (!desc.toLowerCase().includes(kwLow))
+      recs.push({level:'warn', msg:`Consider including "${kw}" in the meta description`});
+    if ((snippet.title_len||0) < 30)
+      recs.push({level:'warn', msg:`Title is too short (${snippet.title_len} chars) — aim for 50-60 characters`});
+    if ((snippet.title_len||0) > 65)
+      recs.push({level:'warn', msg:`Title may be truncated in SERPs (${snippet.title_len} chars) — keep under 65`});
+    if ((snippet.desc_len||0) < 70)
+      recs.push({level:'warn', msg:`Description is too short (${snippet.desc_len} chars) — aim for 130-160 characters`});
+    if ((snippet.desc_len||0) > 165)
+      recs.push({level:'warn', msg:`Description may be truncated (${snippet.desc_len} chars) — keep under 165`});
+  }
+  if (density.ok) {
+    const kwDens = density.words?.find(w=>w.word?.toLowerCase()===kwLow || w.word?.toLowerCase().includes(kwLow))?.density || 0;
+    if (kwDens === 0)
+      recs.push({level:'error', msg:`Keyword "${kw}" not found in page content — add it to headings and body text`});
+    else if (kwDens < 0.5)
+      recs.push({level:'warn', msg:`Keyword density is very low (${kwDens}%) — try to use "${kw}" more naturally in the content`});
+    else if (kwDens > 3.5)
+      recs.push({level:'warn', msg:`Keyword density is high (${kwDens}%) — keyword stuffing can hurt rankings; aim for 1-3%`});
+    else
+      recs.push({level:'ok', msg:`Keyword density is healthy (${kwDens}%) — good balance of keyword usage`});
+  }
+  if (!recs.length) recs.push({level:'ok', msg:'No obvious optimisation issues found'});
+
+  const recHtml = recs.map(r => `
+    <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+      <span style="flex-shrink:0">${r.level==='error'?'❌':r.level==='warn'?'⚠️':'✅'}</span>
+      <span>${escTool(r.msg)}</span>
+    </div>`).join('');
+  const score = Math.max(0, 100 - recs.filter(r=>r.level==='error').length*25 - recs.filter(r=>r.level==='warn').length*10);
+  document.getElementById('cs-score-card').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+      <div style="width:56px;height:56px;border-radius:50%;background:conic-gradient(${score>=70?'var(--success)':score>=40?'var(--warn)':'var(--danger)'} ${score*3.6}deg,var(--surface3) 0);display:flex;align-items:center;justify-content:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800">${score}</div>
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:700">Optimisation Score</div>
+        <div style="font-size:12px;color:var(--c-muted)">${score>=70?'Well optimised':score>=40?'Needs improvement':'Needs work'} for "${escTool(kw)}"</div>
+      </div>
+    </div>
+    <div class="card-title" style="margin-bottom:8px">Recommendations</div>
+    ${recHtml}
+  `;
+}
+
+function clearContentSerp() {
+  _clearVal('cs-url', 'cs-kw');
+  _hide('cs-result', 'cs-error');
+}

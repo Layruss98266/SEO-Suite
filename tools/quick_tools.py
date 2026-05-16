@@ -11,7 +11,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from core.security import safe_requests_get, validate_public_url
+from core.security import safe_requests_get, safe_requests_head, validate_public_url
 
 HEADERS = {
     "User-Agent": (
@@ -888,5 +888,127 @@ def hreflang_validator(url: str) -> dict:
             "duplicate_langs": dup_langs,
             "unreachable_count": len(unreachable),
             "redirected_count": len(redirected),
+        },
+    }
+
+
+# ─── Tool: Broken Link Checker ────────────────────────────────────────────────
+
+_LINK_HEALTH_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    )
+}
+_MAX_LINKS  = 60   # cap per page to avoid multi-minute runs
+_MAX_WORKERS_LH = 10
+
+
+def _check_link(href: str, source_origin: str) -> dict:
+    """HEAD-then-GET a single link; returns status dict. Skips non-HTTP schemes."""
+    if not href.startswith("http"):
+        return {"url": href, "type": "skip", "status": None, "ok": True}
+    try:
+        validate_public_url(href)
+    except ValueError:
+        return {"url": href, "type": "skip", "status": None, "ok": True}
+
+    origin = urlparse(href).netloc
+    link_type = "internal" if origin == source_origin else "external"
+    try:
+        resp = safe_requests_head(href, headers=_LINK_HEALTH_HEADERS, timeout=8, allow_redirects=True)
+        status = resp.status_code
+        if status == 405:
+            resp   = safe_requests_get(href, headers=_LINK_HEALTH_HEADERS, timeout=8, allow_redirects=True)
+            status = resp.status_code
+        final_url = resp.url
+        redirect  = final_url if final_url.rstrip("/") != href.rstrip("/") else None
+    except Exception as exc:
+        return {"url": href, "type": link_type, "status": None, "error": str(exc)[:120], "ok": False}
+
+    broken = status in range(400, 600)
+    return {
+        "url":         href,
+        "type":        link_type,
+        "status":      status,
+        "redirect_to": redirect,
+        "ok":          not broken,
+    }
+
+
+def broken_link_checker(url: str) -> dict:
+    """
+    Fetch a page, extract all <a href> links, and concurrently probe each one.
+    Returns per-link status, counts of broken/redirect/ok, and severity breakdown.
+    """
+    try:
+        url = validate_public_url(url)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
+
+    try:
+        resp = safe_requests_get(url, headers=_LINK_HEALTH_HEADERS, timeout=TIMEOUT)
+    except Exception as exc:
+        return {"ok": False, "error": f"Could not fetch page: {exc}"}
+
+    soup        = BeautifulSoup(resp.text, "lxml")
+    source_base = urlparse(url)
+    source_orig = source_base.netloc
+
+    seen: set[str] = set()
+    hrefs: list[str] = []
+    for tag in soup.find_all("a", href=True):
+        raw = tag["href"].strip()
+        if not raw or raw.startswith(("#", "mailto:", "tel:", "javascript:")):
+            continue
+        absolute = urljoin(url, raw)
+        absolute  = absolute.split("#")[0].rstrip("/") or absolute
+        if absolute not in seen:
+            seen.add(absolute)
+            hrefs.append(absolute)
+        if len(hrefs) >= _MAX_LINKS:
+            break
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    results: list[dict] = []
+    with ThreadPoolExecutor(max_workers=_MAX_WORKERS_LH) as pool:
+        futs = {pool.submit(_check_link, h, source_orig): h for h in hrefs}
+        for fut in as_completed(futs):
+            try:
+                results.append(fut.result())
+            except Exception:
+                results.append({"url": futs[fut], "type": "external", "status": None, "ok": False})
+
+    # Sort: broken first, then redirects, then ok
+    def _sort_key(r: dict) -> int:
+        if not r["ok"] and r.get("status") and r["status"] >= 400:
+            return 0
+        if r.get("redirect_to"):
+            return 1
+        if not r["ok"]:
+            return 2
+        return 3
+
+    results.sort(key=_sort_key)
+
+    broken   = [r for r in results if not r["ok"] and r.get("status") and r["status"] >= 400]
+    errors   = [r for r in results if not r["ok"] and not r.get("status")]
+    redirect = [r for r in results if r.get("redirect_to")]
+    ok_links = [r for r in results if r["ok"] and not r.get("redirect_to")]
+    skipped  = [r for r in results if r.get("type") == "skip"]
+
+    return {
+        "ok":      True,
+        "url":     url,
+        "links":   results,
+        "capped":  len(hrefs) >= _MAX_LINKS,
+        "summary": {
+            "total":    len(results),
+            "broken":   len(broken),
+            "errors":   len(errors),
+            "redirect": len(redirect),
+            "ok":       len(ok_links),
+            "skipped":  len(skipped),
         },
     }

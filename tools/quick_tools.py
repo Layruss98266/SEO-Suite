@@ -13,6 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from core.security import safe_requests_get, safe_requests_head, validate_public_url
+from tools._common import fetch_html, safe_error
 
 HEADERS = {
     "User-Agent": (
@@ -49,7 +50,7 @@ def serp_snippet_preview(url: str) -> dict:
         return {"ok": False, "error": str(exc)}
 
     try:
-        resp = safe_requests_get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp = fetch_html(url, headers=HEADERS)
         final_url = resp.url
         soup = BeautifulSoup(resp.text, "lxml")
 
@@ -134,7 +135,7 @@ def serp_snippet_preview(url: str) -> dict:
             "warnings": warnings,
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 2: Redirect Chain Checker ──────────────────────────────────────────
@@ -234,7 +235,7 @@ def http_headers(url: str) -> dict:
         return {"ok": False, "error": str(exc)}
 
     try:
-        resp = safe_requests_get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp = fetch_html(url, headers=HEADERS)
         raw_headers: dict[str, str] = dict(resp.headers)
 
         SEO_RELEVANT = {
@@ -315,7 +316,7 @@ def http_headers(url: str) -> dict:
             "total": len(annotated),
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 4: Keyword Density Checker ─────────────────────────────────────────
@@ -418,7 +419,7 @@ def keyword_density(url: str, top_n: int = 20) -> dict:
         return {"ok": False, "error": str(exc)}
 
     try:
-        resp = safe_requests_get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp = fetch_html(url, headers=HEADERS)
         soup = BeautifulSoup(resp.text, "lxml")
 
         for tag in soup(["script", "style", "noscript", "nav", "footer", "header"]):
@@ -461,7 +462,7 @@ def keyword_density(url: str, top_n: int = 20) -> dict:
             "top_keywords": results,
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 5: Code-to-Text Ratio ─────────────────────────────────────────
@@ -475,7 +476,7 @@ def code_to_text_ratio(url: str) -> dict:
         return {"ok": False, "error": str(exc)}
 
     try:
-        resp = safe_requests_get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp = fetch_html(url, headers=HEADERS)
         html = resp.text
         html_size = len(html.encode("utf-8"))
 
@@ -509,7 +510,7 @@ def code_to_text_ratio(url: str) -> dict:
             "advice": advice,
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 6: GZIP / Cache Headers Checker ────────────────────────────────────
@@ -524,7 +525,7 @@ def compression_headers(url: str) -> dict:
 
     try:
         req_headers = {**HEADERS, "Accept-Encoding": "gzip, deflate, br"}
-        resp = safe_requests_get(url, headers=req_headers, timeout=TIMEOUT)
+        resp = fetch_html(url, headers=req_headers)
         h = {k.lower(): v for k, v in resp.headers.items()}
 
         encoding = h.get("content-encoding", "none")
@@ -580,7 +581,7 @@ def compression_headers(url: str) -> dict:
             "score": score,
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool: robots.txt Tester ─────────────────────────────────────────────────
@@ -605,9 +606,9 @@ def robots_tester(url: str) -> dict:
     robots_url = base.rstrip("/") + "/robots.txt"
 
     try:
-        resp = safe_requests_get(robots_url, headers=HEADERS, timeout=TIMEOUT)
+        resp = fetch_html(robots_url, headers=HEADERS)
     except Exception as exc:
-        return {"ok": False, "error": f"Could not fetch robots.txt: {exc}"}
+        return {"ok": False, "error": f"Could not fetch robots.txt: {safe_error(exc)}"}
 
     status_code = resp.status_code
     if status_code == 404:

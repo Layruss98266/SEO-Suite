@@ -55,3 +55,27 @@ class TestCheckLink:
     def test_non_http_scheme_skipped(self):
         r = _check_link("mailto:a@b.com", "e.com")
         assert r["type"] == "skip"
+
+
+from tools.quick_tools import code_to_text_ratio
+
+
+class TestCodeToTextRatio:
+    def test_oversized_response_sanitised(self):
+        from tools._common import ToolFetchError
+        with patch("tools.quick_tools.fetch_html", side_effect=ToolFetchError("Response too large (>5 MB)")), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/"):
+            r = code_to_text_ratio("https://e.com/")
+        assert r["ok"] is False
+        assert "too large" in r["error"].lower()
+
+    def test_basic_ratio_computed(self):
+        m = MagicMock()
+        m.status_code = 200
+        m.url = "https://e.com/"
+        m.text = "<html><body>" + ("hello world " * 50) + "</body></html>"
+        with patch("tools.quick_tools.fetch_html", return_value=m), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/"):
+            r = code_to_text_ratio("https://e.com/")
+        assert r["ok"] is True
+        assert r["ratio_pct"] > 0

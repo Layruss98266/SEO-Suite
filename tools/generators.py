@@ -742,6 +742,7 @@ def generate_sitemap(data: dict) -> dict:
       urls: [{url, lastmod, changefreq, priority}]
     """
     from urllib.parse import urlparse
+
     from tools._common import xml_text
 
     _VALID_CHANGEFREQ = {"always", "hourly", "daily", "weekly", "monthly", "yearly", "never"}
@@ -806,6 +807,7 @@ def generate_hreflang(data: dict) -> dict:
     """
     import re
     from urllib.parse import urlparse
+
     from tools._common import xml_text
 
     _LOCALE_RE = re.compile(r"^([a-z]{2,3}(-[A-Za-z0-9]{2,8})?|x-default)$", re.IGNORECASE)

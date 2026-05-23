@@ -129,10 +129,12 @@ def test_schema_validator_rejects_ssrf_redirect(monkeypatch):
     def _raising_get(url, **kwargs):
         raise ValueError("SSRF: redirect target is a private address")
 
-    monkeypatch.setattr(sv, "safe_requests_get", _raising_get)
+    # validate_url now fetches via tools._common.fetch_html (re-exported into
+    # the schema_validator namespace), so patch that.
+    monkeypatch.setattr(sv, "fetch_html", _raising_get)
     result = sv.validate_url("https://example.com/")
     assert result["ok"] is False
-    assert "Fetch failed" in result["error"] or "error" in result
+    assert "error" in result
 
 
 def test_schema_validator_returns_ok_for_valid_page(monkeypatch):
@@ -150,7 +152,7 @@ def test_schema_validator_returns_ok_for_valid_page(monkeypatch):
 
     fake_resp = types.SimpleNamespace(status_code=200, text=html)
 
-    monkeypatch.setattr(sv, "safe_requests_get", lambda url, **kw: fake_resp)
+    monkeypatch.setattr(sv, "fetch_html", lambda url, **kw: fake_resp)
     monkeypatch.setattr(sv, "validate_public_url", lambda url: url)
 
     result = sv.validate_url("https://example.com/")

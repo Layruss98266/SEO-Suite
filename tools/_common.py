@@ -31,7 +31,7 @@ class ToolFetchError(Exception):
 
 def safe_error(exc: Exception) -> str:
     """Map an exception to user-safe text. Never leaks tracebacks/paths/internals."""
-    if isinstance(exc, (ToolFetchError, ValueError)):
+    if isinstance(exc, ToolFetchError | ValueError):
         return str(exc)
     if isinstance(exc, requests.Timeout):
         return "The request timed out. Try again."

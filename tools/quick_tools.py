@@ -768,7 +768,8 @@ def hreflang_validator(url: str) -> dict:
     Surfaces: missing x-default, duplicate lang codes, relative URLs,
     and unreachable alternates.
     """
-    from urllib.parse import urlparse as _up, urljoin as _uj
+    from urllib.parse import urljoin as _uj
+    from urllib.parse import urlparse as _up
 
     try:
         url = validate_public_url(url)

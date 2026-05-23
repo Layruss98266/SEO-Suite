@@ -10,7 +10,6 @@ Environment variable: GROQ_API_KEY
 Config key:           groq_api_key
 """
 
-import json
 import time
 
 from core.security import safe_requests_post, validate_public_url

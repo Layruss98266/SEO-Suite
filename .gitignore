@@ -3,6 +3,8 @@
 
 # Runtime data
 data/
+# Legacy top-level report output (app writes to data/reports/ now)
+reports/
 
 # Python
 __pycache__/

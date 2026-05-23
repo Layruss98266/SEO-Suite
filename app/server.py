@@ -172,7 +172,12 @@ from flask_limiter.util import get_remote_address
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=[],           # no global default — limits are route-specific
+    # Generous per-endpoint, per-IP abuse ceiling applied to EVERY route — this
+    # covers the 30+ /api/tools/* endpoints that fetch user-supplied URLs
+    # server-side and previously had no limit. It's an abuse cap, not a UX
+    # limit: a single dashboard user won't approach 240 req/min on one endpoint.
+    # Stricter per-route limits (e.g. index/audit run) stack on top of this.
+    default_limits=["240 per minute"],
     storage_uri="memory://",
 )
 
@@ -497,6 +502,7 @@ def _is_error_status(status: str) -> bool:
 
 
 @app.route("/api/index/stream")
+@limiter.exempt   # long-lived SSE connection — must not count against the rate cap
 @login_required
 def api_index_stream():
     sub = _subscribe(_index_subscribers)
@@ -709,6 +715,7 @@ def api_audit_run():
     return jsonify({"total": estimated_total, "started": True, "workers": workers})
 
 @app.route("/api/audit/stream")
+@limiter.exempt   # long-lived SSE connection — must not count against the rate cap
 @login_required
 def api_audit_stream():
     sub = _subscribe(_audit_subscribers)

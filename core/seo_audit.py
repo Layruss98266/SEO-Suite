@@ -237,6 +237,7 @@ USE_CASES = {
 # SEO Score calculator
 # ══════════════════════════════════════════════════════════════════════════════
 WEIGHTS = {
+    # ── Crawlability / on-page (phase 1) ──────────────────────────────────────
     "http_status":      15,
     "robots":           10,
     "meta_robots":      10,
@@ -260,17 +261,83 @@ WEIGHTS = {
     "domain_age":        2,
     "hreflang":          2,
     "sitemap":           3,
+    "https_enforcement": 5,
+    "security_headers":  3,
+    "spf":               2,
+    "dmarc":             2,
+    "mx_records":        1,
+    "crawlability":      4,
+    # ── Performance / Core Web Vitals (phase 2) ───────────────────────────────
+    # These were previously absent, so PageSpeed/CWV scored at the default
+    # weight of 2 each — a site with terrible vitals could still score 90+.
+    # Vitals are ranking factors; weight them accordingly.
+    "pagespeed_mobile":  12,
+    "pagespeed_desktop":  6,
+    "lcp":                8,
+    "cls":                6,
+    "inp":                6,
+    "fcp":                4,
+    "mobile":             4,
+    # ── Authority (phase 4) ───────────────────────────────────────────────────
+    "backlinks":          8,
+    "domain_authority":   6,
+    "referring_domains":  4,
+    "page_authority":     3,
+    "spam_score":         3,
+    # ── Rankings (phase 4) ────────────────────────────────────────────────────
+    "rank_tracker":       8,
+    "serp_features":      3,
 }
+
+# Tools excluded from scoring: informational/diagnostic checks that report data
+# rather than pass/fail health (e.g. GSC clicks, top queries, competitor data).
+# They still appear in the report but must not dilute or inflate the score.
+_SCORE_EXCLUDED = {
+    "clicks_impressions", "top_queries", "position_tracker", "ctr_analyzer",
+    "coverage_errors", "sitemaps_status", "manual_actions",
+    "competitor", "rank_change", "traffic_share", "domain_rank",
+    "broken_backlinks", "nofollow_ratio",
+}
+
 
 def calc_seo_score(results: list[dict]) -> int:
     total_weight  = 0
     earned_weight = 0
     for r in results:
-        w = WEIGHTS.get(r["tool"], 2)
+        tool = r["tool"]
+        if tool in _SCORE_EXCLUDED:
+            continue
+        # "error" results (e.g. a missing API key or a crashed check) are not
+        # scored — they neither earn nor penalise, so a config gap doesn't tank
+        # an otherwise-healthy score.
+        if r["status"] == "error":
+            continue
+        w = WEIGHTS.get(tool, 2)
         total_weight += w
-        if r["status"] == "pass":    earned_weight += w
+        if r["status"] == "pass":      earned_weight += w
         elif r["status"] == "warning": earned_weight += w * 0.5
     return round(earned_weight / total_weight * 100) if total_weight else 0
+
+
+def _collect(futs: list) -> list[dict]:
+    """Resolve a list of check futures, isolating failures.
+
+    A single check raising an unexpected exception must not discard its sibling
+    results from the same batch. Each failure becomes a structured error entry
+    instead of propagating and killing the whole use-case block.
+    """
+    out: list[dict] = []
+    for f in futs:
+        try:
+            out.append(f.result())
+        except Exception as exc:
+            logger.warning("audit check crashed: %s", exc)
+            out.append({
+                "tool": "check_error", "status": "error",
+                "message": "A check failed unexpectedly and was skipped.",
+                "value": None, "details": {},
+            })
+    return out
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -347,7 +414,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         if crawl_fns:
             with ThreadPoolExecutor(max_workers=min(len(crawl_fns), 8)) as ex:
                 futs = [ex.submit(fn, url) for fn, _ in crawl_fns]
-                all_results += [f.result() for f in futs]
+                all_results += _collect(futs)
 
     if "on_page" in active:
         from tools.phase1 import (
@@ -384,7 +451,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         if onpage_fns:
             with ThreadPoolExecutor(max_workers=min(len(onpage_fns), 8)) as ex:
                 futs = [ex.submit(fn, url) for fn, _ in onpage_fns]
-                all_results += [f.result() for f in futs]
+                all_results += _collect(futs)
 
     if "site_health" in active:
         from tools.phase1 import (
@@ -411,7 +478,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         if sh_fns:
             with ThreadPoolExecutor(max_workers=min(len(sh_fns), 8)) as ex:
                 futs = [ex.submit(fn, url) for fn, _ in sh_fns]
-                all_results += [f.result() for f in futs]
+                all_results += _collect(futs)
 
     if "performance" in active:
         from tools.phase2 import extract_cwv
@@ -449,7 +516,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
                 with ThreadPoolExecutor(max_workers=workers) as ex:
                     futs  = [ex.submit(fn, url, gsc_service, site_url) for _, fn in url_fns]
                     futs += [ex.submit(fn, gsc_service, site_url)      for _, fn in site_fns]
-                    all_results += [f.result() for f in futs]
+                    all_results += _collect(futs)
 
     if "authority" in active:
         dfs_login    = cfg.get("dataforseo_login", "")
@@ -477,7 +544,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         if au_fns:
             with ThreadPoolExecutor(max_workers=min(len(au_fns), 4)) as ex:
                 futs = [ex.submit(fn) for fn in au_fns]
-                all_results += [f.result() for f in futs]
+                all_results += _collect(futs)
 
     if "rankings" in active:
         keywords    = cfg.get("track_keywords", [])
@@ -508,13 +575,37 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         if rk_fns:
             with ThreadPoolExecutor(max_workers=min(len(rk_fns), 3)) as ex:
                 futs = [ex.submit(fn) for fn in rk_fns]
-                all_results += [f.result() for f in futs]
+                all_results += _collect(futs)
         elif not keywords:
             # Return a warning if no keywords configured
             if _keep("rank_tracker"):
                 from tools.phase4 import result as _p4result
                 all_results.append(_p4result(url, "rank_tracker", "warning", [],
                     "No keywords configured — add track_keywords in Settings"))
+
+    # Surface use-cases that were selected but couldn't run because a required
+    # credential/service is missing. Previously these silently produced an empty
+    # section; now the user gets an explicit, actionable notice.
+    _REQUIRES_MSG = {
+        "pagespeed_api_key": "PageSpeed API key not set — configure it in Settings → Performance.",
+        "gsc": "Google Search Console not connected — enable it in Settings → Search Console.",
+        "serpapi_key": "No rank-tracking API key — add SerpAPI or DataForSEO credentials in Settings.",
+    }
+    _emitted_tools = {r.get("tool") for r in all_results}
+    for uc in active:
+        req = USE_CASES.get(uc, {}).get("requires")
+        if not req:
+            continue
+        configured = bool(cfg.get(req)) or (req == "gsc" and gsc_service is not None)
+        # Only flag a true gap: requirement unmet AND the use-case produced nothing.
+        uc_task_ids = {t["id"] for t in TASKS.get(uc, [])}
+        produced_for_uc = bool(_emitted_tools & uc_task_ids)
+        if not configured and not produced_for_uc:
+            all_results.append({
+                "tool": f"{uc}_setup", "status": "error",
+                "message": _REQUIRES_MSG.get(req, f"This section needs '{req}' configured."),
+                "value": None, "details": {"use_case": uc, "requires": req},
+            })
 
     score    = calc_seo_score(all_results)
     issues   = [r for r in all_results if r["status"] in ("fail", "error")]

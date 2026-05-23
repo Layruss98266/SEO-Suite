@@ -1033,8 +1033,53 @@ function filterRows(type,btn){{
 # CORE RUN LOGIC
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run_check(urls: list[str], use_gsc: bool = False, headless: bool = False,
+def _run_browser_pass(urls: list[str], headless: bool, proxy_list: list,
+                      delay_state: dict, on_result: Callable) -> None:
+    """Check a batch of URLs via a single browser tab (SERP `site:` scrape).
+
+    Used as the fallback when GSC can't answer for a URL. Opens one Chromium
+    context, dismisses the consent dialog, and runs google_check per URL,
+    reporting each via on_result.
+    """
+    _require_playwright()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+            proxy={"server": proxy_list[0]} if proxy_list else None,
+        )
+        ctx = browser.new_context(
+            user_agent=CHROME_UA,
+            viewport={"width": 1280, "height": 800}, locale="en-US",
+        )
+        page = ctx.new_page()
+        stealth_sync(page)
+        page.goto("https://www.google.com", wait_until="domcontentloaded"); time.sleep(2)
+        try:
+            btn = page.locator("button:has-text('Accept all'), button:has-text('I agree')")
+            if btn.count() > 0: btn.first.click(); time.sleep(1)
+        except Exception:
+            pass
+        iterator = tqdm(urls, unit="url") if HAS_TQDM else urls
+        for url in iterator:
+            on_result(url, google_check(page, url, delay_state))
+        try:
+            browser.close()
+        except Exception:
+            pass
+
+
+def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = False,
               quiet: bool = False, progress_cb: Callable | None = None) -> tuple[list[dict], dict, dict, dict]:
+    # GSC URL Inspection is the authoritative, ToS-compliant indexation source,
+    # so prefer it whenever it's configured. SERP scraping is the fallback — used
+    # for URLs GSC can't answer (properties the service account doesn't own) or
+    # when GSC isn't set up at all. `use_gsc=None` means "auto-detect from config".
+    if use_gsc is None:
+        use_gsc = bool(CFG.get("gsc", {}).get("enabled"))
+    gsc_service = build_gsc_service() if use_gsc else None
+    if use_gsc and gsc_service is None:
+        use_gsc = False  # GSC requested but unavailable — fall back to browser
     if not use_gsc:
         _require_playwright()
     # Sort before joining so the resume key is stable across runs that happen
@@ -1067,7 +1112,7 @@ def run_check(urls: list[str], use_gsc: bool = False, headless: bool = False,
                          "priority": get_priority_score(url), "depth": get_crawl_depth(url),
                          "url_type": get_url_type(url), "checked_at": "resumed"})
 
-    gsc_service    = build_gsc_service() if use_gsc else None
+    # gsc_service was already resolved at the top of run_check (GSC-first logic).
     proxy_list     = CFG.get("proxies", [])
     n_parallel     = min(CFG.get("parallel_tabs", 1), len(remaining)) if remaining else 1
     delay_state    = {"base": _t("delay_base_secs", 3.0), "count": 0}
@@ -1103,10 +1148,28 @@ def run_check(urls: list[str], use_gsc: bool = False, headless: bool = False,
                 print(f"[{num:>4}] {url}\n       {icon} {status}\n")
 
     if use_gsc and gsc_service:
-        print(f"\n{BOLD}Using Google Search Console API…{RESET}\n")
+        print(f"\n{BOLD}Using Google Search Console API (primary)…{RESET}\n")
         iterator = tqdm(remaining, unit="url") if HAS_TQDM else remaining
+        # URLs GSC can't resolve (not an owned property, quota exhausted, etc.)
+        # are deferred to a browser SERP-scrape fallback so they still get a verdict.
+        gsc_deferred: list[tuple[str, str]] = []
         for url in iterator:
-            on_result(url, gsc_check_url(url, gsc_service))
+            status = gsc_check_url(url, gsc_service)
+            if status.startswith("GSC Error"):
+                gsc_deferred.append((url, status))
+            else:
+                on_result(url, status)
+
+        if gsc_deferred:
+            if sync_playwright is None:
+                # No browser available — surface the GSC error rather than guessing.
+                for url, err in gsc_deferred:
+                    on_result(url, err)
+            else:
+                print(f"\n{YELLOW}GSC could not resolve {len(gsc_deferred)} URL(s) "
+                      f"(not owned / quota) — falling back to browser…{RESET}\n")
+                _run_browser_pass([u for u, _ in gsc_deferred], headless,
+                                  proxy_list, delay_state, on_result)
     elif n_parallel > 1:
         print(f"\n{BOLD}Using {n_parallel} parallel browser tabs…{RESET}\n")
         check_parallel(remaining, n_parallel, proxy_list, headless, delay_state, on_result)
@@ -1215,7 +1278,7 @@ def start_scheduler():
 
 
 def execute_and_save(urls: list[str], headless: bool = False, quiet: bool = False,
-                     use_gsc: bool = False, do_compare: bool = False,
+                     use_gsc: bool | None = None, do_compare: bool = False,
                      prev_report: Path | None = None,
                      progress_cb: Callable | None = None) -> Path:
     timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")

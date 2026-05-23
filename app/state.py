@@ -132,5 +132,5 @@ def replace_last_index_run(results: dict[str, str]) -> None:
 
 def reload_cfg() -> None:
     """Reload config.json into the global CFG dict in-place (preserves references)."""
-    global CFG
-    CFG = load_config()
+    CFG.clear()
+    CFG.update(load_config())

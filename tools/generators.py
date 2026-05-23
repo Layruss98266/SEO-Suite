@@ -4,6 +4,7 @@ Phase B: Schema Markup, robots.txt, XML Sitemap, Hreflang Tags, Meta Tags
 """
 
 import json
+from html import escape as _esc
 
 # ─── Tool 7: Schema Markup Generator ─────────────────────────────────────────
 
@@ -826,27 +827,31 @@ def generate_meta_tags(data: dict) -> dict:
         c = data.get("canonical", "")
         r = data.get("robots", "")
 
+        # HTML-escape all user-supplied values before interpolation so the
+        # generated markup is safe to display and copy-paste.
+        te, de, ke, ce, re_ = _esc(t), _esc(d), _esc(k), _esc(c), _esc(r)
+
         if t:
-            lines.append(f"<title>{t}</title>")
+            lines.append(f"<title>{te}</title>")
         if t:
-            lines.append(f'<meta name="title" content="{t}">')
+            lines.append(f'<meta name="title" content="{te}">')
         if d:
-            lines.append(f'<meta name="description" content="{d}">')
+            lines.append(f'<meta name="description" content="{de}">')
         if k:
-            lines.append(f'<meta name="keywords" content="{k}">')
+            lines.append(f'<meta name="keywords" content="{ke}">')
         if r:
-            lines.append(f'<meta name="robots" content="{r}">')
+            lines.append(f'<meta name="robots" content="{re_}">')
         if c:
-            lines.append(f'<link rel="canonical" href="{c}">')
+            lines.append(f'<link rel="canonical" href="{ce}">')
 
         # Open Graph
         og_fields = {
-            "og:type": data.get("og_type", "website"),
-            "og:url": data.get("og_url", c),
-            "og:title": data.get("og_title", t),
-            "og:description": data.get("og_description", d),
-            "og:image": data.get("og_image", ""),
-            "og:site_name": data.get("og_site_name", ""),
+            "og:type":        _esc(data.get("og_type", "website")),
+            "og:url":         _esc(data.get("og_url", c)),
+            "og:title":       _esc(data.get("og_title", t)),
+            "og:description": _esc(data.get("og_description", d)),
+            "og:image":       _esc(data.get("og_image", "")),
+            "og:site_name":   _esc(data.get("og_site_name", "")),
         }
         og_lines = [f'<meta property="{k}" content="{v}">' for k, v in og_fields.items() if v]
         if og_lines:
@@ -855,12 +860,12 @@ def generate_meta_tags(data: dict) -> dict:
 
         # Twitter / X
         tw_fields = {
-            "twitter:card": data.get("tw_card", "summary_large_image"),
-            "twitter:url": data.get("og_url", c),
-            "twitter:title": data.get("tw_title", t),
-            "twitter:description": data.get("tw_description", d),
-            "twitter:image": data.get("tw_image", data.get("og_image", "")),
-            "twitter:site": data.get("tw_site", ""),
+            "twitter:card":        _esc(data.get("tw_card", "summary_large_image")),
+            "twitter:url":         _esc(data.get("og_url", c)),
+            "twitter:title":       _esc(data.get("tw_title", t)),
+            "twitter:description": _esc(data.get("tw_description", d)),
+            "twitter:image":       _esc(data.get("tw_image", data.get("og_image", ""))),
+            "twitter:site":        _esc(data.get("tw_site", "")),
         }
         tw_lines = [f'<meta name="{k}" content="{v}">' for k, v in tw_fields.items() if v]
         if tw_lines:

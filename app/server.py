@@ -531,21 +531,21 @@ def api_audit_run():
     use_cases  = data.get("use_cases", None)
     tasks      = data.get("tasks", None)
     workers    = _int(data, "workers", 3, 1, 8)  # parallel URL audits
-    _audit_cancel.clear()
 
     # Estimate total immediately so the frontend can show a progress bar.
     # URL fetching happens inside the thread so this route returns in <50 ms.
     estimated_total = limit
-    # Clear partial buffers BEFORE flipping running=True. Previously the order
-    # was reversed: a cancel POST arriving between the running flip and the
-    # clears would snapshot an empty list and report an empty partial report.
+    # Clear partial buffers and cancel event BEFORE flipping running=True, all
+    # inside the lock. Previously _audit_cancel.clear() ran before the lock,
+    # so a 400 early-return (already running) would silently clear the cancel
+    # event for the active run, preventing it from being cancelled.
     with _lock:
         if _audit_status["running"]:
             return jsonify({"error": "Already running"}), 400
         _audit_partial.clear()
         _audit_full_results.clear()
+        _audit_cancel.clear()
         _audit_status = {"running": True, "total": estimated_total, "done": 0}
-    _audit_cancel.clear()
     _audit_paused.set()   # ensure not paused at start of new run
 
     current_cfg = load_config()
@@ -806,12 +806,10 @@ def api_download(filename):
         mime = "text/csv"
     return safe.read_bytes(), 200, {
         "Content-Type": mime,
-        "Content-Disposition": f"attachment; filename={safe.name}",
+        "Content-Disposition": f'attachment; filename="{safe.name}"',
     }
 
-import re as _re
-
-_REPORT_STEM_RE = _re.compile(r'^(indexing_report|seo_audit)_[\w\-]+$')
+_REPORT_STEM_RE = re.compile(r'^(indexing_report|seo_audit)_[\w\-]+$')
 
 def _delete_report_stem(stem: str) -> list[str]:
     """Delete every file in REPORTS_DIR that shares *stem*, regardless of extension.
@@ -831,7 +829,7 @@ def _delete_report_stem(stem: str) -> list[str]:
 @app.route("/api/reports/delete/<filename>", methods=["DELETE"])
 @login_required
 def api_reports_delete(filename):
-    if not _re.match(r'^[\w\-\.]+$', filename):
+    if not re.match(r'^[\w\-\.]+$', filename):
         return jsonify({"error": "Invalid filename"}), 400
     stem = filename.rsplit(".", 1)[0]
     deleted = _delete_report_stem(stem)
@@ -843,11 +841,10 @@ def api_reports_delete(filename):
 @login_required
 def api_reports_summary():
     """Return avg score + total issues — accepts .json sidecar or .xlsx."""
-    import re
     name = request.args.get("file", "")
-    if not re.match(r'^[\w\.\-]+\.(json|xlsx)$', name):
+    p = _safe_report_path(name, (".json", ".xlsx"))
+    if p is None:
         return jsonify({"error": "invalid filename"}), 400
-    p = REPORTS_DIR / name
     if not p.exists():
         return jsonify({"error": "not found"}), 404
     try:
@@ -873,8 +870,10 @@ def api_reports_summary():
 @login_required
 def api_reports_preview(filename):
     """Rich preview data for the side drawer — works for both indexing + audit reports."""
-    import re, csv as _csv
-    if not re.match(r'^[\w\-\.]+$', filename):
+    import csv as _csv
+    # Route through _safe_report_path for resolve()+relative_to() traversal guard.
+    # Accept any known report extension; extension-specific logic follows below.
+    if _safe_report_path(filename, (".csv", ".html", ".json", ".xlsx")) is None:
         return jsonify({"error": "Invalid filename"}), 400
 
     base = filename.rsplit(".", 1)[0]
@@ -987,7 +986,7 @@ def api_reports_delete_bulk():
 
     deleted, failed = [], []
     for name in names:
-        if not isinstance(name, str) or not _re.match(r'^[\w\-\.]+$', name):
+        if not isinstance(name, str) or not re.match(r'^[\w\-\.]+$', name):
             failed.append({"name": name, "error": "invalid filename"}); continue
         removed = _delete_report_stem(name.rsplit(".", 1)[0])
         if removed:
@@ -1147,7 +1146,7 @@ def api_compare():
     a_name = request.args.get("a", "")
     b_name = request.args.get("b", "")
     import re as _re
-    if not (_re.match(r"^[\w\.\-]+\.xlsx$", a_name) and _re.match(r"^[\w\.\-]+\.xlsx$", b_name)):
+    if not (re.match(r"^[\w\.\-]+\.xlsx$", a_name) and re.match(r"^[\w\.\-]+\.xlsx$", b_name)):
         return jsonify({"error": "invalid filenames"}), 400
     pa = REPORTS_DIR / a_name; pb = REPORTS_DIR / b_name
     if not (pa.exists() and pb.exists()):
@@ -1272,7 +1271,7 @@ def api_usecase_run_bulk():
 
     if not f or not f.filename:
         return jsonify({"ok": False, "error": "file required"}), 400
-    if not _re.search(r'\.(csv|xlsx)$', f.filename, _re.IGNORECASE):
+    if not re.search(r'\.(csv|xlsx)$', f.filename, re.IGNORECASE):
         return jsonify({"ok": False, "error": "Only .csv or .xlsx accepted"}), 400
 
     from core.seo_audit import USE_CASES
@@ -1282,13 +1281,16 @@ def api_usecase_run_bulk():
     try:
         import tempfile, csv as _csv
         suffix = ".csv" if f.filename.lower().endswith(".csv") else ".xlsx"
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            f.save(tmp.name)
-            tmp_path = Path(tmp.name)
-
-        from core.checker import load_from_csv_excel
-        urls = load_from_csv_excel(tmp_path)[:20]
-        tmp_path.unlink(missing_ok=True)
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                f.save(tmp.name)
+                tmp_path = Path(tmp.name)
+            from core.checker import load_from_csv_excel
+            urls = load_from_csv_excel(tmp_path)[:20]
+        finally:
+            if tmp_path is not None:
+                tmp_path.unlink(missing_ok=True)
 
         if not urls:
             return jsonify({"ok": False, "error": "No valid URLs found in file"}), 400

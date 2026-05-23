@@ -28,9 +28,16 @@ from werkzeug.utils import secure_filename
 
 from core.auth import (
     LOGIN_PAGE,
+    SIGNUP_PAGE,
+    admin_required,
     auth_enabled,
+    authenticate,
+    create_user,
+    delete_user,
     init_auth,
+    list_users,
     login_required,
+    signup_allowed,
     verify_credentials,
 )
 from core.checker import (
@@ -45,7 +52,7 @@ from core.checker import (
     load_from_csv_excel,
     load_history,
 )
-from core.security import is_safe_url, validate_public_url
+from core.security import esc, is_safe_url, validate_public_url
 from core.seo_audit import audit_single_url, generate_excel_report, generate_html_report
 
 # Cap on per-run audit result lists so a huge sitemap can't blow up memory.
@@ -359,9 +366,12 @@ def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
-        if verify_credentials(username, password):
+        identity = authenticate(username, password)
+        if identity:
             session.clear()
-            session["authed"] = True
+            session["authed"]   = True
+            session["username"] = identity["username"]
+            session["is_admin"] = identity["is_admin"]
             session.permanent = True
             return ("", 302, {"Location": "/"})
         page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
@@ -370,10 +380,71 @@ def login():
     return page, 200, {"Content-Type": "text/html"}
 
 
+@app.route("/signup", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
+def signup():
+    if not signup_allowed():
+        return ("Signups are disabled.", 403, {"Content-Type": "text/plain"})
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        confirm  = request.form.get("confirm") or ""
+        if password != confirm:
+            page = SIGNUP_PAGE.replace("__ERROR__", "<div class='err'>Passwords do not match</div>")
+            return page, 400, {"Content-Type": "text/html"}
+        ok, err = create_user(username, password)
+        if not ok:
+            page = SIGNUP_PAGE.replace("__ERROR__", f"<div class='err'>{esc(err)}</div>")
+            return page, 400, {"Content-Type": "text/html"}
+        # Auto-login the new account so the first signup isn't locked out.
+        identity = authenticate(username, password)
+        session.clear()
+        session["authed"]   = True
+        session["username"] = identity["username"]
+        session["is_admin"] = identity["is_admin"]
+        session.permanent = True
+        return ("", 302, {"Location": "/"})
+    page = SIGNUP_PAGE.replace("__ERROR__", "")
+    return page, 200, {"Content-Type": "text/html"}
+
+
 @app.route("/logout", methods=["POST", "GET"])
 def logout():
     session.clear()
     return ("", 302, {"Location": "/login"})
+
+
+# ── User management (admin only) ──────────────────────────────────────────────
+
+@app.route("/api/users", methods=["GET"])
+@admin_required
+def api_users_list():
+    return jsonify({"ok": True, "users": list_users(),
+                    "me": session.get("username"), "signup_allowed": signup_allowed()})
+
+
+@app.route("/api/users", methods=["POST"])
+@admin_required
+def api_users_create():
+    data     = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    is_admin = bool(data.get("is_admin"))
+    ok, err = create_user(username, password, is_admin=is_admin)
+    if not ok:
+        return jsonify({"ok": False, "error": err}), 400
+    return jsonify({"ok": True, "users": list_users()})
+
+
+@app.route("/api/users/<username>", methods=["DELETE"])
+@admin_required
+def api_users_delete(username):
+    if username == session.get("username"):
+        return jsonify({"ok": False, "error": "You cannot delete your own account"}), 400
+    ok, err = delete_user(username)
+    if not ok:
+        return jsonify({"ok": False, "error": err}), 400
+    return jsonify({"ok": True, "users": list_users()})
 
 
 @app.route("/api/index/run", methods=["POST"])
@@ -1056,6 +1127,7 @@ _SETTINGS_ALLOWED_KEYS = {
     "indexnow_key", "indexnow_host",  # Stage 2-B: IndexNow
     "bing_api_key",                   # Stage 3-A: Bing Webmaster
     "groq_api_key",                   # Stage 3-D: Groq AI
+    "allow_signup",                   # Public self-registration toggle
 }
 
 # Sentinel returned by GET in place of a set secret, and recognised by POST as

@@ -14,15 +14,68 @@ tests run without auth. In production:
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
+import re
 import secrets
+import threading
+from datetime import datetime, timezone
 from functools import wraps
+from pathlib import Path
 
 _log = logging.getLogger(__name__)
 
 from flask import Flask, jsonify, redirect, request, session, url_for
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
+# ── Multi-user store ───────────────────────────────────────────────────────────
+# Accounts live in data/users.json: {username: {password_hash, is_admin, created_at}}.
+# The env admin (SEO_SUITE_USERNAME, active only when SEO_SUITE_PASSWORD_HASH is
+# set) is a bootstrap superadmin that lives outside this file and can't be locked
+# out or deleted.
+_USERS_PATH  = Path(__file__).parent.parent / "data" / "users.json"
+_CONFIG_PATH = Path(__file__).parent.parent / "config.json"
+_users_lock  = threading.Lock()
+_USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{3,64}$")
+_MIN_PASSWORD_LEN = 12
+
+
+def _load_users() -> dict:
+    try:
+        data = json.loads(_USERS_PATH.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, ValueError, OSError):
+        return {}
+
+
+def _save_users(users: dict) -> None:
+    _USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _USERS_PATH.write_text(json.dumps(users, indent=2), encoding="utf-8")
+
+
+def _env_admin() -> str | None:
+    """Bootstrap superadmin username, or None when env auth isn't configured."""
+    if os.environ.get("SEO_SUITE_PASSWORD_HASH"):
+        return os.environ.get("SEO_SUITE_USERNAME", "admin")
+    return None
+
+
+def _safe_check(pw_hash: str, password: str) -> bool:
+    if not pw_hash:
+        return False
+    try:
+        return check_password_hash(pw_hash, password)
+    except Exception:
+        return False
+
+
+def signup_allowed() -> bool:
+    """Public self-registration toggle (config.json 'allow_signup', default True)."""
+    try:
+        return bool(json.loads(_CONFIG_PATH.read_text(encoding="utf-8")).get("allow_signup", True))
+    except (FileNotFoundError, ValueError, OSError):
+        return True
 
 
 def init_auth(app: Flask) -> None:
@@ -51,28 +104,102 @@ def init_auth(app: Flask) -> None:
 
 
 def auth_enabled() -> bool:
-    return bool(os.environ.get("SEO_SUITE_PASSWORD_HASH"))
+    """Auth is on if an env admin is configured OR any file-based user exists."""
+    return bool(os.environ.get("SEO_SUITE_PASSWORD_HASH")) or bool(_load_users())
+
+
+def authenticate(username: str, password: str) -> dict | None:
+    """Return {username, is_admin} on success, else None.
+
+    Checks the env superadmin first, then the file-based user store.
+    """
+    username = (username or "").strip()
+    if not username:
+        return None
+    env_user = _env_admin()
+    if env_user and username == env_user:
+        if _safe_check(os.environ.get("SEO_SUITE_PASSWORD_HASH", ""), password):
+            return {"username": username, "is_admin": True}
+        _log.warning("Failed login attempt for username: %s", username)
+        return None
+    user = _load_users().get(username)
+    if user and _safe_check(user.get("password_hash", ""), password):
+        return {"username": username, "is_admin": bool(user.get("is_admin"))}
+    _log.warning("Failed login attempt for username: %s", username)
+    return None
 
 
 def verify_credentials(username: str, password: str) -> bool:
-    expected_user = os.environ.get("SEO_SUITE_USERNAME", "admin")
-    pw_hash = os.environ.get("SEO_SUITE_PASSWORD_HASH", "")
-    if not pw_hash:
-        return False
-    if username != expected_user:
-        _log.warning("Failed login attempt for username: %s", username)
-        return False
-    try:
-        result = check_password_hash(pw_hash, password)
-    except Exception:
-        result = False
-    if not result:
-        _log.warning("Failed login attempt for username: %s", username)
-    return result
+    """Backwards-compatible boolean form of authenticate()."""
+    return authenticate(username, password) is not None
+
+
+def create_user(username: str, password: str, is_admin: bool = False) -> tuple[bool, str | None]:
+    """Create a file-based user. Returns (ok, error_message)."""
+    username = (username or "").strip()
+    if not _USERNAME_RE.match(username):
+        return False, "Username must be 3–64 chars: letters, numbers, and . _ - @"
+    if len(password or "") < _MIN_PASSWORD_LEN:
+        return False, f"Password must be at least {_MIN_PASSWORD_LEN} characters"
+    if username == _env_admin():
+        return False, "That username is reserved by the environment admin"
+    with _users_lock:
+        users = _load_users()
+        if username in users:
+            return False, "That username already exists"
+        # Bootstrap: the first account becomes admin when there's no env admin.
+        if not users and _env_admin() is None:
+            is_admin = True
+        users[username] = {
+            "password_hash": generate_password_hash(password),
+            "is_admin": bool(is_admin),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _save_users(users)
+    _log.info("User created: %s (admin=%s)", username, bool(is_admin))
+    return True, None
+
+
+def delete_user(username: str) -> tuple[bool, str | None]:
+    """Delete a file-based user. Refuses to delete the env admin or the last admin."""
+    username = (username or "").strip()
+    if username == _env_admin():
+        return False, "Cannot delete the environment admin"
+    with _users_lock:
+        users = _load_users()
+        if username not in users:
+            return False, "No such user"
+        if users[username].get("is_admin") and _env_admin() is None:
+            others = [u for u, v in users.items() if u != username and v.get("is_admin")]
+            if not others:
+                return False, "Cannot delete the last admin — promote another user first"
+        del users[username]
+        _save_users(users)
+    _log.info("User deleted: %s", username)
+    return True, None
+
+
+def list_users() -> list[dict]:
+    """List accounts (no password hashes). Includes the env admin if configured."""
+    out: list[dict] = []
+    env = _env_admin()
+    if env:
+        out.append({"username": env, "is_admin": True, "source": "env", "created_at": None})
+    for u, v in _load_users().items():
+        out.append({
+            "username": u, "is_admin": bool(v.get("is_admin")),
+            "source": "file", "created_at": v.get("created_at"),
+        })
+    return out
 
 
 def is_authed() -> bool:
     return not auth_enabled() or session.get("authed") is True
+
+
+def is_admin() -> bool:
+    """True for the current session's admin, or always when auth is disabled (local dev)."""
+    return not auth_enabled() or session.get("is_admin") is True
 
 
 def login_required(fn):
@@ -81,6 +208,22 @@ def login_required(fn):
         if not auth_enabled() or session.get("authed") is True:
             return fn(*args, **kwargs)
         # API callers get 401 JSON; browsers get redirected to /login
+        if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
+            return jsonify({"error": "Authentication required"}), 401
+        return redirect(url_for("login"))
+    return wrapper
+
+
+def admin_required(fn):
+    """Like login_required, but also requires the session to be an admin."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not auth_enabled():
+            return fn(*args, **kwargs)  # local dev — full access
+        if session.get("authed") is True and session.get("is_admin") is True:
+            return fn(*args, **kwargs)
+        if session.get("authed") is True:
+            return jsonify({"error": "Admin privileges required"}), 403
         if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
             return jsonify({"error": "Authentication required"}), 401
         return redirect(url_for("login"))
@@ -267,7 +410,7 @@ input:focus::placeholder{color:#5C6480}
 
     <hr class="divider">
     <div class="hint">
-      Set <code>SEO_SUITE_USERNAME</code> &amp; <code>SEO_SUITE_PASSWORD_HASH</code> in your <code>.env</code> file to enable auth
+      Don't have an account? <a href="/signup" style="color:#8B5CF6;font-weight:600">Create one</a>
     </div>
   </div>
 
@@ -291,6 +434,97 @@ function onSub(f){
   var b=document.getElementById('sub-btn');
   b.classList.add('loading');
   b.innerHTML='<svg viewBox="0 0 24 24" style="animation:spin .7s linear infinite"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Signing in…';
+}
+</script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</body>
+</html>"""
+
+
+# Signup page reuses the login page's <head> (all shared CSS) so the two stay
+# visually consistent without duplicating the stylesheet.
+SIGNUP_PAGE = LOGIN_PAGE.split("</head>")[0] + """</head>
+<body>
+<div class="grid"></div>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div class="logo-right">
+      <span class="logo-text">SEO Suite</span>
+      <span class="logo-sub">Professional SEO Platform</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Create your account</div>
+    <div class="card-sub">Sign up to access your SEO dashboard</div>
+
+    <form method="post" action="/signup" id="sf" onsubmit="onSub(this)">
+      <div class="field">
+        <label for="un">Username</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <input id="un" name="username" type="text" autocomplete="username"
+                 placeholder="your-username" required autofocus>
+        </div>
+      </div>
+      <div class="field">
+        <label for="pw">Password</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input id="pw" name="password" type="password" autocomplete="new-password"
+                 placeholder="min 12 characters" required minlength="12">
+          <button type="button" class="pw-toggle" onclick="togglePw('pw')" title="Show / hide password">
+            <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="pw2">Confirm Password</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input id="pw2" name="confirm" type="password" autocomplete="new-password"
+                 placeholder="repeat password" required minlength="12">
+        </div>
+      </div>
+
+      <button class="btn" type="submit" id="sub-btn">
+        <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Create account
+      </button>
+      __ERROR__
+    </form>
+
+    <hr class="divider">
+    <div class="hint">
+      Already have an account? <a href="/login" style="color:#8B5CF6;font-weight:600">Sign in</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>SEO Suite</span>
+    <span class="footer-dot"></span>
+    <span>v2.0</span>
+  </div>
+</div>
+
+<script>
+function togglePw(id){
+  var i=document.getElementById(id);
+  i.type = i.type==='password' ? 'text' : 'password';
+}
+function onSub(f){
+  var b=document.getElementById('sub-btn');
+  b.classList.add('loading');
+  b.innerHTML='<svg viewBox="0 0 24 24" style="animation:spin .7s linear infinite"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Creating…';
 }
 </script>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>

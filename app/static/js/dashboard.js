@@ -1977,6 +1977,8 @@ function saveSettings(){
     // IndexNow (Stage 2-B)
     indexnow_key:        document.getElementById('cfg-indexnow-key')?.value||'',
     indexnow_host:       document.getElementById('cfg-indexnow-host')?.value||'',
+    // Public signup toggle (default on)
+    allow_signup:        document.getElementById('cfg-allow-signup') ? document.getElementById('cfg-allow-signup').checked : true,
     email:  {
       enabled:     document.getElementById('cfg-email-toggle')?.checked||false,
       smtp_host:   document.getElementById('cfg-smtp-host')?.value||'',
@@ -2142,11 +2144,85 @@ function loadSettings(){
     _set('cfg-schedule-sitemap', c.schedule?.sitemap_url);
     _set('cfg-schedule-limit',   c.schedule?.limit);
 
+    _chk('cfg-allow-signup', c.allow_signup !== false);  // default on
     updateSettingBadges();
     _initThemePref();
     _initSettingsEnhancements();
+    loadUsers();
     _clearSettingsDirty();   // freshly-loaded form is clean
   }).catch(()=>{});
+}
+
+// ── Settings: user management (admin only) ────────────────────────────────────
+function loadUsers(){
+  const panel = document.getElementById('users-admin');
+  fetch('/api/users').then(r=>{
+    if(r.status===403 || r.status===401){ if(panel) panel.style.display='none'; return null; }
+    return r.json();
+  }).then(d=>{
+    if(!d || !d.ok){ return; }
+    if(panel) panel.style.display='';   // current user is an admin
+    const list = document.getElementById('users-list');
+    if(!list) return;
+    if(!d.users.length){ list.innerHTML='<div style="color:var(--text3);font-size:12px">No users yet</div>'; return; }
+    list.innerHTML='';
+    d.users.forEach(u=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border:1px solid var(--c-border);border-radius:8px';
+      const tags=[];
+      if(u.is_admin) tags.push('<span style="font-size:10px;background:rgba(139,92,246,.15);color:#8B5CF6;padding:1px 7px;border-radius:10px">admin</span>');
+      if(u.source==='env') tags.push('<span style="font-size:10px;color:var(--text3)">env</span>');
+      if(u.username===d.me) tags.push('<span style="font-size:10px;color:var(--text3)">you</span>');
+      const left=document.createElement('div');
+      left.style.cssText='display:flex;align-items:center;gap:8px;font-size:13px';
+      left.innerHTML=`<b>${_esc(u.username)}</b> ${tags.join(' ')}`;
+      row.appendChild(left);
+      // Env admin and your own account can't be deleted here.
+      if(u.source!=='env' && u.username!==d.me){
+        const del=document.createElement('button');
+        del.className='btn btn-ghost btn-sm';
+        del.textContent='Delete';
+        del.onclick=()=>deleteUser(u.username);
+        row.appendChild(del);
+      }
+      list.appendChild(row);
+    });
+  }).catch(()=>{ if(panel) panel.style.display='none'; });
+}
+
+function _esc(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
+
+async function createUser(){
+  const name=(document.getElementById('new-user-name')?.value||'').trim();
+  const pass=document.getElementById('new-user-pass')?.value||'';
+  const isAdmin=document.getElementById('new-user-admin')?.checked||false;
+  const errEl=document.getElementById('new-user-error');
+  const _err=m=>{ if(errEl){ errEl.textContent=m; errEl.style.display=''; } };
+  if(errEl) errEl.style.display='none';
+  if(!name){ _err('Username required'); return; }
+  if(pass.length<12){ _err('Password must be at least 12 characters'); return; }
+  try{
+    const r=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:name,password:pass,is_admin:isAdmin})});
+    const d=await r.json();
+    if(!r.ok || !d.ok){ _err(d.error||'Create failed'); return; }
+    document.getElementById('new-user-name').value='';
+    document.getElementById('new-user-pass').value='';
+    document.getElementById('new-user-admin').checked=false;
+    toast('User created','success');
+    loadUsers();
+  }catch(e){ _err('Request failed'); }
+}
+
+async function deleteUser(username){
+  if(!confirm('Delete user "'+username+'"? This cannot be undone.')) return;
+  try{
+    const r=await fetch('/api/users/'+encodeURIComponent(username),{method:'DELETE'});
+    const d=await r.json();
+    if(!r.ok || !d.ok){ toast(d.error||'Delete failed','error'); return; }
+    toast('User deleted','success');
+    loadUsers();
+  }catch(e){ toast('Request failed','error'); }
 }
 
 // ── Settings: Test-connection buttons, dirty guard, search filter ─────────────

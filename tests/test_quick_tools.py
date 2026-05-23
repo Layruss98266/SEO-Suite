@@ -79,3 +79,29 @@ class TestCodeToTextRatio:
             r = code_to_text_ratio("https://e.com/")
         assert r["ok"] is True
         assert r["ratio_pct"] > 0
+
+
+from tools.quick_tools import serp_snippet_preview
+
+
+class TestSerpFavicon:
+    def test_uses_declared_icon_link(self):
+        html = (
+            '<html><head><title>T</title>'
+            '<link rel="icon" href="/assets/fav.png">'
+            '</head><body></body></html>'
+        )
+        m = MagicMock(); m.status_code = 200; m.url = "https://e.com/page"; m.text = html
+        with patch("tools.quick_tools.fetch_html", return_value=m), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/page"):
+            r = serp_snippet_preview("https://e.com/page")
+        assert r["ok"] is True
+        assert r["favicon_url"] == "https://e.com/assets/fav.png"
+
+    def test_falls_back_to_root_favicon(self):
+        html = '<html><head><title>T</title></head><body></body></html>'
+        m = MagicMock(); m.status_code = 200; m.url = "https://e.com/page"; m.text = html
+        with patch("tools.quick_tools.fetch_html", return_value=m), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/page"):
+            r = serp_snippet_preview("https://e.com/page")
+        assert r["favicon_url"] == "https://e.com/favicon.ico"

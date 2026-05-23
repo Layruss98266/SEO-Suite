@@ -68,7 +68,12 @@ def serp_snippet_preview(url: str) -> dict:
         breadcrumb_parts = [parsed.netloc] + [p for p in parsed.path.split("/") if p]
         display_url = " › ".join(breadcrumb_parts)
 
-        favicon_url = f"{parsed.scheme}://{parsed.netloc}/favicon.ico"
+        icon_tag = soup.find("link", rel=lambda v: v and "icon" in v.lower())
+        icon_href = _attr_text(icon_tag, "href") if icon_tag else ""
+        if icon_href:
+            favicon_url = urljoin(final_url, icon_href)
+        else:
+            favicon_url = f"{parsed.scheme}://{parsed.netloc}/favicon.ico"
 
         warnings = []
         if not title:

@@ -38,7 +38,6 @@ from core.auth import (
     list_users,
     login_required,
     signup_allowed,
-    verify_credentials,
 )
 from core.checker import (
     build_gsc_service,

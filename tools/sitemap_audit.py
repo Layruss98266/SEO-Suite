@@ -101,8 +101,17 @@ def audit_sitemap(
     if is_index:
         all_urls = fetch_sitemap_urls(sitemap_url)
     else:
-        all_urls = re.findall(r"<loc>\s*(.*?)\s*</loc>", xml_text_body, re.IGNORECASE | re.DOTALL)
-        all_urls = [u.strip() for u in all_urls if u.strip()]
+        raw_locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", xml_text_body, re.IGNORECASE | re.DOTALL)
+        all_urls = []
+        for loc in raw_locs:
+            # Unwrap optional CDATA so a <loc><![CDATA[https://...]]></loc> entry
+            # yields the bare URL rather than the literal CDATA wrapper.
+            m = re.match(r"<!\[CDATA\[(.*?)\]\]>", loc.strip(), re.DOTALL)
+            url = (m.group(1) if m else loc).strip()
+            # Keep only real http(s) URLs — mirrors fetch_sitemap_urls behaviour
+            # and prevents malformed inner content from being counted as a URL.
+            if url.lower().startswith(("http://", "https://")):
+                all_urls.append(url)
     total_urls = len(all_urls)
 
     # ── Derive sitemap hostname for HTTP-in-HTTPS check ────────────────────

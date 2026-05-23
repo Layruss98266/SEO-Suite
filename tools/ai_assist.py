@@ -10,9 +10,10 @@ Environment variable: GROQ_API_KEY
 Config key:           groq_api_key
 """
 
-import json
+import time
 
-from core.security import safe_requests_post
+from core.security import safe_requests_post, validate_public_url
+from tools._common import safe_error
 
 _GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 _DEFAULT_MODEL  = "llama-3.1-8b-instant"   # fast + free tier friendly
@@ -23,7 +24,7 @@ _MAX_AUDIT_CHARS = 8000
 
 def _chat(messages: list[dict], api_key: str, model: str = _DEFAULT_MODEL,
           temperature: float = 0.4, max_tokens: int = 800) -> str:
-    """Send a chat completion request to Groq. Returns the assistant reply text."""
+    """Send a chat completion request to Groq. Retries on 429/5xx. Returns reply text."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type":  "application/json",
@@ -34,10 +35,25 @@ def _chat(messages: list[dict], api_key: str, model: str = _DEFAULT_MODEL,
         "temperature": temperature,
         "max_tokens":  max_tokens,
     }
-    resp = safe_requests_post(_GROQ_CHAT_URL, headers=headers, json=body, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    return data["choices"][0]["message"]["content"].strip()
+    # Groq's free tier rate-limits aggressively (429) and occasionally 5xxs.
+    # Retry up to 3 times so a transient throttle doesn't surface as a hard
+    # failure to the user mid-audit.
+    last_status = None
+    for attempt in range(3):
+        resp = safe_requests_post(_GROQ_CHAT_URL, headers=headers, json=body, timeout=30)
+        last_status = resp.status_code
+        if resp.status_code in (429,) or resp.status_code >= 500:
+            if attempt < 2:
+                # Honour the server's Retry-After when it gives a numeric value;
+                # otherwise back off exponentially (0.5s, 1s).
+                retry_after = resp.headers.get("Retry-After")
+                delay = float(retry_after) if (retry_after and retry_after.replace(".", "", 1).isdigit()) else 0.5 * (2 ** attempt)
+                time.sleep(delay)
+                continue
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    raise RuntimeError(f"Groq API unavailable (HTTP {last_status})")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -128,7 +144,7 @@ def explain_audit(audit_results: list[dict] | dict, api_key: str,
             },
         }
     except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+        return {"ok": False, "error": safe_error(exc)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -145,6 +161,11 @@ def draft_meta(url: str, current_title: str, current_desc: str,
     """
     if not api_key:
         return {"ok": False, "error": "Groq API key not configured (Settings → groq_api_key)"}
+
+    try:
+        url = validate_public_url(url)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
 
     queries_text = ""
     if top_queries:
@@ -203,4 +224,4 @@ def draft_meta(url: str, current_title: str, current_desc: str,
 
         return {"ok": True, "variants": variants[:3], "model": model}
     except Exception as exc:
-        return {"ok": False, "error": str(exc)}
+        return {"ok": False, "error": safe_error(exc)}

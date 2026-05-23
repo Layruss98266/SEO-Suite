@@ -667,7 +667,11 @@ def generate_schema(schema_type: str, data: dict) -> dict:
             return {"ok": False, "error": "Unhandled schema type"}
 
         markup = f'<script type="application/ld+json">\n{json.dumps(obj, indent=2)}\n</script>'
-        return {"ok": True, "schema_type": schema_type, "markup": markup, "json": obj}
+        warnings = []
+        for field in SCHEMA_TEMPLATES[schema_type]["fields"]:
+            if field.get("required") and not str(data.get(field["id"], "")).strip():
+                warnings.append(f"Missing required field: {field['label']}")
+        return {"ok": True, "schema_type": schema_type, "markup": markup, "json": obj, "warnings": warnings}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -690,33 +694,42 @@ def generate_robots_txt(data: dict) -> dict:
       sitemap: str (optional sitemap URL)
       crawl_delay: int (optional)
     """
+    def _clean(s: object) -> str:
+        # Strip CR/LF so a value can't inject a new directive line
+        return str(s).replace("\r", " ").replace("\n", " ").strip()
+
     try:
-        lines = []
+        warnings: list[str] = []
+        lines: list[str] = []
         rules = data.get("rules", [])
         if not rules:
             rules = [{"user_agent": "*", "disallow": [], "allow": []}]
 
         for rule in rules:
-            ua = rule.get("user_agent", "*") or "*"
+            ua = _clean(rule.get("user_agent", "*")) or "*"
             lines.append(f"User-agent: {ua}")
-            crawl_delay = rule.get("crawl_delay", "") or data.get("crawl_delay", "")
+            raw_delay = rule.get("crawl_delay", "") or data.get("crawl_delay", "")
             for path in rule.get("disallow") or []:
                 if path:
-                    lines.append(f"Disallow: {path}")
+                    lines.append(f"Disallow: {_clean(path)}")
             for path in rule.get("allow") or []:
                 if path:
-                    lines.append(f"Allow: {path}")
-            if crawl_delay:
-                lines.append(f"Crawl-delay: {crawl_delay}")
+                    lines.append(f"Allow: {_clean(path)}")
+            if raw_delay not in (None, ""):
+                try:
+                    float(raw_delay)
+                    lines.append(f"Crawl-delay: {_clean(raw_delay)}")
+                except (TypeError, ValueError):
+                    warnings.append(f"Dropped non-numeric crawl_delay '{raw_delay}' for {ua}")
             lines.append("")
 
         if data.get("sitemap"):
-            lines.append(f"Sitemap: {data['sitemap']}")
+            lines.append(f"Sitemap: {_clean(data['sitemap'])}")
 
-        content = "\n".join(lines).strip()
-        return {"ok": True, "content": content}
+        return {"ok": True, "content": "\n".join(lines).strip(), "warnings": warnings}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        from tools._common import safe_error
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 9: XML Sitemap Generator ───────────────────────────────────────────
@@ -728,34 +741,57 @@ def generate_sitemap(data: dict) -> dict:
     data keys:
       urls: [{url, lastmod, changefreq, priority}]
     """
+    from urllib.parse import urlparse
+
+    from tools._common import xml_text
+
+    _VALID_CHANGEFREQ = {"always", "hourly", "daily", "weekly", "monthly", "yearly", "never"}
     try:
         urls = data.get("urls", [])
         if not urls:
             return {"ok": False, "error": "At least one URL is required"}
 
+        warnings: list[str] = []
         lines = [
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
         ]
+        count = 0
         for entry in urls:
             url = (entry.get("url") or "").strip()
             if not url:
                 continue
+            if urlparse(url).scheme not in ("http", "https"):
+                warnings.append(f"Skipped URL with invalid scheme: {url}")
+                continue
             lines.append("  <url>")
-            lines.append(f"    <loc>{url}</loc>")
+            lines.append(f"    <loc>{xml_text(url)}</loc>")
             if entry.get("lastmod"):
-                lines.append(f"    <lastmod>{entry['lastmod']}</lastmod>")
-            if entry.get("changefreq"):
-                lines.append(f"    <changefreq>{entry['changefreq']}</changefreq>")
-            if entry.get("priority"):
-                lines.append(f"    <priority>{entry['priority']}</priority>")
+                lines.append(f"    <lastmod>{xml_text(entry['lastmod'])}</lastmod>")
+            cf = (entry.get("changefreq") or "").strip().lower()
+            if cf:
+                if cf in _VALID_CHANGEFREQ:
+                    lines.append(f"    <changefreq>{xml_text(cf)}</changefreq>")
+                else:
+                    warnings.append(f"Dropped invalid changefreq '{cf}' for {url}")
+            pr = entry.get("priority")
+            if pr not in (None, ""):
+                try:
+                    pf = float(pr)
+                    if 0.0 <= pf <= 1.0:
+                        lines.append(f"    <priority>{xml_text(pr)}</priority>")
+                    else:
+                        warnings.append(f"Dropped out-of-range priority '{pr}' for {url} (must be 0.0-1.0)")
+                except (TypeError, ValueError):
+                    warnings.append(f"Dropped non-numeric priority '{pr}' for {url}")
             lines.append("  </url>")
+            count += 1
 
         lines.append("</urlset>")
-        content = "\n".join(lines)
-        return {"ok": True, "content": content, "url_count": len([e for e in urls if e.get("url")])}
+        return {"ok": True, "content": "\n".join(lines), "url_count": count, "warnings": warnings}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        from tools._common import safe_error
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 10: Hreflang Tag Generator ─────────────────────────────────────────
@@ -769,43 +805,54 @@ def generate_hreflang(data: dict) -> dict:
       include_xdefault: bool
       xdefault_url: str
     """
+    import re
+    from urllib.parse import urlparse
+
+    from tools._common import xml_text
+
+    _LOCALE_RE = re.compile(r"^([a-z]{2,3}(-[A-Za-z0-9]{2,8})?|x-default)$", re.IGNORECASE)
     try:
         items = data.get("items", [])
         if not items:
             return {"ok": False, "error": "At least one locale/URL pair is required"}
 
-        tags = []
+        warnings: list[str] = []
+        tags: list[str] = []
+        header_vals: list[str] = []
         for item in items:
             locale = (item.get("locale") or "").strip()
             url = (item.get("url") or "").strip()
-            if locale and url:
-                tags.append(f'<link rel="alternate" hreflang="{locale}" href="{url}">')
+            if not locale or not url:
+                continue
+            if not _LOCALE_RE.match(locale):
+                warnings.append(f"Dropped invalid locale '{locale}' (expected e.g. en, en-US, x-default)")
+                continue
+            if urlparse(url).scheme not in ("http", "https"):
+                warnings.append(f"Dropped URL with invalid scheme for locale '{locale}': {url}")
+                continue
+            tags.append(f'<link rel="alternate" hreflang="{xml_text(locale)}" href="{xml_text(url)}">')
+            header_vals.append(f'<{xml_text(url)}>; rel="alternate"; hreflang="{xml_text(locale)}"')
 
         if data.get("include_xdefault") and data.get("xdefault_url"):
-            tags.append(
-                f'<link rel="alternate" hreflang="x-default" href="{data["xdefault_url"]}">'
-            )
+            xd = str(data["xdefault_url"]).strip()
+            if urlparse(xd).scheme in ("http", "https"):
+                tags.append(f'<link rel="alternate" hreflang="x-default" href="{xml_text(xd)}">')
+            else:
+                warnings.append(f"Dropped x-default URL with invalid scheme: {xd}")
 
         if not tags:
-            return {"ok": False, "error": "No valid locale/URL pairs found"}
-
-        html_block = "\n".join(tags)
-        # Also produce HTTP header format
-        header_vals = [
-            f'<{item["url"]}>; rel="alternate"; hreflang="{item["locale"]}"'
-            for item in items
-            if item.get("locale") and item.get("url")
-        ]
-        http_header = "Link: " + ", ".join(header_vals) if header_vals else ""
+            return {"ok": False, "error": "No valid locale/URL pairs found", "warnings": warnings}
 
         return {
             "ok": True,
-            "html_tags": html_block,
-            "http_header": http_header,
+            "html_tags": "\n".join(tags),
+            "http_header": "Link: " + ", ".join(header_vals) if header_vals else "",
             "count": len(tags),
+            "warnings": warnings,
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        from tools._common import safe_error
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 11: Meta Tags Generator ────────────────────────────────────────────

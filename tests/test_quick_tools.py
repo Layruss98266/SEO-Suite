@@ -1,4 +1,14 @@
-from tools.quick_tools import _attr_text
+from unittest.mock import patch, MagicMock
+
+from tools.quick_tools import _attr_text, _check_link
+
+
+def _resp(status=200, url="https://e.com/", headers=None):
+    m = MagicMock()
+    m.status_code = status
+    m.url = url
+    m.headers = headers or {}
+    return m
 
 
 class FakeTag:
@@ -21,3 +31,77 @@ class TestAttrText:
 
     def test_string_attribute_is_stripped(self):
         assert _attr_text(FakeTag("  hello  "), "content") == "hello"
+
+
+class TestCheckLink:
+    def test_redirect_detected_via_final_url(self):
+        final = _resp(status=200, url="https://e.com/new")
+        with patch("tools.quick_tools.validate_public_url", return_value="https://e.com/old"), \
+             patch("tools.quick_tools.safe_requests_head", return_value=final):
+            r = _check_link("https://e.com/old", "e.com")
+        assert r["redirect_to"] == "https://e.com/new"
+        assert r["ok"] is True
+
+    def test_405_falls_back_to_get(self):
+        head = _resp(status=405, url="https://e.com/x")
+        get  = _resp(status=200, url="https://e.com/x")
+        with patch("tools.quick_tools.validate_public_url", return_value="https://e.com/x"), \
+             patch("tools.quick_tools.safe_requests_head", return_value=head), \
+             patch("tools.quick_tools.safe_requests_get", return_value=get):
+            r = _check_link("https://e.com/x", "e.com")
+        assert r["status"] == 200
+        assert r["ok"] is True
+
+    def test_non_http_scheme_skipped(self):
+        r = _check_link("mailto:a@b.com", "e.com")
+        assert r["type"] == "skip"
+
+
+from tools.quick_tools import code_to_text_ratio
+
+
+class TestCodeToTextRatio:
+    def test_oversized_response_sanitised(self):
+        from tools._common import ToolFetchError
+        with patch("tools.quick_tools.fetch_html", side_effect=ToolFetchError("Response too large (>5 MB)")), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/"):
+            r = code_to_text_ratio("https://e.com/")
+        assert r["ok"] is False
+        assert "too large" in r["error"].lower()
+
+    def test_basic_ratio_computed(self):
+        m = MagicMock()
+        m.status_code = 200
+        m.url = "https://e.com/"
+        m.text = "<html><body>" + ("hello world " * 50) + "</body></html>"
+        with patch("tools.quick_tools.fetch_html", return_value=m), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/"):
+            r = code_to_text_ratio("https://e.com/")
+        assert r["ok"] is True
+        assert r["ratio_pct"] > 0
+
+
+from tools.quick_tools import serp_snippet_preview
+
+
+class TestSerpFavicon:
+    def test_uses_declared_icon_link(self):
+        html = (
+            '<html><head><title>T</title>'
+            '<link rel="icon" href="/assets/fav.png">'
+            '</head><body></body></html>'
+        )
+        m = MagicMock(); m.status_code = 200; m.url = "https://e.com/page"; m.text = html
+        with patch("tools.quick_tools.fetch_html", return_value=m), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/page"):
+            r = serp_snippet_preview("https://e.com/page")
+        assert r["ok"] is True
+        assert r["favicon_url"] == "https://e.com/assets/fav.png"
+
+    def test_falls_back_to_root_favicon(self):
+        html = '<html><head><title>T</title></head><body></body></html>'
+        m = MagicMock(); m.status_code = 200; m.url = "https://e.com/page"; m.text = html
+        with patch("tools.quick_tools.fetch_html", return_value=m), \
+             patch("tools.quick_tools.validate_public_url", return_value="https://e.com/page"):
+            r = serp_snippet_preview("https://e.com/page")
+        assert r["favicon_url"] == "https://e.com/favicon.ico"

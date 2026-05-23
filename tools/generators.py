@@ -728,34 +728,56 @@ def generate_sitemap(data: dict) -> dict:
     data keys:
       urls: [{url, lastmod, changefreq, priority}]
     """
+    from urllib.parse import urlparse
+    from tools._common import xml_text
+
+    _VALID_CHANGEFREQ = {"always", "hourly", "daily", "weekly", "monthly", "yearly", "never"}
     try:
         urls = data.get("urls", [])
         if not urls:
             return {"ok": False, "error": "At least one URL is required"}
 
+        warnings: list[str] = []
         lines = [
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
         ]
+        count = 0
         for entry in urls:
             url = (entry.get("url") or "").strip()
             if not url:
                 continue
+            if urlparse(url).scheme not in ("http", "https"):
+                warnings.append(f"Skipped URL with invalid scheme: {url}")
+                continue
             lines.append("  <url>")
-            lines.append(f"    <loc>{url}</loc>")
+            lines.append(f"    <loc>{xml_text(url)}</loc>")
             if entry.get("lastmod"):
-                lines.append(f"    <lastmod>{entry['lastmod']}</lastmod>")
-            if entry.get("changefreq"):
-                lines.append(f"    <changefreq>{entry['changefreq']}</changefreq>")
-            if entry.get("priority"):
-                lines.append(f"    <priority>{entry['priority']}</priority>")
+                lines.append(f"    <lastmod>{xml_text(entry['lastmod'])}</lastmod>")
+            cf = (entry.get("changefreq") or "").strip().lower()
+            if cf:
+                if cf in _VALID_CHANGEFREQ:
+                    lines.append(f"    <changefreq>{xml_text(cf)}</changefreq>")
+                else:
+                    warnings.append(f"Dropped invalid changefreq '{cf}' for {url}")
+            pr = entry.get("priority")
+            if pr not in (None, ""):
+                try:
+                    pf = float(pr)
+                    if 0.0 <= pf <= 1.0:
+                        lines.append(f"    <priority>{xml_text(pr)}</priority>")
+                    else:
+                        warnings.append(f"Dropped out-of-range priority '{pr}' for {url} (must be 0.0-1.0)")
+                except (TypeError, ValueError):
+                    warnings.append(f"Dropped non-numeric priority '{pr}' for {url}")
             lines.append("  </url>")
+            count += 1
 
         lines.append("</urlset>")
-        content = "\n".join(lines)
-        return {"ok": True, "content": content, "url_count": len([e for e in urls if e.get("url")])}
+        return {"ok": True, "content": "\n".join(lines), "url_count": count, "warnings": warnings}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        from tools._common import safe_error
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 10: Hreflang Tag Generator ─────────────────────────────────────────

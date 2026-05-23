@@ -1,6 +1,10 @@
 import pytest
+from unittest.mock import patch, MagicMock
+
+import requests
 
 from tools._common import safe_error, xml_text, ToolFetchError, HEADERS, DEFAULT_TIMEOUT, MAX_RESPONSE_BYTES
+from tools._common import fetch_html
 
 
 class TestSafeError:
@@ -36,3 +40,49 @@ class TestConstants:
         assert "User-Agent" in HEADERS
         assert DEFAULT_TIMEOUT == 15
         assert MAX_RESPONSE_BYTES == 5_000_000
+
+
+def _fake_response(*, status=200, headers=None, chunks=(b"<html></html>",)):
+    resp = MagicMock()
+    resp.status_code = status
+    resp.headers = headers or {}
+    resp.iter_content = MagicMock(return_value=iter(chunks))
+    resp.close = MagicMock()
+    return resp
+
+
+class TestFetchHtml:
+    def test_returns_response_under_cap(self):
+        fake = _fake_response(chunks=(b"abc", b"def"))
+        with patch("tools._common.safe_requests_get", return_value=fake):
+            resp = fetch_html("https://example.com")
+        assert resp is fake
+
+    def test_aborts_when_content_length_exceeds_cap(self):
+        fake = _fake_response(headers={"Content-Length": str(10_000_000)})
+        with patch("tools._common.safe_requests_get", return_value=fake):
+            with pytest.raises(ToolFetchError) as ei:
+                fetch_html("https://example.com", max_bytes=5_000_000)
+        assert "too large" in str(ei.value).lower()
+
+    def test_aborts_when_streamed_bytes_exceed_cap(self):
+        big = b"x" * 3_000_000
+        fake = _fake_response(chunks=(big, big))  # 6 MB across chunks, no Content-Length
+        with patch("tools._common.safe_requests_get", return_value=fake):
+            with pytest.raises(ToolFetchError) as ei:
+                fetch_html("https://example.com", max_bytes=5_000_000)
+        assert "too large" in str(ei.value).lower()
+
+    def test_retries_on_connection_error_then_succeeds(self):
+        good = _fake_response()
+        seq = [requests.ConnectionError("boom"), good]
+        with patch("tools._common.safe_requests_get", side_effect=seq), \
+             patch("tools._common.time.sleep"):
+            resp = fetch_html("https://example.com", retries=2)
+        assert resp is good
+
+    def test_raises_tool_fetch_error_after_exhausting_retries(self):
+        with patch("tools._common.safe_requests_get", side_effect=requests.ConnectionError("boom")), \
+             patch("tools._common.time.sleep"):
+            with pytest.raises(ToolFetchError):
+                fetch_html("https://example.com", retries=2)

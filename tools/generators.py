@@ -690,33 +690,42 @@ def generate_robots_txt(data: dict) -> dict:
       sitemap: str (optional sitemap URL)
       crawl_delay: int (optional)
     """
+    def _clean(s: object) -> str:
+        # Strip CR/LF so a value can't inject a new directive line
+        return str(s).replace("\r", " ").replace("\n", " ").strip()
+
     try:
-        lines = []
+        warnings: list[str] = []
+        lines: list[str] = []
         rules = data.get("rules", [])
         if not rules:
             rules = [{"user_agent": "*", "disallow": [], "allow": []}]
 
         for rule in rules:
-            ua = rule.get("user_agent", "*") or "*"
+            ua = _clean(rule.get("user_agent", "*")) or "*"
             lines.append(f"User-agent: {ua}")
-            crawl_delay = rule.get("crawl_delay", "") or data.get("crawl_delay", "")
+            raw_delay = rule.get("crawl_delay", "") or data.get("crawl_delay", "")
             for path in rule.get("disallow") or []:
                 if path:
-                    lines.append(f"Disallow: {path}")
+                    lines.append(f"Disallow: {_clean(path)}")
             for path in rule.get("allow") or []:
                 if path:
-                    lines.append(f"Allow: {path}")
-            if crawl_delay:
-                lines.append(f"Crawl-delay: {crawl_delay}")
+                    lines.append(f"Allow: {_clean(path)}")
+            if raw_delay not in (None, ""):
+                try:
+                    float(raw_delay)
+                    lines.append(f"Crawl-delay: {_clean(raw_delay)}")
+                except (TypeError, ValueError):
+                    warnings.append(f"Dropped non-numeric crawl_delay '{raw_delay}' for {ua}")
             lines.append("")
 
         if data.get("sitemap"):
-            lines.append(f"Sitemap: {data['sitemap']}")
+            lines.append(f"Sitemap: {_clean(data['sitemap'])}")
 
-        content = "\n".join(lines).strip()
-        return {"ok": True, "content": content}
+        return {"ok": True, "content": "\n".join(lines).strip(), "warnings": warnings}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        from tools._common import safe_error
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 9: XML Sitemap Generator ───────────────────────────────────────────

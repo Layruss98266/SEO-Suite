@@ -63,3 +63,20 @@ class TestGenerateHreflang:
     def test_xdefault_accepted(self):
         r = generate_hreflang({"items": [{"locale": "x-default", "url": "https://e.com/"}]})
         assert 'hreflang="x-default"' in r["html_tags"]
+
+
+class TestGenerateRobotsTxt:
+    def test_numeric_crawl_delay_emitted(self):
+        r = generate_robots_txt({"rules": [{"user_agent": "*", "disallow": ["/admin"], "crawl_delay": "5"}]})
+        assert "Crawl-delay: 5" in r["content"]
+        assert r["warnings"] == []
+
+    def test_non_numeric_crawl_delay_dropped_and_warned(self):
+        r = generate_robots_txt({"rules": [{"user_agent": "*", "crawl_delay": "soon"}]})
+        assert "Crawl-delay" not in r["content"]
+        assert any("crawl" in w.lower() for w in r["warnings"])
+
+    def test_newline_in_path_is_stripped(self):
+        r = generate_robots_txt({"rules": [{"user_agent": "*", "disallow": ["/a\nUser-agent: evil"]}]})
+        # Injected directive must not appear on its own line
+        assert "User-agent: evil" not in r["content"].splitlines()

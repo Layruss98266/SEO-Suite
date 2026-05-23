@@ -827,7 +827,7 @@ def hreflang_validator(url: str) -> dict:
             return {**entry, "status": None, "reachable": False, "redirect_to": None}
         try:
             validate_public_url(alt_url)  # SSRF guard
-            r = safe_requests_get(alt_url, headers=HEADERS, timeout=8, allow_redirects=True)
+            r = safe_requests_get(alt_url, headers=HEADERS, timeout=8)
             redirect_to = r.url if r.url != alt_url else None
             return {**entry, "status": r.status_code, "reachable": r.status_code < 400, "redirect_to": redirect_to}
         except Exception:
@@ -926,10 +926,10 @@ def _check_link(href: str, source_origin: str) -> dict:
     origin = urlparse(href).netloc
     link_type = "internal" if origin == source_origin else "external"
     try:
-        resp = safe_requests_head(href, headers=_LINK_HEALTH_HEADERS, timeout=8, allow_redirects=True)
+        resp = safe_requests_head(href, headers=_LINK_HEALTH_HEADERS, timeout=8)
         status = resp.status_code
         if status == 405:
-            resp   = safe_requests_get(href, headers=_LINK_HEALTH_HEADERS, timeout=8, allow_redirects=True)
+            resp   = safe_requests_get(href, headers=_LINK_HEALTH_HEADERS, timeout=8)
             status = resp.status_code
         final_url = resp.url
         redirect  = final_url if final_url.rstrip("/") != href.rstrip("/") else None

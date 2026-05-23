@@ -35,12 +35,17 @@ def _chat(messages: list[dict], api_key: str, model: str = _DEFAULT_MODEL,
         "temperature": temperature,
         "max_tokens":  max_tokens,
     }
+    # Groq's free tier rate-limits aggressively (429) and occasionally 5xxs.
+    # Retry up to 3 times so a transient throttle doesn't surface as a hard
+    # failure to the user mid-audit.
     last_status = None
     for attempt in range(3):
         resp = safe_requests_post(_GROQ_CHAT_URL, headers=headers, json=body, timeout=30)
         last_status = resp.status_code
         if resp.status_code in (429,) or resp.status_code >= 500:
             if attempt < 2:
+                # Honour the server's Retry-After when it gives a numeric value;
+                # otherwise back off exponentially (0.5s, 1s).
                 retry_after = resp.headers.get("Retry-After")
                 delay = float(retry_after) if (retry_after and retry_after.replace(".", "", 1).isdigit()) else 0.5 * (2 ** attempt)
                 time.sleep(delay)

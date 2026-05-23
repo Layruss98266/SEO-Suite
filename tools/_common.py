@@ -69,6 +69,9 @@ def fetch_html(
                     continue
                 raise last_exc
 
+            # Fast-path rejection: trust a sane Content-Length to avoid streaming
+            # a huge body we'd discard anyway. A malformed header (non-int) just
+            # falls through to the streaming cap below — never trust it blindly.
             declared = resp.headers.get("Content-Length")
             if declared is not None:
                 try:
@@ -78,7 +81,7 @@ def fetch_html(
                             f"Response too large ({int(declared) // 1_000_000} MB, max {max_bytes // 1_000_000} MB)"
                         )
                 except ValueError:
-                    pass
+                    pass  # garbage Content-Length — rely on the streamed byte count
 
             total = 0
             body = bytearray()
@@ -93,6 +96,9 @@ def fetch_html(
                     )
                 body.extend(chunk)
 
+            # We consumed the stream manually for the size cap, so the response
+            # object has no buffered body. Seed requests' private _content cache
+            # so downstream `.text` / `.content` work without a second network read.
             resp._content = bytes(body)  # type: ignore[attr-defined]
             return resp
         except (requests.ConnectionError, requests.Timeout) as exc:

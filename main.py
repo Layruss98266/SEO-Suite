@@ -6,9 +6,8 @@ Open:  http://localhost:8080
 
 Project layout:
   main.py            — entry point (this file)
-  app/server.py      — Flask app, all HTTP routes
-  app/__init__.py    — `create_app()` factory
-  app/routes/        — (reserved for future blueprint splits)
+  app/server.py      — Flask app, all HTTP routes + shared state
+  app/__init__.py    — thin `create_app()` factory (returns app.server.app)
   app/templates/     — Jinja templates
   app/static/        — CSS / JS / assets
   core/checker.py    — indexing checker (Playwright)

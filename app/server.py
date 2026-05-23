@@ -28,10 +28,16 @@ from werkzeug.utils import secure_filename
 
 from core.auth import (
     LOGIN_PAGE,
+    SIGNUP_PAGE,
+    admin_required,
     auth_enabled,
+    authenticate,
+    create_user,
+    delete_user,
     init_auth,
+    list_users,
     login_required,
-    verify_credentials,
+    signup_allowed,
 )
 from core.checker import (
     build_gsc_service,
@@ -45,7 +51,7 @@ from core.checker import (
     load_from_csv_excel,
     load_history,
 )
-from core.security import is_safe_url, validate_public_url
+from core.security import esc, is_safe_url, validate_public_url
 from core.seo_audit import audit_single_url, generate_excel_report, generate_html_report
 
 # Cap on per-run audit result lists so a huge sitemap can't blow up memory.
@@ -359,9 +365,12 @@ def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
-        if verify_credentials(username, password):
+        identity = authenticate(username, password)
+        if identity:
             session.clear()
-            session["authed"] = True
+            session["authed"]   = True
+            session["username"] = identity["username"]
+            session["is_admin"] = identity["is_admin"]
             session.permanent = True
             return ("", 302, {"Location": "/"})
         page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
@@ -370,10 +379,71 @@ def login():
     return page, 200, {"Content-Type": "text/html"}
 
 
+@app.route("/signup", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
+def signup():
+    if not signup_allowed():
+        return ("Signups are disabled.", 403, {"Content-Type": "text/plain"})
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        confirm  = request.form.get("confirm") or ""
+        if password != confirm:
+            page = SIGNUP_PAGE.replace("__ERROR__", "<div class='err'>Passwords do not match</div>")
+            return page, 400, {"Content-Type": "text/html"}
+        ok, err = create_user(username, password)
+        if not ok:
+            page = SIGNUP_PAGE.replace("__ERROR__", f"<div class='err'>{esc(err)}</div>")
+            return page, 400, {"Content-Type": "text/html"}
+        # Auto-login the new account so the first signup isn't locked out.
+        identity = authenticate(username, password)
+        session.clear()
+        session["authed"]   = True
+        session["username"] = identity["username"]
+        session["is_admin"] = identity["is_admin"]
+        session.permanent = True
+        return ("", 302, {"Location": "/"})
+    page = SIGNUP_PAGE.replace("__ERROR__", "")
+    return page, 200, {"Content-Type": "text/html"}
+
+
 @app.route("/logout", methods=["POST", "GET"])
 def logout():
     session.clear()
     return ("", 302, {"Location": "/login"})
+
+
+# ── User management (admin only) ──────────────────────────────────────────────
+
+@app.route("/api/users", methods=["GET"])
+@admin_required
+def api_users_list():
+    return jsonify({"ok": True, "users": list_users(),
+                    "me": session.get("username"), "signup_allowed": signup_allowed()})
+
+
+@app.route("/api/users", methods=["POST"])
+@admin_required
+def api_users_create():
+    data     = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    is_admin = bool(data.get("is_admin"))
+    ok, err = create_user(username, password, is_admin=is_admin)
+    if not ok:
+        return jsonify({"ok": False, "error": err}), 400
+    return jsonify({"ok": True, "users": list_users()})
+
+
+@app.route("/api/users/<username>", methods=["DELETE"])
+@admin_required
+def api_users_delete(username):
+    if username == session.get("username"):
+        return jsonify({"ok": False, "error": "You cannot delete your own account"}), 400
+    ok, err = delete_user(username)
+    if not ok:
+        return jsonify({"ok": False, "error": err}), 400
+    return jsonify({"ok": True, "users": list_users()})
 
 
 @app.route("/api/index/run", methods=["POST"])
@@ -1056,7 +1126,89 @@ _SETTINGS_ALLOWED_KEYS = {
     "indexnow_key", "indexnow_host",  # Stage 2-B: IndexNow
     "bing_api_key",                   # Stage 3-A: Bing Webmaster
     "groq_api_key",                   # Stage 3-D: Groq AI
+    "allow_signup",                   # Public self-registration toggle
 }
+
+# Sentinel returned by GET in place of a set secret, and recognised by POST as
+# "unchanged — keep the stored value". Never the literal value of a real key.
+_SECRET_SENTINEL = "••••••••"
+
+# Top-level secret keys masked on GET and preserved-if-unchanged on POST.
+_SECRET_TOP_KEYS = {
+    "pagespeed_api_key", "serpapi_key", "dataforseo_password", "moz_secret_key",
+    "indexnow_key", "bing_api_key", "groq_api_key",
+}
+# Secret fields inside nested config objects: {parent_key: {field, ...}}.
+_SECRET_NESTED = {
+    "email": {"smtp_pass"},
+    "slack": {"webhook_url"},
+    "teams": {"webhook_url"},
+}
+
+
+def _mask_settings(cfg: dict) -> dict:
+    """Return a deep-ish copy of *cfg* with secret values replaced by a sentinel
+    when set, so credentials are never shipped to the browser in plaintext."""
+    masked = dict(cfg)
+    for k in _SECRET_TOP_KEYS:
+        if masked.get(k):
+            masked[k] = _SECRET_SENTINEL
+    for parent, fields in _SECRET_NESTED.items():
+        if isinstance(masked.get(parent), dict):
+            sub = dict(masked[parent])
+            for f in fields:
+                if sub.get(f):
+                    sub[f] = _SECRET_SENTINEL
+            masked[parent] = sub
+    return masked
+
+
+def _merge_settings(incoming: dict, existing: dict) -> dict:
+    """Merge *incoming* (allowlisted) into *existing*, treating the secret
+    sentinel as 'leave the stored value untouched'. Nested objects are merged
+    field-by-field so a sentinel in one field doesn't wipe its siblings."""
+    merged = dict(existing)
+    for k, v in incoming.items():
+        if k in _SECRET_NESTED and isinstance(v, dict):
+            base = dict(existing.get(k) or {})
+            for fk, fv in v.items():
+                if fk in _SECRET_NESTED[k] and fv == _SECRET_SENTINEL:
+                    continue  # unchanged secret — keep stored value
+                base[fk] = fv
+            merged[k] = base
+        elif k in _SECRET_TOP_KEYS and v == _SECRET_SENTINEL:
+            continue  # unchanged secret — keep stored value
+        else:
+            merged[k] = v
+    return merged
+
+
+def _validate_settings(cfg: dict) -> str | None:
+    """Return an error message if any value is malformed, else None."""
+    email = cfg.get("email")
+    if isinstance(email, dict) and email.get("smtp_port") not in (None, ""):
+        try:
+            port = int(email["smtp_port"])
+            if not (1 <= port <= 65535):
+                return "SMTP port must be between 1 and 65535"
+        except (TypeError, ValueError):
+            return "SMTP port must be a number"
+    host = cfg.get("indexnow_host")
+    if host and not re.match(r"^[A-Za-z0-9.-]+$", str(host)):
+        return "IndexNow host must be a bare hostname (no scheme or path), e.g. example.com"
+    for parent in ("slack", "teams"):
+        block = cfg.get(parent)
+        if isinstance(block, dict):
+            wh = block.get("webhook_url")
+            if wh and wh != _SECRET_SENTINEL and not str(wh).startswith("https://"):
+                return f"{parent.title()} webhook URL must start with https://"
+    creds = cfg.get("gsc", {})
+    if isinstance(creds, dict):
+        cf = creds.get("credentials_file", "")
+        if cf and (".." in cf or cf.startswith(("/", "\\"))):
+            return "GSC credentials file must be a relative filename, not an absolute or traversal path"
+    return None
+
 
 @app.route("/api/settings", methods=["GET","POST"])
 @login_required
@@ -1071,9 +1223,14 @@ def api_settings():
         # Drop unknown keys so attackers can't write arbitrary paths/URLs into config.
         filtered = {k: v for k, v in new_cfg.items() if k in _SETTINGS_ALLOWED_KEYS}
         rejected = sorted(set(new_cfg) - _SETTINGS_ALLOWED_KEYS)
+        err = _validate_settings(filtered)
+        if err:
+            return jsonify({"error": err}), 400
         existing = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
-        existing.update(filtered)
-        cfg_path.write_text(json.dumps(existing, indent=2))
+        # Merge with secret-preserving semantics so unchanged masked fields
+        # don't overwrite stored credentials with the sentinel.
+        merged = _merge_settings(filtered, existing)
+        cfg_path.write_text(json.dumps(merged, indent=2))
         # Refresh in-process globals so the next run uses the saved values
         refreshed = load_config()
         global CFG
@@ -1084,7 +1241,19 @@ def api_settings():
         if rejected:
             resp["rejected_keys"] = rejected
         return jsonify(resp)
-    return jsonify(json.loads(cfg_path.read_text()) if cfg_path.exists() else {})
+    raw = json.loads(cfg_path.read_text()) if cfg_path.exists() else {}
+    return jsonify(_mask_settings(raw))
+
+
+@app.route("/api/settings/test/<provider>", methods=["POST"])
+@login_required
+@limiter.limit("20 per minute")
+def api_settings_test(provider):
+    """Live 'test connection' for an API credential. Credentials come from the
+    request body (just-typed) or fall back to stored config (masked/saved key)."""
+    data = request.get_json(silent=True) or {}
+    from tools.connection_tests import run_test
+    return jsonify(run_test(provider, data, CFG))
 
 UPLOAD_DIR    = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

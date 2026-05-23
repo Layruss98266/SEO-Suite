@@ -5,24 +5,33 @@ Features: Parallel tabs · GSC API · Proxy rotation · Email/Slack/Teams
           Crawl depth · Priority score · Trend chart · Multiple inputs
 """
 
-import csv, json, time, random, sys, os, re, smtplib, logging
+import csv
+import json
+import logging
+import os
+import random
+import re
+import smtplib
+import sys
+import threading
+import time
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable
-from urllib.parse import urlparse
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 # Re-export focused classes so callers can import from core.checker or core.<module>
-from core.sitemap_parser import SitemapParser   # noqa: E402
-from core.notifier import NotificationService   # noqa: E402
+from core.notifier import NotificationService  # noqa: E402
 from core.report_generator import ReportGenerator  # noqa: E402
-from core.security import esc as _esc, validate_public_url as _validate_url, filter_public_urls as _filter_urls  # noqa: E402
+from core.security import esc as _esc  # noqa: E402
+from core.security import filter_public_urls as _filter_urls
+from core.security import validate_public_url as _validate_url
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 try:
@@ -35,7 +44,8 @@ except ImportError:
 
 # ── Optional deps ─────────────────────────────────────────────────────────────
 try:
-    from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+    from playwright.sync_api import TimeoutError as PWTimeout
+    from playwright.sync_api import sync_playwright
     _PLAYWRIGHT_IMPORT_ERROR = None
 except ImportError as _e:
     # Defer the hard failure until indexing actually runs. This lets the module
@@ -61,7 +71,7 @@ except ImportError:
 
 try:
     import openpyxl
-    from openpyxl.styles import PatternFill, Font, Alignment
+    from openpyxl.styles import Alignment, Font, PatternFill
     HAS_XLSX = True
 except ImportError:
     HAS_XLSX = False
@@ -222,9 +232,12 @@ def fetch_from_domain(domain: str) -> list[str]:
 
 def crawl_site(start_url: str, max_pages: int = 50, max_depth: int = 2) -> list[str]:
     """BFS crawl from start_url, following internal <a href> links up to max_depth."""
-    from bs4 import BeautifulSoup as _BS
-    from urllib.parse import urljoin as _uj, urlparse as _up
     from collections import deque
+    from urllib.parse import urljoin as _uj
+    from urllib.parse import urlparse as _up
+
+    from bs4 import BeautifulSoup as _BS
+
     # Use safe_requests_get so every redirect hop is re-validated against the
     # SSRF allowlist. The previous raw `requests.get` followed redirects with
     # no validation, letting a public URL bounce the server into private space.

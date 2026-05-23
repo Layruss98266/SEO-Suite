@@ -9,7 +9,6 @@ import logging
 import re
 import xml.etree.ElementTree as ET
 from collections import deque
-from pathlib import Path
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -86,8 +85,9 @@ class SitemapParser:
     def crawl(self, start_url: str, max_pages: int = 50, max_depth: int = 2) -> list[str]:
         """BFS crawl from start_url, following internal <a href> links."""
         try:
-            from bs4 import BeautifulSoup as _BS
             from urllib.parse import urljoin as _uj
+
+            from bs4 import BeautifulSoup as _BS
         except ImportError as e:
             logger.error("crawl requires beautifulsoup4: %s", e)
             return []
@@ -159,7 +159,7 @@ class SitemapParser:
 
     @staticmethod
     def _fallback_parse(content: bytes, depth: int = 0, seen: set | None = None,
-                         parser_inst: "SitemapParser | None" = None) -> list[str]:
+                         parser_inst: SitemapParser | None = None) -> list[str]:
         try:
             from lxml import etree as _lxml
             parser = _lxml.XMLParser(recover=True)

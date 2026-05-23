@@ -6,8 +6,7 @@ API key: Bing Webmaster Tools → Settings → API Access → Generate key
 Docs:    https://learn.microsoft.com/en-us/bingwebmaster/getting-access
 """
 
-import time
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from core.security import safe_requests_get, safe_requests_post
 

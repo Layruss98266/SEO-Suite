@@ -11,25 +11,42 @@ that migration has not been started — there is intentionally no separate state
 module, so all shared mutable state lives in this file under ``_lock``/``_sub_lock``.
 """
 
-import json, csv, threading, queue, time, logging, os, re
-from pathlib import Path
+import json
+import logging
+import os
+import queue
+import re
+import threading
+import time
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import urlparse
-from flask import Flask, Response, request, jsonify, send_from_directory, session
+
+from flask import Flask, Response, jsonify, request, session
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from core.version import VERSION
 
-from core.checker import (
-    fetch_sitemap_urls, fetch_from_domain, load_from_csv_excel,
-    filter_urls, find_latest_report, compare_runs, load_history,
-    execute_and_save, load_config, build_gsc_service, crawl_site
-)
-from core.seo_audit import audit_single_url, generate_html_report, generate_excel_report
-from core.security import is_safe_url, validate_public_url
 from core.auth import (
-    init_auth, auth_enabled, verify_credentials, login_required, is_authed, LOGIN_PAGE,
+    LOGIN_PAGE,
+    auth_enabled,
+    init_auth,
+    login_required,
+    verify_credentials,
 )
+from core.checker import (
+    build_gsc_service,
+    crawl_site,
+    execute_and_save,
+    fetch_from_domain,
+    fetch_sitemap_urls,
+    filter_urls,
+    find_latest_report,
+    load_config,
+    load_from_csv_excel,
+    load_history,
+)
+from core.security import is_safe_url, validate_public_url
+from core.seo_audit import audit_single_url, generate_excel_report, generate_html_report
 
 # Cap on per-run audit result lists so a huge sitemap can't blow up memory.
 # Past this point new results are dropped from the live progress feed; the
@@ -444,7 +461,7 @@ def api_index_run():
                     return
                 _run_results[url] = status
                 _update_last_index_run(url, status)   # live update for cancel/partial export
-                from core.checker import get_priority_score, get_crawl_depth, get_url_type
+                from core.checker import get_crawl_depth, get_priority_score, get_url_type
                 _index_queue.put({"type": "progress", "num": num, "total": total, "url": url,
                                   "status": status, "priority": get_priority_score(url),
                                   "depth": get_crawl_depth(url), "url_type": get_url_type(url)})
@@ -577,7 +594,7 @@ def api_audit_run():
             with _lock:
                 _audit_status["total"] = len(urls)
 
-            from core.seo_audit import generate_html_report, generate_excel_report
+            from core.seo_audit import generate_excel_report, generate_html_report
             from tools.phase3 import audit_site as p3_site
 
             gsc_service  = build_gsc_service() if current_cfg.get("gsc", {}).get("enabled") else None
@@ -589,7 +606,8 @@ def api_audit_run():
                 site_url     = f"{_p.scheme}://{_p.netloc}/" if _p.netloc else ""
                 p3_site_data = p3_site(gsc_service, site_url, urls[:5])
 
-            from concurrent.futures import ThreadPoolExecutor, as_completed as _ac
+            from concurrent.futures import ThreadPoolExecutor
+            from concurrent.futures import as_completed as _ac
             i_counter = {"n": 0}
             def _audit_one(u):
                 if _audit_cancel.is_set():
@@ -1014,7 +1032,6 @@ def api_reports_delete_all():
 @app.route("/api/history")
 @login_required
 def api_history():
-    from core.checker import load_history
     return jsonify(load_history())
 
 # Keys allowed in POST /api/settings — anything not in this allowlist is dropped
@@ -1144,7 +1161,6 @@ def api_compare():
     """Compare two audit XLSX reports — returns score diffs per URL."""
     a_name = request.args.get("a", "")
     b_name = request.args.get("b", "")
-    import re as _re
     if not (re.match(r"^[\w\.\-]+\.xlsx$", a_name) and re.match(r"^[\w\.\-]+\.xlsx$", b_name)):
         return jsonify({"error": "invalid filenames"}), 400
     pa = REPORTS_DIR / a_name; pb = REPORTS_DIR / b_name
@@ -1185,8 +1201,8 @@ def api_compare():
 
 def _run_usecase_for_url(url: str, use_case: str, cfg: dict, keywords: str = "") -> dict:
     """Shared logic: run a use case against a single resolved URL."""
+    from core.checker import build_gsc_service
     from core.seo_audit import audit_single_url, calc_seo_score
-    from core.checker   import build_gsc_service
 
     gsc_service = None
     if cfg.get("gsc", {}).get("enabled"):
@@ -1227,8 +1243,8 @@ def api_usecase_run():
     if (rej := _reject_unsafe(raw_url)):
         return rej
 
+    from core.checker import fetch_from_domain, fetch_sitemap_urls
     from core.seo_audit import USE_CASES
-    from core.checker   import fetch_sitemap_urls, fetch_from_domain
 
     if use_case not in USE_CASES:
         return jsonify({"ok": False, "error": f"Unknown use_case: {use_case}"}), 400
@@ -1263,7 +1279,6 @@ def api_usecase_run():
 @login_required
 def api_usecase_run_bulk():
     """Run a use-case against all URLs from an uploaded CSV/XLSX (max 20 URLs)."""
-    import re as _re
     use_case = (request.form.get("use_case") or "").strip()
     keywords = (request.form.get("keywords") or "").strip()
     f        = request.files.get("file")
@@ -1278,7 +1293,7 @@ def api_usecase_run_bulk():
         return jsonify({"ok": False, "error": f"Unknown use_case: {use_case}"}), 400
 
     try:
-        import tempfile, csv as _csv
+        import tempfile
         suffix = ".csv" if f.filename.lower().endswith(".csv") else ".xlsx"
         tmp_path = None
         try:
@@ -1294,7 +1309,6 @@ def api_usecase_run_bulk():
         if not urls:
             return jsonify({"ok": False, "error": "No valid URLs found in file"}), 400
 
-        from core.seo_audit import calc_seo_score
         all_results = []
         for u in urls:
             try:
@@ -1419,7 +1433,7 @@ def api_indexnow_submit():
     if not host:
         return jsonify({"ok": False, "error": "Host required (set in Settings → indexnow_host)"}), 400
 
-    from tools.indexnow import submit_url, submit_bulk
+    from tools.indexnow import submit_bulk, submit_url
     if len(raw_urls) == 1:
         return jsonify(submit_url(raw_urls[0], key, host))
     return jsonify(submit_bulk(raw_urls, key, host))
@@ -1721,10 +1735,19 @@ def api_audit_single_phase(phase_num: int):
     try:
         if phase_num == 1:
             from tools.phase1 import (
-                robots_check, http_status_check, redirect_check, canonical_check,
-                title_check, meta_description_check, heading_check, image_alt_check,
-                word_count_check, broken_link_check, internal_links_check,
-                sitemap_validate, schema_check,
+                broken_link_check,
+                canonical_check,
+                heading_check,
+                http_status_check,
+                image_alt_check,
+                internal_links_check,
+                meta_description_check,
+                redirect_check,
+                robots_check,
+                schema_check,
+                sitemap_validate,
+                title_check,
+                word_count_check,
             )
             fns = [robots_check, http_status_check, redirect_check, canonical_check,
                    title_check, meta_description_check, heading_check, image_alt_check,
@@ -1752,8 +1775,16 @@ def api_audit_single_phase(phase_num: int):
             from urllib.parse import urlparse
             parsed   = urlparse(url)
             site_url = f"{parsed.scheme}://{parsed.netloc}/"
-            from tools.phase3 import clicks_impressions, top_queries, position_tracker, ctr_analyzer, coverage_errors, sitemaps_status
             from concurrent.futures import ThreadPoolExecutor
+
+            from tools.phase3 import (
+                clicks_impressions,
+                coverage_errors,
+                ctr_analyzer,
+                position_tracker,
+                sitemaps_status,
+                top_queries,
+            )
             fns = [
                 lambda: clicks_impressions(url, svc, site_url),
                 lambda: top_queries(url, svc, site_url),
@@ -1766,8 +1797,9 @@ def api_audit_single_phase(phase_num: int):
                 results = [f.result() for f in [ex.submit(fn) for fn in fns]]
 
         elif phase_num == 4:
-            from tools.phase4 import backlink_check, domain_authority, keyword_rank_tracker
             from concurrent.futures import ThreadPoolExecutor
+
+            from tools.phase4 import backlink_check, domain_authority, keyword_rank_tracker
             fns = []
             dfs_login = CFG.get("dataforseo_login", "")
             dfs_pass  = CFG.get("dataforseo_password", "")
@@ -2047,7 +2079,7 @@ def _save_partial_index_report() -> tuple[str, str]:
         html_path = REPORTS_DIR / f"{stem}.html"
         counts    = {}
         rows      = []
-        from core.checker import get_priority_score, get_crawl_depth, get_url_type
+        from core.checker import get_crawl_depth, get_priority_score, get_url_type
         ts_now = datetime.now().isoformat()
         for i, (url, status) in enumerate(snapshot.items(), 1):
             rows.append({"num": i, "url": url, "status": status,
@@ -2268,7 +2300,8 @@ def api_audit_resume():
 @login_required
 def api_audit_partial():
     """Return completed-so-far audit results as CSV for mid-run export."""
-    import csv as _csv, io as _io
+    import csv as _csv
+    import io as _io
     with _lock:
         rows = list(_audit_partial)
     if not rows:
@@ -2288,7 +2321,8 @@ def api_audit_partial():
 @login_required
 def api_index_partial():
     """Return completed-so-far indexing results as CSV for mid-run export."""
-    import csv as _csv, io as _io
+    import csv as _csv
+    import io as _io
     data = _snapshot_last_index_run()
     if not data:
         return jsonify({"error": "No results yet"}), 404

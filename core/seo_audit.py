@@ -3,10 +3,13 @@ SEO Audit Orchestrator
 Runs all Phase 1-4 tools and generates a comprehensive HTML + Excel + CSV report.
 """
 
-import csv, json, logging, sys, time
+import csv
+import json
+import logging
+import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 
 try:
@@ -24,23 +27,44 @@ except ImportError:
 
 try:
     import openpyxl
-    from openpyxl.styles import PatternFill, Font, Alignment
+    from openpyxl.styles import Font, PatternFill
     HAS_XLSX = True
 except ImportError:
     HAS_XLSX = False
 
-from tools.phase2 import audit_url as p2_audit
-from tools.phase3 import (audit_site as p3_audit_site, clicks_impressions, top_queries,
-                          position_tracker, ctr_analyzer, coverage_errors, sitemaps_status,
-                          manual_actions)
-from tools.phase4 import (backlink_check, domain_authority, keyword_rank_tracker,
-                          page_authority, referring_domains, domain_rank,
-                          broken_backlinks, nofollow_ratio, spam_score,
-                          serp_features, rank_change, traffic_share,
-                          competitor_comparison)
-
-from core.checker import fetch_sitemap_urls, fetch_from_domain, load_from_csv_excel, load_config, build_gsc_service
+from core.checker import (
+    build_gsc_service,
+    fetch_from_domain,
+    fetch_sitemap_urls,
+    load_config,
+    load_from_csv_excel,
+)
 from core.security import esc, validate_public_url
+from tools.phase2 import audit_url as p2_audit
+from tools.phase3 import (
+    clicks_impressions,
+    coverage_errors,
+    ctr_analyzer,
+    manual_actions,
+    position_tracker,
+    sitemaps_status,
+    top_queries,
+)
+from tools.phase4 import (
+    backlink_check,
+    broken_backlinks,
+    competitor_comparison,
+    domain_authority,
+    domain_rank,
+    keyword_rank_tracker,
+    nofollow_ratio,
+    page_authority,
+    rank_change,
+    referring_domains,
+    serp_features,
+    spam_score,
+    traffic_share,
+)
 
 _PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 REPORTS_DIR = _PROJECT_ROOT / "data" / "reports"
@@ -299,9 +323,16 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
     all_results: list[dict] = []
 
     if "crawlability" in active:
-        from tools.phase1 import (robots_check, http_status_check, redirect_check,
-                                   broken_link_check, internal_links_check, sitemap_validate,
-                                   canonical_check, meta_robots_check)
+        from tools.phase1 import (
+            broken_link_check,
+            canonical_check,
+            http_status_check,
+            internal_links_check,
+            meta_robots_check,
+            redirect_check,
+            robots_check,
+            sitemap_validate,
+        )
         crawl_fns = [
             (robots_check,         "robots"),
             (http_status_check,    "http_status"),
@@ -319,10 +350,21 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
                 all_results += [f.result() for f in futs]
 
     if "on_page" in active:
-        from tools.phase1 import (canonical_check, title_check, meta_description_check,
-                                   heading_check, image_alt_check, word_count_check,
-                                   readability_check, schema_check, hreflang_check,
-                                   ttfb_check, og_check, meta_robots_check, favicon_check)
+        from tools.phase1 import (
+            canonical_check,
+            favicon_check,
+            heading_check,
+            hreflang_check,
+            image_alt_check,
+            meta_description_check,
+            meta_robots_check,
+            og_check,
+            readability_check,
+            schema_check,
+            title_check,
+            ttfb_check,
+            word_count_check,
+        )
         onpage_fns = [
             (canonical_check,        "canonical"),
             (title_check,            "title"),
@@ -345,9 +387,16 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
                 all_results += [f.result() for f in futs]
 
     if "site_health" in active:
-        from tools.phase1 import (ssl_check, domain_age_check, mixed_content_check,
-                                   https_enforcement_check, security_headers_check,
-                                   spf_check, dmarc_check, mx_records_check)
+        from tools.phase1 import (
+            dmarc_check,
+            domain_age_check,
+            https_enforcement_check,
+            mixed_content_check,
+            mx_records_check,
+            security_headers_check,
+            spf_check,
+            ssl_check,
+        )
         sh_fns = [
             (ssl_check,                "ssl"),
             (domain_age_check,         "domain_age"),
@@ -624,8 +673,8 @@ def format_value(r: dict) -> str:
             langs = [e["lang"] for e in value]
             tags  = "".join(
                 f"<span style='display:inline-block;margin:2px;padding:1px 7px;background:#f0fdf4;"
-                f"border-radius:10px;font-size:11px;color:#166534'>{esc(l)}</span>"
-                for l in langs[:8])
+                f"border-radius:10px;font-size:11px;color:#166534'>{esc(lang)}</span>"
+                for lang in langs[:8])
             return f"{len(langs)} tag(s): {tags}"
         return "<span style='color:#999'>None</span>"
 

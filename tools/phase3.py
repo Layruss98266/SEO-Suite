@@ -152,15 +152,12 @@ def ctr_analyzer(service, site_url: str, min_impressions: int = 100) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 def coverage_errors(service, site_url: str) -> dict:
     try:
-        resp = service.urlInspectionResult() if hasattr(service, "urlInspectionResult") else None
-
-        # Use Search Console URL inspection in bulk via sitemaps
+        # Coverage gaps are derived from sitemap submitted-vs-indexed counts.
         sitemaps_resp = service.sitemaps().list(siteUrl=site_url).execute()
         sitemap_list  = sitemaps_resp.get("sitemap", [])
 
         errors   = []
         warnings = []
-        excluded = []
 
         for sm in sitemap_list:
             contents = sm.get("contents", [])

@@ -23,7 +23,6 @@ from urllib.parse import urljoin, urlparse
 import requests
 import urllib3.util.connection as _urllib3_conn
 
-
 # ── HTML escaping ─────────────────────────────────────────────────────────────
 
 def esc(value) -> str:

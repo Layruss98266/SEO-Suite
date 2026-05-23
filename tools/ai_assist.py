@@ -124,13 +124,13 @@ def explain_audit(audit_results: list[dict] | dict, api_key: str,
         )
 
         # Split explanation vs actions list
-        lines_out = [l.strip() for l in reply.split("\n") if l.strip()]
+        lines_out = [ln.strip() for ln in reply.split("\n") if ln.strip()]
         # Heuristic: lines starting with 1. 2. 3. are action items
         import re
         action_pattern = re.compile(r"^[\d]+[\.\)]\s+")
-        explanation_lines = [l for l in lines_out if not action_pattern.match(l)]
-        action_lines      = [re.sub(r"^[\d]+[\.\)]\s+", "", l)
-                              for l in lines_out if action_pattern.match(l)]
+        explanation_lines = [ln for ln in lines_out if not action_pattern.match(ln)]
+        action_lines      = [re.sub(r"^[\d]+[\.\)]\s+", "", ln)
+                              for ln in lines_out if action_pattern.match(ln)]
 
         return {
             "ok":          True,

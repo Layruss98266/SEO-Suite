@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import json
 import logging
-import random
-import re
 from datetime import datetime
 from pathlib import Path
 
@@ -32,7 +30,7 @@ class ReportGenerator:
     def excel(self, rows: list[dict], path: Path, type_summary: dict) -> None:
         try:
             import openpyxl
-            from openpyxl.styles import PatternFill, Font, Alignment
+            from openpyxl.styles import Alignment, Font, PatternFill
         except ImportError:
             logger.warning("openpyxl not installed — skipping Excel report")
             return
@@ -58,7 +56,7 @@ class ReportGenerator:
             c = ws.cell(ws.max_row, 3)
             c.fill = GF if row["status"] == "Indexed" else RF if row["status"] == "Not Indexed" else YF
 
-        for col, w in zip("ABCDEFG", [5, 65, 16, 10, 8, 22, 22]):
+        for col, w in zip("ABCDEFG", [5, 65, 16, 10, 8, 22, 22], strict=False):
             ws.column_dimensions[col].width = w
 
         ws2 = wb.create_sheet("By URL Type")

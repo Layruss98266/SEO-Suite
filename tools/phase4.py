@@ -10,10 +10,12 @@ All tools gracefully degrade if API keys are not configured.
 
 import logging
 import time
-from typing import Any, Callable
-import requests
-from urllib.parse import urlparse, quote
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
+from urllib.parse import urlparse
+
+from core.security import safe_requests_get, safe_requests_post
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SEOAuditBot/1.0)"}
 
 
 def _fetch_with_backoff(method: Callable, *args: Any, max_retries: int = 3, **kwargs: Any) -> Any | None:
-    """requests.get/post with fast-fail on 429, short backoff on 5xx."""
+    """safe_requests_get/post with fast-fail on 429, short backoff on 5xx."""
     for attempt in range(max_retries):
         try:
             resp = method(*args, **kwargs)
@@ -58,7 +60,7 @@ def backlink_check(url: str, ahrefs_key: str = "", dataforseo_login: str = "",
         try:
             endpoint = "https://api.dataforseo.com/v3/backlinks/summary/live"
             payload  = [{"target": domain, "include_subdomains": True}]
-            resp = _fetch_with_backoff(requests.post, endpoint, json=payload, timeout=10,
+            resp = _fetch_with_backoff(safe_requests_post, endpoint, json=payload, timeout=10,
                                        auth=(dataforseo_login, dataforseo_password))
             data = resp.json()
             task = data.get("tasks", [{}])[0].get("result", [{}])[0]
@@ -89,14 +91,17 @@ def domain_authority(url: str, moz_access_id: str = "", moz_secret_key: str = ""
     # Option A: Moz API
     if moz_access_id and moz_secret_key:
         try:
-            import base64, hashlib, hmac, time
+            import base64
+            import hashlib
+            import hmac
+            import time
             expires    = str(int(time.time()) + 300)
             str_to_sign = moz_access_id + "\n" + expires
             sig        = base64.b64encode(
                 hmac.new(moz_secret_key.encode(), str_to_sign.encode(), hashlib.sha1).digest()
             ).decode()
 
-            resp = requests.get(
+            resp = safe_requests_get(
                 "https://lsapi.seomoz.com/v2/url_metrics",
                 params={
                     "AccessID": moz_access_id, "Expires": expires,
@@ -137,7 +142,7 @@ def keyword_rank_tracker(url: str, keywords: list[str], serpapi_key: str = "",
     if serpapi_key:
         def _serp_lookup(kw):
             try:
-                resp = requests.get("https://serpapi.com/search", params={
+                resp = safe_requests_get("https://serpapi.com/search", params={
                     "api_key": serpapi_key, "q": kw, "num": 100,
                     "gl": "us", "hl": "en",
                 }, timeout=10)
@@ -157,7 +162,7 @@ def keyword_rank_tracker(url: str, keywords: list[str], serpapi_key: str = "",
     elif dataforseo_login and dataforseo_password:
         try:
             tasks = [{"keyword": kw, "location_code": 2840, "language_code": "en"} for kw in keywords[:10]]
-            resp  = requests.post(
+            resp  = safe_requests_post(
                 "https://api.dataforseo.com/v3/serp/google/organic/live/advanced",
                 json=tasks, auth=(dataforseo_login, dataforseo_password), timeout=15
             )
@@ -208,13 +213,13 @@ def competitor_comparison(target_url: str, keyword: str, serpapi_key: str = "",
 
     try:
         if serpapi_key:
-            resp = requests.get("https://serpapi.com/search", params={
+            resp = safe_requests_get("https://serpapi.com/search", params={
                 "api_key": serpapi_key, "q": keyword, "num": 10,
                 "gl": "us", "hl": "en",
             }, timeout=10)
             items = resp.json().get("organic_results", [])
         else:
-            task_resp = requests.post(
+            task_resp = safe_requests_post(
                 "https://api.dataforseo.com/v3/serp/google/organic/live/regular",
                 json=[{"keyword": keyword, "location_code": 2840, "language_code": "en"}],
                 auth=(dataforseo_login, dataforseo_password), timeout=15
@@ -313,7 +318,7 @@ def broken_backlinks(url: str, dataforseo_login: str = "",
     try:
         endpoint = "https://api.dataforseo.com/v3/backlinks/backlinks/live"
         payload  = [{"target": domain, "broken_backlinks": True, "limit": 1}]
-        resp     = _fetch_with_backoff(requests.post, endpoint, json=payload, timeout=12,
+        resp     = _fetch_with_backoff(safe_requests_post, endpoint, json=payload, timeout=12,
                                        auth=(dataforseo_login, dataforseo_password))
         task     = resp.json().get("tasks", [{}])[0].get("result", [{}])[0]
         broken   = task.get("total_count", 0) or 0
@@ -335,7 +340,7 @@ def nofollow_ratio(url: str, dataforseo_login: str = "",
     try:
         endpoint = "https://api.dataforseo.com/v3/backlinks/summary/live"
         payload  = [{"target": domain, "include_subdomains": True}]
-        resp     = _fetch_with_backoff(requests.post, endpoint, json=payload, timeout=12,
+        resp     = _fetch_with_backoff(safe_requests_post, endpoint, json=payload, timeout=12,
                                        auth=(dataforseo_login, dataforseo_password))
         task     = resp.json().get("tasks", [{}])[0].get("result", [{}])[0]
         nofollow = task.get("nofollow", 0) or 0
@@ -359,14 +364,17 @@ def spam_score(url: str, moz_access_id: str = "", moz_secret_key: str = "") -> d
                       "No Moz API configured — add moz_access_id / moz_secret_key in Settings")
     domain = urlparse(url).netloc.removeprefix("www.")
     try:
-        import base64, hashlib, hmac as _hmac, time as _time
+        import base64
+        import hashlib
+        import hmac as _hmac
+        import time as _time
         expires     = str(int(_time.time()) + 300)
         sig         = base64.b64encode(
             _hmac.new(moz_secret_key.encode(),
                       (moz_access_id + "\n" + expires).encode(),
                       hashlib.sha1).digest()
         ).decode()
-        resp = requests.get(
+        resp = safe_requests_get(
             "https://lsapi.seomoz.com/v2/url_metrics",
             params={"AccessID": moz_access_id, "Expires": expires,
                     "Signature": sig, "Cols": "68719476736", "Site": domain},
@@ -395,7 +403,7 @@ def serp_features(url: str, keywords: list, serpapi_key: str = "",
     try:
         features = []
         if serpapi_key:
-            resp = requests.get("https://serpapi.com/search", params={
+            resp = safe_requests_get("https://serpapi.com/search", params={
                 "api_key": serpapi_key, "q": kw, "num": 10, "gl": "us", "hl": "en",
             }, timeout=10)
             data = resp.json()
@@ -416,7 +424,8 @@ def serp_features(url: str, keywords: list, serpapi_key: str = "",
 # ══════════════════════════════════════════════════════════════════════════════
 def rank_change(url: str, keywords: list, serpapi_key: str = "",
                 dataforseo_login: str = "", dataforseo_password: str = "") -> dict:
-    import json, time as _time
+    import json
+    import time as _time
     from pathlib import Path
     _RANK_FILE = Path(__file__).parent.parent / "data" / "rank_history.json"
 

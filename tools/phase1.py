@@ -1117,7 +1117,7 @@ def spf_check(url: str) -> dict:
         txt = [r.to_text().strip('"') for r in _dns.resolve(domain, "TXT")]
         spf = next((r for r in txt if r.startswith("v=spf1")), None)
         if spf:
-            return result(url, "spf", "pass", spf[:80], f"SPF record found")
+            return result(url, "spf", "pass", spf[:80], "SPF record found")
         return result(url, "spf", "fail", None, "No SPF record — email spoofing risk")
     except Exception as e:
         return result(url, "spf", "error", None, f"SPF lookup error: {e}")

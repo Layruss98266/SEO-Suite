@@ -5,9 +5,10 @@ Phase 2 SEO Tools — Free Google APIs
 18. Crawlability Check (GSC API)
 """
 
-import requests
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
+
+from core.security import safe_requests_get
 
 PAGESPEED_API = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SEOAuditBot/1.0)"}
@@ -43,7 +44,7 @@ def pagespeed_check(url: str, api_key: str, strategy: str = "mobile") -> dict:
     """
     params = {"url": url, "strategy": strategy, "key": api_key}
     try:
-        resp = requests.get(PAGESPEED_API, params=params, timeout=30)
+        resp = safe_requests_get(PAGESPEED_API, params=params, timeout=30)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
@@ -127,7 +128,6 @@ def crawlability_check(url: str, gsc_service, site_url: str = None) -> dict:
         insp   = resp.get("urlInspectionResult", {})
         index  = insp.get("indexStatusResult", {})
         mobile = insp.get("mobileUsabilityResult", {})
-        rich   = insp.get("richResultsResult", {})
 
         verdict       = index.get("verdict", "")
         crawled_as    = index.get("crawledAs", "")
@@ -265,9 +265,8 @@ def _cwv_grade(metric_key: str, display_value: str) -> str:
     val     = _parse_metric_value(display_value)
     good    = cfg.get("good", 0)
     ni      = cfg.get("needs_improvement", 0)
-    unit    = cfg.get("unit", "")
-    # For CLS the unit is dimensionless; for time metrics unit is s or ms
-    # The thresholds are already in the same unit (s) after normalisation.
+    # Thresholds are already normalised to the metric's unit (s for time
+    # metrics, dimensionless for CLS), so no unit conversion is needed here.
     if val == 0.0:
         return "unknown"
     if val <= good:

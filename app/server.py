@@ -1,15 +1,14 @@
 """
-SEO Suite — unified route file (monolith, ~2 200 lines).
+SEO Suite — Flask app, all HTTP routes, and shared run-state (monolith).
 
-MIGRATION PLAN: routes are being moved to app/routes/ blueprints incrementally.
-See app/routes/__init__.py for the blueprint registry and migration status.
-Shared mutable state lives in app/state.py — import from there, not here.
+This module owns the Flask ``app`` instance, every ``@app.route`` handler, and
+the in-process shared state (SSE subscriber queues, run status dicts, locks).
+``main.py`` imports ``app`` from here directly; ``app/__init__.create_app`` is a
+thin factory that returns this same configured app for WSGI deployment.
 
-Current shared-state objects re-exported from app/state for backwards compat:
-    CFG, index_status, audit_status, index_queue, audit_queue,
-    index_subscribers, audit_subscribers, state_lock, index_cancel,
-    audit_cancel, index_paused, audit_paused, last_index_run,
-    audit_partial, audit_full_results, REPORTS_DIR, DATA_DIR, CONFIG_PATH
+A future split into Flask blueprints would extract route groups from here, but
+that migration has not been started — there is intentionally no separate state
+module, so all shared mutable state lives in this file under ``_lock``/``_sub_lock``.
 """
 
 import json, csv, threading, queue, time, logging, os, re

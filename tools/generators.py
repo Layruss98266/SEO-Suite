@@ -791,43 +791,53 @@ def generate_hreflang(data: dict) -> dict:
       include_xdefault: bool
       xdefault_url: str
     """
+    import re
+    from urllib.parse import urlparse
+    from tools._common import xml_text
+
+    _LOCALE_RE = re.compile(r"^([a-z]{2,3}(-[A-Za-z0-9]{2,8})?|x-default)$", re.IGNORECASE)
     try:
         items = data.get("items", [])
         if not items:
             return {"ok": False, "error": "At least one locale/URL pair is required"}
 
-        tags = []
+        warnings: list[str] = []
+        tags: list[str] = []
+        header_vals: list[str] = []
         for item in items:
             locale = (item.get("locale") or "").strip()
             url = (item.get("url") or "").strip()
-            if locale and url:
-                tags.append(f'<link rel="alternate" hreflang="{locale}" href="{url}">')
+            if not locale or not url:
+                continue
+            if not _LOCALE_RE.match(locale):
+                warnings.append(f"Dropped invalid locale '{locale}' (expected e.g. en, en-US, x-default)")
+                continue
+            if urlparse(url).scheme not in ("http", "https"):
+                warnings.append(f"Dropped URL with invalid scheme for locale '{locale}': {url}")
+                continue
+            tags.append(f'<link rel="alternate" hreflang="{xml_text(locale)}" href="{xml_text(url)}">')
+            header_vals.append(f'<{xml_text(url)}>; rel="alternate"; hreflang="{xml_text(locale)}"')
 
         if data.get("include_xdefault") and data.get("xdefault_url"):
-            tags.append(
-                f'<link rel="alternate" hreflang="x-default" href="{data["xdefault_url"]}">'
-            )
+            xd = str(data["xdefault_url"]).strip()
+            if urlparse(xd).scheme in ("http", "https"):
+                tags.append(f'<link rel="alternate" hreflang="x-default" href="{xml_text(xd)}">')
+            else:
+                warnings.append(f"Dropped x-default URL with invalid scheme: {xd}")
 
         if not tags:
-            return {"ok": False, "error": "No valid locale/URL pairs found"}
-
-        html_block = "\n".join(tags)
-        # Also produce HTTP header format
-        header_vals = [
-            f'<{item["url"]}>; rel="alternate"; hreflang="{item["locale"]}"'
-            for item in items
-            if item.get("locale") and item.get("url")
-        ]
-        http_header = "Link: " + ", ".join(header_vals) if header_vals else ""
+            return {"ok": False, "error": "No valid locale/URL pairs found", "warnings": warnings}
 
         return {
             "ok": True,
-            "html_tags": html_block,
-            "http_header": http_header,
+            "html_tags": "\n".join(tags),
+            "http_header": "Link: " + ", ".join(header_vals) if header_vals else "",
             "count": len(tags),
+            "warnings": warnings,
         }
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        from tools._common import safe_error
+        return {"ok": False, "error": safe_error(e)}
 
 
 # ─── Tool 11: Meta Tags Generator ────────────────────────────────────────────

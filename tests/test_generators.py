@@ -39,3 +39,27 @@ class TestGenerateSitemap:
 
     def test_no_urls_is_error(self):
         assert generate_sitemap({"urls": []})["ok"] is False
+
+
+class TestGenerateHreflang:
+    def test_valid_pair_emitted_and_escaped(self):
+        r = generate_hreflang({"items": [{"locale": "en-US", "url": "https://e.com/?a=1&b=2"}]})
+        assert r["ok"] is True
+        assert 'hreflang="en-US"' in r["html_tags"]
+        assert "&amp;b=2" in r["html_tags"]
+
+    def test_invalid_locale_dropped_and_warned(self):
+        r = generate_hreflang({"items": [
+            {"locale": "english", "url": "https://e.com/"},
+            {"locale": "fr", "url": "https://e.com/fr"},
+        ]})
+        assert r["count"] == 1
+        assert any("english" in w for w in r["warnings"])
+
+    def test_invalid_url_scheme_dropped(self):
+        r = generate_hreflang({"items": [{"locale": "en", "url": "javascript:x"}]})
+        assert r["ok"] is False or r["count"] == 0
+
+    def test_xdefault_accepted(self):
+        r = generate_hreflang({"items": [{"locale": "x-default", "url": "https://e.com/"}]})
+        assert 'hreflang="x-default"' in r["html_tags"]

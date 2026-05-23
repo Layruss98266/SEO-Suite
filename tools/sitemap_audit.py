@@ -19,7 +19,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 from core.checker import fetch_sitemap_urls
-from core.security import safe_requests_get, validate_public_url
+from core.security import validate_public_url
+from tools._common import fetch_html, safe_error
 
 _SITEMAP_SIZE_LIMIT = 50_000          # URLs per sitemap (Google limit)
 _SITEMAP_BYTES_LIMIT = 50 * 1024 * 1024  # 50 MB
@@ -75,15 +76,15 @@ def audit_sitemap(
     except ValueError as e:
         return {"ok": False, "error": str(e)}
 
-    # ── Fetch raw XML ────────────────────────────────────────────────────────
+    # ── Fetch raw XML once ─────────────────────────────────────────────────────
     try:
-        resp = safe_requests_get(
+        resp = fetch_html(
             sitemap_url,
             timeout=timeout,
             headers={"User-Agent": "Mozilla/5.0 (compatible; SEO-Suite/2.0)"},
         )
     except Exception as e:
-        return {"ok": False, "error": f"Fetch failed: {e}"}
+        return {"ok": False, "error": safe_error(e)}
 
     if resp.status_code >= 400:
         return {"ok": False, "error": f"HTTP {resp.status_code} from {sitemap_url}"}
@@ -91,9 +92,17 @@ def audit_sitemap(
     raw_bytes = resp.content
     size_bytes = len(raw_bytes)
     size_mb    = round(size_bytes / 1024 / 1024, 2)
+    xml_text_body = raw_bytes.decode("utf-8", errors="replace")
 
-    # ── Parse URLs via existing checker (handles sitemap-index recursion) ───
-    all_urls: list[str] = fetch_sitemap_urls(sitemap_url)
+    # ── Parse URLs from the already-fetched bytes ──────────────────────────────
+    # Only recurse via fetch_sitemap_urls for a sitemap-index (extra fetches
+    # are unavoidable there). A plain <urlset> is parsed locally — no re-fetch.
+    is_index = "<sitemapindex" in xml_text_body.lower()
+    if is_index:
+        all_urls = fetch_sitemap_urls(sitemap_url)
+    else:
+        all_urls = re.findall(r"<loc>\s*(.*?)\s*</loc>", xml_text_body, re.IGNORECASE | re.DOTALL)
+        all_urls = [u.strip() for u in all_urls if u.strip()]
     total_urls = len(all_urls)
 
     # ── Derive sitemap hostname for HTTP-in-HTTPS check ────────────────────
@@ -157,10 +166,26 @@ def audit_sitemap(
         })
 
     # ── Optional field coverage (spot-check raw XML) ────────────────────────
-    xml_text = raw_bytes.decode("utf-8", errors="replace")
-    has_lastmod   = "<lastmod>"   in xml_text
-    has_changefreq = "<changefreq>" in xml_text
-    has_priority  = "<priority>"  in xml_text
+    has_lastmod    = "<lastmod>"    in xml_text_body
+    has_changefreq = "<changefreq>" in xml_text_body
+    has_priority   = "<priority>"   in xml_text_body
+
+    # Validate each <lastmod> is a parseable ISO-8601 date
+    invalid_lastmod = 0
+    for lm in re.findall(r"<lastmod>\s*(.*?)\s*</lastmod>", xml_text_body, re.IGNORECASE | re.DOTALL):
+        lm = lm.strip()
+        if not lm:
+            continue
+        try:
+            from datetime import datetime
+            datetime.fromisoformat(lm.replace("Z", "+00:00"))
+        except ValueError:
+            invalid_lastmod += 1
+    if invalid_lastmod:
+        issues.append({
+            "level": "warning",
+            "message": f"{invalid_lastmod} <lastmod> value(s) are not valid ISO-8601 dates.",
+        })
 
     if not has_lastmod:
         issues.append({
@@ -195,5 +220,6 @@ def audit_sitemap(
             "has_lastmod": has_lastmod,
             "has_changefreq": has_changefreq,
             "has_priority": has_priority,
+            "invalid_lastmod": invalid_lastmod,
         },
     }

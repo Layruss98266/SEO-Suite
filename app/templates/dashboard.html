@@ -1021,9 +1021,12 @@
   <div class="settings-header">
     <div>
       <div class="page-title">Settings</div>
-      <div class="page-sub">Credentials, API keys &amp; notifications — all stored locally in config.json</div>
+      <div class="page-sub">Credentials, API keys &amp; notifications — all stored locally in config.json. Secrets are masked (shown as ••••••••) — leave a masked field untouched to keep the saved value.</div>
     </div>
-    <button class="btn btn-primary" onclick="saveSettings()" style="flex-shrink:0">💾 Save Settings</button>
+    <div style="display:flex;gap:10px;align-items:center;flex-shrink:0">
+      <input class="input" type="search" placeholder="🔍 Filter settings…" oninput="filterSettings(this.value)" style="width:200px">
+      <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
   </div>
 
   <!-- Config Health summary -->

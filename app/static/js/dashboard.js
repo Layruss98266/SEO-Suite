@@ -296,6 +296,8 @@ let expandedUC = new Set();
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function nav(el){
+  // Guard against navigating away from Settings with unsaved changes.
+  if(typeof _settingsLeaveGuard==='function' && !_settingsLeaveGuard(el.dataset.panel)) return;
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
@@ -2000,12 +2002,36 @@ function saveSettings(){
       limit:       parseInt(document.getElementById('cfg-schedule-limit')?.value||'100')||100,
     },
   };
+  // Client-side validation before the round-trip.
+  const vErr = _validateSettingsClient(cfg);
+  if(vErr){ toast(vErr,'error'); return; }
   fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)})
-    .then(r=>r.json()).then(d=>{
+    .then(r=>r.json().then(d=>({ok:r.ok,d})))
+    .then(({ok,d})=>{
+      if(!ok){ toast(d.error||'Save rejected','error'); return; }
       toast(d.message||'Settings saved!','success');
+      _clearSettingsDirty();
       updateSettingBadges();
     })
     .catch(()=>toast('Save failed — is the server running?','error'));
+}
+
+// ── Settings: client-side validation ──────────────────────────────────────────
+function _validateSettingsClient(cfg){
+  if(cfg.email){
+    const p = cfg.email.smtp_port;
+    if(p!==undefined && p!=='' && (!(Number.isInteger(p)) || p<1 || p>65535))
+      return 'SMTP port must be a whole number between 1 and 65535';
+    const _email = v => !v || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
+    if(!_email(cfg.email.smtp_from)) return 'From Address is not a valid email';
+    if(!_email(cfg.email.to))        return 'Report To is not a valid email';
+  }
+  if(cfg.indexnow_host && !/^[A-Za-z0-9.-]+$/.test(cfg.indexnow_host))
+    return 'IndexNow host must be a bare hostname (no http:// or path), e.g. example.com';
+  const _https = v => !v || v==='••••••••' || v.startsWith('https://');
+  if(cfg.slack && !_https(cfg.slack.webhook_url)) return 'Slack webhook URL must start with https://';
+  if(cfg.teams && !_https(cfg.teams.webhook_url)) return 'Teams webhook URL must start with https://';
+  return null;
 }
 
 function toggleKeyVis(btn){
@@ -2118,7 +2144,130 @@ function loadSettings(){
 
     updateSettingBadges();
     _initThemePref();
+    _initSettingsEnhancements();
+    _clearSettingsDirty();   // freshly-loaded form is clean
   }).catch(()=>{});
+}
+
+// ── Settings: Test-connection buttons, dirty guard, search filter ─────────────
+let _settingsDirty = false;
+let _settingsWired = false;
+
+// inputId → {provider, label}. Each gets a "Test" button + result chip.
+const _SETTINGS_TESTS = [
+  {id:'cfg-pagespeed', provider:'pagespeed'},
+  {id:'cfg-groq',      provider:'groq'},
+  {id:'cfg-bing',      provider:'bing'},
+  {id:'cfg-serpapi',   provider:'serpapi'},
+  {id:'cfg-moz-id',    provider:'moz'},
+  {id:'cfg-dfs-login', provider:'dataforseo'},
+  {id:'cfg-gsc-creds', provider:'gsc'},
+];
+
+function _initSettingsEnhancements(){
+  if(_settingsWired) return;
+  _settingsWired = true;
+  _wireTestButtons();
+  // Dirty tracking on every settings input/toggle.
+  const panel = document.getElementById('panel-settings');
+  if(panel){
+    panel.addEventListener('input',  _markSettingsDirty);
+    panel.addEventListener('change', _markSettingsDirty);
+  }
+  // Warn on tab close / refresh with unsaved changes.
+  window.addEventListener('beforeunload', e => {
+    if(_settingsDirty){ e.preventDefault(); e.returnValue=''; }
+  });
+}
+
+function _wireTestButtons(){
+  _SETTINGS_TESTS.forEach(({id,provider})=>{
+    const input = document.getElementById(id);
+    if(!input) return;
+    const row = input.closest('.settings-row');
+    if(!row || row.querySelector('.cfg-test-btn')) return;
+    const wrap = document.createElement('div');
+    wrap.style.cssText='display:flex;align-items:center;gap:8px;margin-top:6px;justify-content:flex-end';
+    const chip = document.createElement('span');
+    chip.className='cfg-test-chip';
+    chip.style.cssText='font-size:11px;color:var(--text3)';
+    const btn = document.createElement('button');
+    btn.type='button';
+    btn.className='btn btn-ghost btn-sm cfg-test-btn';
+    btn.textContent='Test';
+    btn.onclick=()=>testConnection(provider, btn, chip);
+    wrap.appendChild(chip); wrap.appendChild(btn);
+    row.appendChild(wrap);
+  });
+}
+
+// Collect the credential fields each provider needs from the live inputs.
+function _gatherTestCreds(provider){
+  const g = id => document.getElementById(id)?.value || '';
+  switch(provider){
+    case 'pagespeed':  return {pagespeed_api_key:g('cfg-pagespeed')};
+    case 'groq':       return {groq_api_key:g('cfg-groq')};
+    case 'bing':       return {bing_api_key:g('cfg-bing')};
+    case 'serpapi':    return {serpapi_key:g('cfg-serpapi')};
+    case 'moz':        return {moz_access_id:g('cfg-moz-id'), moz_secret_key:g('cfg-moz-secret')};
+    case 'dataforseo': return {dataforseo_login:g('cfg-dfs-login'), dataforseo_password:g('cfg-dfs-pass')};
+    case 'gsc':        return {};   // server uses the configured credentials file
+    default:           return {};
+  }
+}
+
+async function testConnection(provider, btn, chip){
+  btn.disabled=true; const orig=btn.textContent; btn.textContent='Testing…';
+  chip.textContent=''; chip.style.color='var(--text3)';
+  try{
+    const r = await fetch('/api/settings/test/'+encodeURIComponent(provider),
+      {method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify(_gatherTestCreds(provider))});
+    const d = await r.json();
+    chip.textContent = (d.ok?'✓ ':'✗ ') + (d.message||'');
+    chip.style.color = d.ok ? 'var(--c-green,#1a7f37)' : 'var(--c-red,#cf222e)';
+  }catch(e){
+    chip.textContent='✗ Request failed';
+    chip.style.color='var(--c-red,#cf222e)';
+  }finally{
+    btn.disabled=false; btn.textContent=orig;
+  }
+}
+
+function _markSettingsDirty(){
+  if(_settingsDirty) return;
+  _settingsDirty=true;
+  const btn=document.querySelector('#panel-settings .settings-header .btn-primary');
+  if(btn) btn.textContent='💾 Save Settings ●';
+}
+function _clearSettingsDirty(){
+  _settingsDirty=false;
+  const btn=document.querySelector('#panel-settings .settings-header .btn-primary');
+  if(btn) btn.textContent='💾 Save Settings';
+}
+function _settingsLeaveGuard(targetPanel){
+  const onSettings = document.getElementById('panel-settings')?.classList.contains('active');
+  if(onSettings && targetPanel!=='settings' && _settingsDirty){
+    if(!confirm('You have unsaved settings changes. Leave without saving?')) return false;
+    _clearSettingsDirty();
+  }
+  return true;
+}
+
+function filterSettings(q){
+  q=(q||'').trim().toLowerCase();
+  document.querySelectorAll('#panel-settings .settings-grid > .card').forEach(card=>{
+    let anyVisible=false;
+    card.querySelectorAll('.settings-row').forEach(row=>{
+      const hit = !q || row.textContent.toLowerCase().includes(q);
+      row.style.display = hit ? '' : 'none';
+      if(hit) anyVisible=true;
+    });
+    // Card with a matching title stays fully visible.
+    const title=(card.querySelector('.section-title')?.textContent||'').toLowerCase();
+    if(q && title.includes(q)){ card.style.display=''; card.querySelectorAll('.settings-row').forEach(r=>r.style.display=''); return; }
+    card.style.display = (!q || anyVisible) ? '' : 'none';
+  });
 }
 
 // ── Home stats / greeting / recent ────────────────────────────────────────────

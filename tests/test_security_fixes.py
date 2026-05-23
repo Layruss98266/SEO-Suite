@@ -175,9 +175,9 @@ def test_settings_post_rejects_unknown_keys(tmp_path, monkeypatch):
 
     client = server.app.test_client()
     resp = client.post("/api/settings", json={
-        "parallel_tabs": 4,                      # allowed
-        "__evil__": {"path": "/etc/passwd"},     # rejected
-        "slack": {"webhook_url": "x"},           # allowed
+        "parallel_tabs": 4,                                      # allowed
+        "__evil__": {"path": "/etc/passwd"},                     # rejected (unknown key)
+        "slack": {"webhook_url": "https://hooks.slack.com/x"},   # allowed (valid https)
     })
     assert resp.status_code == 200
     body = resp.get_json()

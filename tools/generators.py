@@ -667,7 +667,11 @@ def generate_schema(schema_type: str, data: dict) -> dict:
             return {"ok": False, "error": "Unhandled schema type"}
 
         markup = f'<script type="application/ld+json">\n{json.dumps(obj, indent=2)}\n</script>'
-        return {"ok": True, "schema_type": schema_type, "markup": markup, "json": obj}
+        warnings = []
+        for field in SCHEMA_TEMPLATES[schema_type]["fields"]:
+            if field.get("required") and not str(data.get(field["id"], "")).strip():
+                warnings.append(f"Missing required field: {field['label']}")
+        return {"ok": True, "schema_type": schema_type, "markup": markup, "json": obj, "warnings": warnings}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

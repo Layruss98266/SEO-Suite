@@ -80,3 +80,23 @@ class TestGenerateRobotsTxt:
         r = generate_robots_txt({"rules": [{"user_agent": "*", "disallow": ["/a\nUser-agent: evil"]}]})
         # Injected directive must not appear on its own line
         assert "User-agent: evil" not in r["content"].splitlines()
+
+
+class TestGenerateSchemaWarnings:
+    def test_missing_required_field_warned(self):
+        # Article requires headline, description, author, publisher, date_published, url
+        r = generate_schema("article", {"headline": "Hi"})
+        assert r["ok"] is True
+        assert "warnings" in r
+        assert any("author" in w.lower() for w in r["warnings"])
+
+    def test_all_required_present_no_warnings(self):
+        r = generate_schema("article", {
+            "headline": "Hi", "description": "d", "author": "A",
+            "publisher": "P", "date_published": "2026-01-01", "url": "https://e.com/",
+        })
+        assert r["ok"] is True
+        assert r["warnings"] == []
+
+    def test_unknown_type_unchanged(self):
+        assert generate_schema("nope", {})["ok"] is False

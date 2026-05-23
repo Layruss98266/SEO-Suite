@@ -14,7 +14,8 @@ import json
 import re
 from typing import Any
 
-from core.security import safe_requests_get, validate_public_url
+from core.security import validate_public_url
+from tools._common import fetch_html, safe_error
 
 # Required-field map per @type. Used for "missing required field" warnings.
 # Keys are Schema.org @type values (case-sensitive). Values are field names.
@@ -176,11 +177,7 @@ def validate_url(url: str, timeout: int = 8) -> dict[str, Any]:
         return {"ok": False, "error": str(e)}
 
     try:
-        # Use safe_requests_get so every redirect hop is re-validated against
-        # the SSRF allowlist. The previous requests.get(allow_redirects=True)
-        # only validated the initial URL, letting a public URL redirect the
-        # server into private or metadata addresses.
-        resp = safe_requests_get(
+        resp = fetch_html(
             url,
             timeout=timeout,
             headers={
@@ -188,7 +185,7 @@ def validate_url(url: str, timeout: int = 8) -> dict[str, Any]:
             },
         )
     except Exception as e:
-        return {"ok": False, "error": f"Fetch failed: {e}"}
+        return {"ok": False, "error": safe_error(e)}
 
     if resp.status_code >= 400:
         return {"ok": False, "error": f"HTTP {resp.status_code} from {url}"}

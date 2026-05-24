@@ -1,0 +1,81 @@
+{% extends "site/base.html" %}
+{% block title %}Blog · SEO Suite{% endblock %}
+{% block description %}Five SEO reads worth your time: AI Overviews, Core Web Vitals and INP, E-E-A-T, technical SEO, and getting pages indexed.{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding:90px 0 40px">
+  <div class="container">
+    <span class="eyebrow reveal">Blog</span>
+    <h1 class="reveal">Five SEO reads<br><span class="grad-text">worth your time.</span></h1>
+    <p class="lead reveal" style="margin:22px auto 0">A short, curated list on what matters in search right now. Each one links out to the source so you can go deeper.</p>
+  </div>
+</section>
+
+<section style="padding-top:24px">
+  <div class="container">
+    <div class="grid grid-2">
+
+      <article class="card reveal">
+        <span class="price-badge">AI Search</span>
+        <h3 style="margin:6px 0 10px">Google's AI Overviews are reshaping search. Here's how to stay visible.</h3>
+        <p>AI Overviews now sit above the classic results and can pull the average click on the top result down by about a third. The pages that get cited tend to answer the question directly, back it with data, and use clear structure and schema. If you write for the answer, not just the keyword, you have a better shot at being the source the AI quotes.</p>
+        <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-3)">Search Engine Journal · 6 min read</span>
+          <a href="https://www.searchenginejournal.com/key-enterprise-seo-and-ai-trends-for-2026/558508/" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Read the article →</a>
+        </div>
+      </article>
+
+      <article class="card reveal">
+        <span class="price-badge">Performance</span>
+        <h3 style="margin:6px 0 10px">INP is the Core Web Vital most sites are still failing.</h3>
+        <p>Interaction to Next Paint replaced First Input Delay in 2024, and it measures how quickly your page responds to every tap, click, and keypress, not just the first one. Aim for under 200 milliseconds. Heavy JavaScript and long tasks on the main thread are the usual culprits, so breaking up work and trimming third-party scripts is where most of the wins live.</p>
+        <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-3)">web.dev · 7 min read</span>
+          <a href="https://web.dev/articles/inp" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Read the article →</a>
+        </div>
+      </article>
+
+      <article class="card reveal">
+        <span class="price-badge">Content</span>
+        <h3 style="margin:6px 0 10px">E-E-A-T without the jargon: prove a real person made this.</h3>
+        <p>Experience, Expertise, Authoritativeness, and Trust are not boxes to tick. They show up as named authors with real credentials, first-hand experience in the writing, links to primary sources, and original data instead of recycled summaries. If a reader can tell a knowledgeable human wrote the page, search engines usually can too.</p>
+        <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-3)">Google Search Central · 5 min read</span>
+          <a href="https://developers.google.com/search/docs/fundamentals/creating-helpful-content" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Read the guide →</a>
+        </div>
+      </article>
+
+      <article class="card reveal">
+        <span class="price-badge">Technical</span>
+        <h3 style="margin:6px 0 10px">A technical SEO checklist that actually moves rankings.</h3>
+        <p>Before you touch content, make sure search engines can crawl, render, and understand your site. That means a clean robots.txt and sitemap, no accidental noindex tags, sensible canonicals, fast and stable pages, and schema that describes what each page is. Get the plumbing right and everything else you do works harder.</p>
+        <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-3)">Ahrefs · 12 min read</span>
+          <a href="https://ahrefs.com/blog/technical-seo/" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Read the guide →</a>
+        </div>
+      </article>
+
+      <article class="card reveal" style="grid-column:1 / -1">
+        <span class="price-badge">Indexing</span>
+        <h3 style="margin:6px 0 10px">Why your pages aren't indexed, and how to check the right way.</h3>
+        <p>A page can rank only if Google has indexed it, and plenty never make it that far. Common reasons include noindex tags, blocked paths in robots.txt, thin or duplicate content, and pages that simply haven't been discovered yet. The reliable way to know is the URL Inspection tool in Search Console, which tells you the real status instead of guessing from a <code>site:</code> search. That's exactly the signal SEO Suite leans on for its indexation checks.</p>
+        <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;font-size:13px">
+          <span style="color:var(--text-3)">Google Search Central · 8 min read</span>
+          <a href="https://developers.google.com/search/docs/crawling-indexing" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Read the docs →</a>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<section class="cta-band" style="padding-top:20px">
+  <div class="container">
+    <div class="cta-inner reveal">
+      <h2>Put the theory to work</h2>
+      <p>Run an audit, check what's indexed, and fix the issues these articles describe, all from one dashboard.</p>
+      <a class="btn btn-ghost btn-lg" href="/app">Open the app</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

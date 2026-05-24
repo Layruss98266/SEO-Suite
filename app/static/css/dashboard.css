@@ -2323,6 +2323,21 @@ body.dark .top-issues-panel{background:var(--sb-2);border-color:var(--sb-border)
 .tb-ai-btn:hover{background:linear-gradient(135deg,#6D28D9,#4F46E5);color:#fff}
 body.dark .tb-ai-btn{background:linear-gradient(135deg,#5B21B6,#4F46E5)}
 
+/* ── Topbar: Website shortcut button ─────────────────────────────────────── */
+.tb-web-btn{
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.1);
+  color:#E2E5F5!important;
+  box-shadow:none;
+}
+.tb-web-btn:hover{
+  background:rgba(255,255,255,.14);
+  color:#fff!important;
+  border-color:rgba(255,255,255,.2);
+  transform:translateY(-1px);
+}
+.tb-web-btn:active{transform:translateY(0)}
+
 /* ── Home: Quick Tools + Generators strips ───────────────────────────────── */
 .home-strip-section{
   margin:0 0 20px;

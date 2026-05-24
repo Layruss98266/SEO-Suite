@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, Response, jsonify, request, session
+from flask import Flask, Response, jsonify, render_template, request, session
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
@@ -52,6 +52,7 @@ from core.checker import (
     load_history,
 )
 from core.security import esc, is_safe_url, validate_public_url
+from core.version import VERSION
 from core.seo_audit import audit_single_url, generate_excel_report, generate_html_report
 
 # Cap on per-run audit result lists so a huge sitemap can't blow up memory.
@@ -348,10 +349,55 @@ def _replace_last_index_run(results: dict[str, str]) -> None:
 # ROUTES — Indexing
 # ══════════════════════════════════════════════════════════════════════════════
 
-@app.route("/")
+@app.route("/app")
 @login_required
-def index():
+def app_dashboard():
     return (TEMPLATE_DIR / "dashboard.html").read_text(encoding="utf-8"), 200, {"Content-Type": "text/html"}
+
+
+# ── Public marketing site ─────────────────────────────────────────────────────
+
+def _site_ctx() -> dict:
+    """Shared template context for the marketing pages."""
+    return {"year": datetime.now().year, "version": VERSION}
+
+
+@app.route("/")
+def site_home():
+    return render_template("site/home.html", active="home", **_site_ctx())
+
+
+@app.route("/features")
+def site_features():
+    return render_template("site/features.html", active="features", **_site_ctx())
+
+
+@app.route("/pricing")
+def site_pricing():
+    return render_template("site/pricing.html", active="pricing", **_site_ctx())
+
+
+@app.route("/about")
+def site_about():
+    return render_template("site/about.html", active="about", **_site_ctx())
+
+
+@app.route("/contact", methods=["GET", "POST"])
+@limiter.limit("10 per hour", methods=["POST"])
+def site_contact():
+    if request.method == "POST":
+        data    = request.get_json(silent=True) or {}
+        name    = (data.get("name") or "").strip()
+        email   = (data.get("email") or "").strip()
+        message = (data.get("message") or "").strip()
+        if not (name and email and message):
+            return jsonify({"ok": False, "error": "All fields are required."}), 400
+        if "@" not in email or "." not in email.split("@")[-1]:
+            return jsonify({"ok": False, "error": "Please enter a valid email."}), 400
+        # No outbound mail dependency — log the enquiry; ops can wire delivery later.
+        logger.info("Contact form submission from %s <%s>: %s", name, email, message[:500])
+        return jsonify({"ok": True, "message": "Thanks — your message has been received."})
+    return render_template("site/contact.html", active="contact", **_site_ctx())
 
 
 # ── Auth routes ──────────────────────────────────────────────────────────────
@@ -361,7 +407,7 @@ def index():
 def login():
     if not auth_enabled():
         # Auth disabled (no SEO_SUITE_PASSWORD_HASH env). Send users straight in.
-        return ("", 302, {"Location": "/"})
+        return ("", 302, {"Location": "/app"})
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
@@ -372,7 +418,7 @@ def login():
             session["username"] = identity["username"]
             session["is_admin"] = identity["is_admin"]
             session.permanent = True
-            return ("", 302, {"Location": "/"})
+            return ("", 302, {"Location": "/app"})
         page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
         return page, 401, {"Content-Type": "text/html"}
     page = LOGIN_PAGE.replace("__ERROR__", "")
@@ -402,7 +448,7 @@ def signup():
         session["username"] = identity["username"]
         session["is_admin"] = identity["is_admin"]
         session.permanent = True
-        return ("", 302, {"Location": "/"})
+        return ("", 302, {"Location": "/app"})
     page = SIGNUP_PAGE.replace("__ERROR__", "")
     return page, 200, {"Content-Type": "text/html"}
 

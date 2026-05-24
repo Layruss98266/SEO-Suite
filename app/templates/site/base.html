@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SEO Suite — Professional SEO Platform{% endblock %}</title>
+<meta name="description" content="{% block description %}Audit, index, and optimize your site with SEO Suite — a self-hosted platform for technical SEO audits, indexation checks, schema generators, and Search Console insights.{% endblock %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <span>SEO Suite<br><span class="brand-sub">Professional SEO Platform</span></span>
+    </a>
+    <nav class="nav-links">
+      <a href="/features" {% if active=='features' %}class="active"{% endif %}>Features</a>
+      <a href="/pricing"  {% if active=='pricing'  %}class="active"{% endif %}>Pricing</a>
+      <a href="/about"    {% if active=='about'    %}class="active"{% endif %}>About</a>
+      <a href="/contact"  {% if active=='contact'  %}class="active"{% endif %}>Contact</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="/login">Log in</a>
+      <a class="btn btn-primary" href="/app">Open App
+        <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </div>
+    <button class="nav-toggle" onclick="document.getElementById('nav').classList.toggle('open')" aria-label="Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+{% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="/" style="margin-bottom:14px">
+          <span class="brand-mark"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <span>SEO Suite</span>
+        </a>
+        <p style="color:var(--text-3);font-size:14px;max-width:280px">Self-hosted technical SEO — audits, indexation, generators, and Search Console insights in one dashboard.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <div class="footer-links">
+          <a href="/features">Features</a>
+          <a href="/pricing">Pricing</a>
+          <a href="/app">Open App</a>
+        </div>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <div class="footer-links">
+          <a href="/about">About</a>
+          <a href="/contact">Contact</a>
+        </div>
+      </div>
+      <div>
+        <h4>Account</h4>
+        <div class="footer-links">
+          <a href="/login">Log in</a>
+          <a href="/signup">Sign up</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© {{ year }} SEO Suite · v{{ version }}</span>
+      <span>Built for technical SEO.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Minimal animation: reveal elements on scroll.
+// Defensive: .reveal starts at opacity:0, so content must NEVER stay hidden if
+// the observer misfires. We reveal on intersection, and a safety timer reveals
+// everything regardless after a short delay.
+(function () {
+  var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if (!els.length) return;
+  function show(e) { e.classList.add('in'); }
+  if (!('IntersectionObserver' in window)) { els.forEach(show); return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { if (en.isIntersecting) { show(en.target); io.unobserve(en.target); } });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  els.forEach(function (e) { io.observe(e); });
+  // Safety net — guarantees content appears even if the observer never fires.
+  setTimeout(function () { els.forEach(show); }, 1600);
+})();
+</script>
+</body>
+</html>

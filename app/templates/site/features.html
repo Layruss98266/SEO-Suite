@@ -1,0 +1,41 @@
+{% extends "site/base.html" %}
+{% block title %}Features — SEO Suite{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding:90px 0 50px">
+  <div class="container">
+    <span class="eyebrow reveal">Features</span>
+    <h1 class="reveal">One platform,<br><span class="grad-text">every technical SEO job.</span></h1>
+    <p class="lead reveal" style="margin:22px auto 0">From crawl access to Core Web Vitals to structured data — backed by Google Search Console, PageSpeed, Moz, DataForSEO and more.</p>
+  </div>
+</section>
+
+<section style="padding-top:30px">
+  <div class="container">
+    <div class="grid grid-2">
+      <div class="card reveal"><div class="card-icon">🕷️</div><h3>Crawl Access</h3><p>robots.txt, HTTP status, redirect chains, broken links, internal links, canonical tags, sitemap validation and meta-robots/noindex detection.</p></div>
+      <div class="card reveal"><div class="card-icon">📝</div><h3>On-Page SEO</h3><p>Titles, meta descriptions, headings, image alt text, word count, readability, Open Graph, hreflang, favicon and TTFB — scored against best practice.</p></div>
+      <div class="card reveal"><div class="card-icon">🛡️</div><h3>Site Health</h3><p>SSL/TLS grade, domain age, mixed content, HTTPS enforcement, security headers, SPF, DMARC and MX records.</p></div>
+      <div class="card reveal"><div class="card-icon">⚡</div><h3>Performance</h3><p>PageSpeed Insights scores and Core Web Vitals (LCP, CLS, INP, FCP) with mobile-vs-desktop comparison.</p></div>
+      <div class="card reveal"><div class="card-icon">📊</div><h3>Search Console</h3><p>Clicks &amp; impressions, top queries, position tracking, CTR opportunities, coverage errors and sitemap status.</p></div>
+      <div class="card reveal"><div class="card-icon">🔗</div><h3>Authority &amp; Rankings</h3><p>Backlinks, domain &amp; page authority, referring domains, spam score, keyword positions and SERP features.</p></div>
+      <div class="card reveal"><div class="card-icon">📑</div><h3>Indexation Checks</h3><p>GSC URL Inspection as the authoritative source, with a browser SERP fallback for non-owned URLs — plus IndexNow submission to Bing &amp; Yandex.</p></div>
+      <div class="card reveal"><div class="card-icon">🧩</div><h3>Generators</h3><p>JSON-LD schema (Article, Product, FAQ, Event, and more), XML sitemaps, robots.txt, hreflang and meta tags — validated and safely escaped.</p></div>
+      <div class="card reveal"><div class="card-icon">🤖</div><h3>AI Assistant</h3><p>Plain-English audit explanations and AI-drafted meta titles &amp; descriptions, powered by your own Groq key.</p></div>
+      <div class="card reveal"><div class="card-icon">📈</div><h3>Reports &amp; History</h3><p>Rich HTML, Excel, CSV and JSON exports, run-over-run comparison, and a full history of every audit and index run.</p></div>
+      <div class="card reveal"><div class="card-icon">👥</div><h3>Multi-User</h3><p>Signup and admin-managed accounts with roles, masked secrets and per-IP rate limiting baked in.</p></div>
+      <div class="card reveal"><div class="card-icon">🔔</div><h3>Notifications</h3><p>Email, Slack and Teams alerts after each run, plus optional scheduled audits.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band" style="padding-top:20px">
+  <div class="container">
+    <div class="cta-inner reveal">
+      <h2>See it on your own site</h2>
+      <p>Every feature runs locally against your URLs. Open the app and try an audit now.</p>
+      <a class="btn btn-ghost btn-lg" href="/app">Open the app</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

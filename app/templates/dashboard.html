@@ -154,7 +154,7 @@
 <div class="modal" id="help-modal">
   <div class="modal-head">
     <div>
-      <div class="modal-title">SEO Suite — Help & Reference</div>
+      <div class="modal-title">SEO Suite · Help & Reference</div>
       <div class="modal-sub">Everything you can do here · keyboard shortcuts · setup hints</div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="closeHelp()">✕</button>
@@ -452,7 +452,7 @@
 
   <div class="home-grid">
     <div>
-      <div class="section-title">Use Cases <span style="color:var(--text3);font-weight:400">— click any card to run it</span></div>
+      <div class="section-title">Use Cases <span style="color:var(--text3);font-weight:400">· click any card to run it</span></div>
       <div class="home-uc-grid" id="home-uc-grid"></div>
     </div>
     <div class="home-side">
@@ -521,7 +521,7 @@
     <div class="tool-guide-icon">🔍</div>
     <div class="tool-guide-body">
       <div class="tool-guide-title">How it works</div>
-      <div class="tool-guide-text">The checker opens each URL in a real Chromium browser via Playwright, performs a Google <code>site:</code> search, and reads the result — no API required. Provide a sitemap, domain, or paste URLs directly. Use the filter pattern to narrow down to a subfolder (e.g. <code>/blog/</code>).</div>
+      <div class="tool-guide-text">The checker opens each URL in a real browser, runs a live Google <code>site:</code> search, and checks if it appears in the results without requiring any paid API. You can supply a sitemap, scan a domain, or paste URLs directly. Use the filter pattern if you only want to check a specific subfolder like <code>/blog/</code>.</div>
       <div class="tool-guide-example">Sitemap → https://example.com/sitemap.xml&#10;Domain  → example.com&#10;Filter  → /blog/ or /products/</div>
       <div class="tool-guide-tips">
         <span class="tool-guide-tip">First run? playwright install chromium</span>
@@ -558,7 +558,7 @@
           <div class="dz-icon">📂</div>
           <div class="dz-text">
             <div class="dz-title" id="idx-dz-title">Click or drop a file here</div>
-            <div class="dz-sub" id="idx-dz-sub">CSV · Excel · TSV · TXT — first column should be URLs</div>
+            <div class="dz-sub" id="idx-dz-sub">CSV, Excel, TSV, or TXT. Make sure the first column contains your URLs.</div>
           </div>
         </div>
       </div>
@@ -598,7 +598,7 @@
 <div class="panel" id="panel-idx-live">
   <div class="live-header">
     <div>
-      <div class="page-title">Indexing — Live</div>
+      <div class="page-title">Indexing Progress</div>
       <div class="page-sub" id="idx-live-sub">Waiting to start…</div>
     </div>
     <button class="notif-btn" id="idx-notif-btn" onclick="toggleNotif('idx')" title="Enable desktop notification on completion">🔔</button>
@@ -657,7 +657,7 @@
     <div class="tool-guide-icon">🔬</div>
     <div class="tool-guide-body">
       <div class="tool-guide-title">How it works</div>
-      <div class="tool-guide-text">Choose one or more use cases (or a preset), provide a URL source, and click Start Audit. Each URL is scored across the selected phases — Technical, Performance, Search Console, and Authority. Results stream live and are saved as an HTML + XLSX report you can open or download.</div>
+      <div class="tool-guide-text">Select your target use cases, enter your URL source, and hit start. The app will audit each URL across all four core phases (Technical, Performance, Search Console, and Link Authority). You can watch the results stream onto your screen in real time, and they will be saved as HTML and Excel reports for easy download.</div>
       <div class="tool-guide-example">Full Audit → all 7 use cases&#10;Technical only → Crawl Access + On-Page SEO + Site Health&#10;Quick test → paste 3–5 URLs, limit to 5</div>
       <div class="tool-guide-tips">
         <span class="tool-guide-tip">Save profiles for repeat audits</span>
@@ -728,12 +728,12 @@
           <div class="dz-icon">📂</div>
           <div class="dz-text">
             <div class="dz-title" id="dz-title">Click or drop a file here</div>
-            <div class="dz-sub" id="dz-sub">CSV · Excel · TSV · TXT — first column should be URLs</div>
+            <div class="dz-sub" id="dz-sub">Supports CSV, Excel, TSV, or TXT. Ensure the first column contains your URLs.</div>
           </div>
         </div>
       </div>
       <div class="fg-full" id="aud-paste-row" style="display:none">
-        <span class="label">Paste URLs <span style="font-weight:400;color:var(--text3)">(one per line, or comma-separated)</span></span>
+        <span class="label">Paste URLs <span style="font-weight:400;color:var(--text3)">(one per line or comma-separated)</span></span>
         <textarea class="input" id="aud-paste" rows="6"
                   placeholder="https://example.com/page1&#10;https://example.com/page2&#10;…"></textarea>
       </div>
@@ -782,13 +782,13 @@
     <table class="tbl">
       <thead><tr><th>Tool</th><th>What it does</th><th>Requires</th></tr></thead>
       <tbody>
-        <tr><td><span style="margin-right:6px">📊</span><b>GSC Opportunities</b></td><td style="color:#64748B">Low-CTR pages · position decay · keyword cannibalization — 90 days of GSC data</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">GSC API</span></td></tr>
-        <tr><td><span style="margin-right:6px">⚡</span><b>Perf Opportunities</b></td><td style="color:#64748B">Core Web Vitals graded mobile + desktop · critical / quick-win / nice-to-have buckets</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">PageSpeed API</span></td></tr>
-        <tr><td><span style="margin-right:6px">🤖</span><b>AI Assistant</b></td><td style="color:#64748B">Plain-English audit summary · top actions · AI-drafted meta title + description variants</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Groq API (free)</span></td></tr>
-        <tr><td><span style="margin-right:6px">🔷</span><b>Bing Visibility</b></td><td style="color:#64748B">Bing clicks · impressions · crawl issues · sitemap indexation · URL inspection + submission</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Bing WMT API</span></td></tr>
-        <tr><td><span style="margin-right:6px">🏷️</span><b>Schema Validate</b></td><td style="color:#64748B">Rich results eligibility · schema block errors · type detection per page</td><td><span style="background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Free</span></td></tr>
-        <tr><td><span style="margin-right:6px">🗺</span><b>Sitemap Audit</b></td><td style="color:#64748B">Orphan URLs · duplicates · oversized sitemap · HTTP in HTTPS site · non-indexable entries</td><td><span style="background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Free</span></td></tr>
-        <tr><td><span style="margin-right:6px">⚡</span><b>IndexNow Submit</b></td><td style="color:#64748B">Push URLs to Bing &amp; Yandex instantly — single URL or bulk batch</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">IndexNow key</span></td></tr>
+        <tr><td><span style="margin-right:6px">📊</span><b>GSC Opportunities</b></td><td style="color:#64748B">Find low click-through rates, ranking decay, and keyword cannibalization using 90 days of Google data.</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">GSC API</span></td></tr>
+        <tr><td><span style="margin-right:6px">⚡</span><b>Perf Opportunities</b></td><td style="color:#64748B">Review mobile and desktop Core Web Vitals, organized into critical, quick-win, and nice-to-have items.</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">PageSpeed API</span></td></tr>
+        <tr><td><span style="margin-right:6px">🤖</span><b>AI Assistant</b></td><td style="color:#64748B">Get a plain-English summary, a list of top priority actions, and AI-drafted meta title and description ideas.</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Groq API (free)</span></td></tr>
+        <tr><td><span style="margin-right:6px">🔷</span><b>Bing Visibility</b></td><td style="color:#64748B">Monitor Bing search clicks, impressions, crawl alerts, sitemaps, and inspect or submit URLs live.</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Bing WMT API</span></td></tr>
+        <tr><td><span style="margin-right:6px">🏷️</span><b>Schema Validate</b></td><td style="color:#64748B">Check eligibility for Google rich results, detect schema markup errors, and scan structured data types.</td><td><span style="background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Free</span></td></tr>
+        <tr><td><span style="margin-right:6px">🗺</span><b>Sitemap Audit</b></td><td style="color:#64748B">Find orphaned links, duplicate pages, oversized files, HTTPS warnings, and non-indexable URLs in sitemaps.</td><td><span style="background:#DCFCE7;color:#166534;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">Free</span></td></tr>
+        <tr><td><span style="margin-right:6px">⚡</span><b>IndexNow Submit</b></td><td style="color:#64748B">Submit new or updated pages directly to Bing and Yandex, individually or in batches.</td><td><span style="background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">IndexNow key</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -799,7 +799,7 @@
 <div class="panel" id="panel-aud-live">
   <div class="live-header">
     <div>
-      <div class="page-title">Audit — Live</div>
+      <div class="page-title">Audit Progress</div>
       <div class="page-sub" id="aud-live-sub">Waiting to start…</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -887,7 +887,7 @@
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <div>
       <div class="page-title">Reports</div>
-      <div class="page-sub">All generated reports — open HTML or download data</div>
+      <div class="page-sub">Browse all your previous runs. You can view the live HTML reports or download the raw data spreadsheets.</div>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="loadReports()">↻ Refresh</button>
   </div>
@@ -922,7 +922,7 @@
   <div class="run-page">
   <div>
     <div class="page-title">Compare Reports</div>
-    <div class="page-sub">Pick two audit reports — see which URLs gained or lost score</div>
+    <div class="page-sub">Choose any two audit runs to compare your scores and track how your optimization efforts are paying off over time.</div>
   </div>
   <div class="tool-guide">
     <div class="tool-guide-icon">🔀</div>
@@ -941,11 +941,11 @@
     <div class="form-grid">
       <div>
         <span class="label">Report A (older)</span>
-        <select class="input" id="cmp-a"><option value="">— Pick a report —</option></select>
+        <select class="input" id="cmp-a"><option value="">Choose a report...</option></select>
       </div>
       <div>
         <span class="label">Report B (newer)</span>
-        <select class="input" id="cmp-b"><option value="">— Pick a report —</option></select>
+        <select class="input" id="cmp-b"><option value="">Choose a report...</option></select>
       </div>
       <div class="fg-full">
         <div style="display:flex;gap:8px">
@@ -1021,7 +1021,7 @@
   <div class="settings-header">
     <div>
       <div class="page-title">Settings</div>
-      <div class="page-sub">Credentials, API keys &amp; notifications — all stored locally in config.json. Secrets are masked (shown as ••••••••) — leave a masked field untouched to keep the saved value.</div>
+      <div class="page-sub">Manage your API credentials, keys, and alerts locally in your private config file. Your keys are masked for security. Leave any masked fields alone to keep their currently saved values.</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;flex-shrink:0">
       <input class="input" type="search" placeholder="🔍 Filter settings…" oninput="filterSettings(this.value)" style="width:200px">
@@ -1049,7 +1049,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Google Search Console <span class="cfg-badge" id="badge-gsc"></span></div>
-          <div class="s-desc">Enables GSC URL Inspection API for accurate indexing results — more reliable than browser checks</div>
+          <div class="s-desc">Use Google's official GSC Inspection API for the most accurate indexing checks. This is the primary source of truth.</div>
         </div>
         <label class="toggle"><input type="checkbox" id="cfg-gsc"><span class="slider"></span></label>
       </div>
@@ -1096,7 +1096,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Groq API Key <span class="cfg-badge" id="badge-groq"></span></div>
-          <div class="s-desc">Free tier · <a href="https://console.groq.com" target="_blank" style="color:var(--primary)">console.groq.com</a> → API Keys — unlocks "Explain with AI" &amp; meta tag drafting</div>
+          <div class="s-desc">Get a free API key at <a href="https://console.groq.com" target="_blank" style="color:var(--primary)">console.groq.com</a> to unlock instant AI audit explanations and meta tag suggestions.</div>
         </div>
         <div class="key-wrap" style="width:220px"><input class="input" type="password" id="cfg-groq" placeholder="gsk_…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
       </div>
@@ -1104,7 +1104,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Bing Webmaster API Key <span class="cfg-badge" id="badge-bing"></span></div>
-          <div class="s-desc">Free · <a href="https://www.bing.com/webmasters" target="_blank" style="color:var(--primary)">bing.com/webmasters</a> → Settings → API Access — unlocks Bing Visibility panel</div>
+          <div class="s-desc">Connect your Bing Webmaster key from <a href="https://www.bing.com/webmasters" target="_blank" style="color:var(--primary)">bing.com/webmasters</a> to populate your search visibility charts.</div>
         </div>
         <div class="key-wrap" style="width:220px"><input class="input" type="password" id="cfg-bing" placeholder="your_key…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
       </div>
@@ -1133,7 +1133,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">IndexNow Host</div>
-          <div class="s-desc">Your site hostname — must match the domain where the key file is hosted</div>
+          <div class="s-desc">Enter your website's main domain name. This must match the domain where your verification files are located.</div>
         </div>
         <input class="input" id="cfg-indexnow-host" placeholder="example.com" style="width:220px">
       </div>
@@ -1146,7 +1146,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">SerpAPI Key <span class="cfg-badge" id="badge-serpapi"></span></div>
-          <div class="s-desc">100 free searches/month · <a href="https://serpapi.com" target="_blank" style="color:var(--primary)">serpapi.com</a> — keyword rank tracking</div>
+          <div class="s-desc">Get 100 free monthly queries at <a href="https://serpapi.com" target="_blank" style="color:var(--primary)">serpapi.com</a> to track keyword rankings in live search engine results.</div>
         </div>
         <div class="key-wrap" style="width:220px"><input class="input" id="cfg-serpapi" placeholder="your_key…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
       </div>
@@ -1154,7 +1154,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Moz Access ID <span class="cfg-badge" id="badge-moz"></span></div>
-          <div class="s-desc">Free tier · <a href="https://moz.com/products/api" target="_blank" style="color:var(--primary)">moz.com/products/api</a> — domain authority &amp; backlinks</div>
+          <div class="s-desc">Sign up for a free API token at <a href="https://moz.com/products/api" target="_blank" style="color:var(--primary)">moz.com/products/api</a> to check domain metrics and backlink profiles.</div>
         </div>
         <div class="key-wrap" style="width:220px"><input class="input" id="cfg-moz-id" placeholder="mozscape-…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
       </div>
@@ -1170,7 +1170,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">DataForSEO Login <span class="cfg-badge" id="badge-dfs"></span></div>
-          <div class="s-desc">Affordable paid API · <a href="https://dataforseo.com" target="_blank" style="color:var(--primary)">dataforseo.com</a> — backlink data &amp; SERP analysis</div>
+          <div class="s-desc">Connect your <a href="https://dataforseo.com" target="_blank" style="color:var(--primary)">dataforseo.com</a> account for professional-grade keyword rankings and deep SEO analysis.</div>
         </div>
         <div class="key-wrap" style="width:220px"><input class="input" id="cfg-dfs-login" placeholder="email@example.com"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
       </div>
@@ -1199,7 +1199,7 @@
       <div class="settings-row" style="margin-top:6px">
         <div class="settings-info">
           <div class="s-label">Session Secret</div>
-          <div class="s-desc">Set <code>SEO_SUITE_SECRET</code> in your .env file — without it sessions are lost on every server restart</div>
+          <div class="s-desc">Configure a secure <code>SEO_SUITE_SECRET</code> in your local .env file. If you leave this out, sessions will expire when the app restarts.</div>
         </div>
         <span id="auth-secret-badge" style="font-size:12px;color:var(--c-muted)"></span>
       </div>
@@ -1224,7 +1224,7 @@
         <div class="settings-row">
           <div class="settings-info">
             <div class="s-label">Allow public signup</div>
-            <div class="s-desc">When on, anyone can self-register at <code>/signup</code>. Turn off to restrict account creation to admins.</div>
+            <div class="s-desc">When enabled, anyone can register an account at <code>/signup</code>. Disable this to restrict user creation to administrators.</div>
           </div>
           <label class="toggle"><input type="checkbox" id="cfg-allow-signup"><span class="slider"></span></label>
         </div>
@@ -1252,7 +1252,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Email Reports <span class="cfg-badge" id="badge-email"></span></div>
-          <div class="s-desc">Send full HTML report to your inbox after each indexing run via SMTP</div>
+          <div class="s-desc">Send the complete HTML report to your email inbox after every run.</div>
         </div>
         <label class="toggle"><input type="checkbox" id="cfg-email" onchange="updateSettingBadges()"><span class="slider"></span></label>
       </div>
@@ -1260,7 +1260,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Slack <span class="cfg-badge" id="badge-slack"></span></div>
-          <div class="s-desc">Post a summary or de-indexing alert to a Slack channel webhook</div>
+          <div class="s-desc">Send a notification summary or indexing alert straight to your Slack channel webhook.</div>
         </div>
         <label class="toggle"><input type="checkbox" id="cfg-slack" onchange="toggleNotifExpand('slack',this.checked);updateSettingBadges()"><span class="slider"></span></label>
       </div>
@@ -1272,7 +1272,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Microsoft Teams <span class="cfg-badge" id="badge-teams"></span></div>
-          <div class="s-desc">Post run summary card to a Teams channel incoming webhook</div>
+          <div class="s-desc">Send a clear run summary directly to your Microsoft Teams channel incoming webhook.</div>
         </div>
         <label class="toggle"><input type="checkbox" id="cfg-teams" onchange="toggleNotifExpand('teams',this.checked);updateSettingBadges()"><span class="slider"></span></label>
       </div>
@@ -1283,8 +1283,8 @@
 
       <div class="settings-row">
         <div class="settings-info">
-          <div class="s-label">Email — SMTP <span class="cfg-badge" id="badge-email-smtp"></span></div>
-          <div class="s-desc">Outbound mail server credentials for sending HTML reports</div>
+          <div class="s-label">Email (SMTP) <span class="cfg-badge" id="badge-email-smtp"></span></div>
+          <div class="s-desc">Configure your mail server credentials to send HTML reports.</div>
         </div>
         <label class="toggle"><input type="checkbox" id="cfg-email-toggle" onchange="toggleNotifExpand('email',this.checked);updateSettingBadges()"><span class="slider"></span></label>
       </div>
@@ -1317,7 +1317,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">HTTP/HTTPS Proxies</div>
-          <div class="s-desc">Rotate through these proxies during indexing checks to avoid rate limits. One proxy per line — <code>http://user:pass@host:port</code> or <code>http://host:port</code></div>
+          <div class="s-desc">Prevent IP blocks by providing a list of proxies to rotate through, formatted as one per line (for example, <code>http://user:pass@host:port</code>).</div>
         </div>
       </div>
       <textarea class="input" id="cfg-proxies" rows="4" placeholder="http://proxy1.example.com:8080&#10;http://user:pass@proxy2.example.com:3128" style="width:100%;font-family:monospace;font-size:12px;resize:vertical"></textarea>
@@ -1330,7 +1330,7 @@
       <div class="settings-row">
         <div class="settings-info">
           <div class="s-label">Enable Scheduled Indexing <span class="cfg-badge" id="badge-schedule"></span></div>
-          <div class="s-desc">Automatically run indexing checks on a recurring schedule and email results</div>
+          <div class="s-desc">Set indexing checks to run automatically on a recurring schedule and email the results.</div>
         </div>
         <label class="toggle"><input type="checkbox" id="cfg-schedule" onchange="toggleScheduleExpand(this.checked);updateSettingBadges()"><span class="slider"></span></label>
       </div>

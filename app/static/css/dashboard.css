@@ -2429,6 +2429,15 @@ body.dark .home-strip-item:hover{border-color:#6366F1;box-shadow:0 0 0 3px rgba(
   z-index:100;
   flex-direction:column;
 }
+.nav-dd::before{
+  content:'';
+  position:absolute;
+  top:-8px;
+  left:0;
+  right:0;
+  height:8px;
+  background:transparent;
+}
 .nav-group:hover>.nav-dd{display:flex}
 .nav-dd-item{
   display:flex;align-items:center;gap:8px;

@@ -74,6 +74,8 @@ Put nginx (or Caddy) in front for TLS.
 - **Set `SEO_SUITE_SECRET`** to a stable random value so logins survive restarts.
 - **Auth:** either set `SEO_SUITE_USERNAME` + `SEO_SUITE_PASSWORD_HASH`, or just
   create the first account at `/signup` (it becomes the admin and turns auth on).
+  On public cloud/PaaS hosting (like Render), authentication is strictly forced
+  from first boot to prevent unauthorized public access before signup.
 - **API keys** (PageSpeed, GSC, Moz, DataForSEO, SerpAPI, Groq) are entered in
   Settings and stored in `config.json` under the data directory.
 
@@ -84,6 +86,7 @@ Put nginx (or Caddy) in front for TLS.
 | `SEO_SUITE_SECRET` | Signs session cookies. Set a stable random value. |
 | `SEO_SUITE_DATA_DIR` | Writable dir for data/reports/uploads (default `/app/data`). |
 | `SEO_SUITE_USERNAME` / `SEO_SUITE_PASSWORD_HASH` | Optional env superadmin. |
+| `SEO_SUITE_FORCE_AUTH` | Force authentication strictly (automatically true on Render). |
 | `SEO_SUITE_HOST` / `PORT` | Bind host/port (Render and Fly set `PORT`). |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins. |
 | `SENTRY_DSN` | Optional error tracking. |

@@ -102,6 +102,29 @@ Do not:
 - add new cwd-relative `Path("data/...")` or `Path("config.json")` patterns
 - weaken path traversal protections
 
+### Authentication & Session Safety
+
+Do:
+
+- ensure `auth_enabled()` strictly resolves to `True` on public cloud hosting deployments (e.g., when the environment variable `RENDER="true"` or `SEO_SUITE_FORCE_AUTH="1"` is set).
+- prevent any unauthenticated direct access to the dashboard `/app` or backend APIs `/api/*` on fresh deployments. Visitors must always be securely redirected to the `/login` / `/signup` pages before database bootstrapping.
+- keep Flask session cookies heavily hardened (`HttpOnly=True`, `SameSite="Lax"`, `Secure` when HTTPS is active) to prevent hijacking and CSRF attacks.
+
+Do not:
+
+- allow the app to default to a public, unauthenticated state on cloud platforms, even if the user database (`data/users.json`) has been reset due to container resets/sleep on ephemeral filesystems.
+
+### Python Version & Syntax Compatibility
+
+Do:
+
+- write code compatible with older Python runtimes (pre-3.12).
+- pull any backslash-containing expressions (such as escaped quotes `\"` or newlines `\n` in string constants) completely outside of f-string curly braces `{...}` into separate variables.
+
+Do not:
+
+- include a backslash anywhere inside the expression part (curly braces) of an f-string, as this causes a fatal `SyntaxError` on Python versions prior to 3.12.
+
 ## Concurrency Rules
 
 - shared globals in `app/server.py` must be read or written under the correct lock

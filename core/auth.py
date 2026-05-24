@@ -104,7 +104,14 @@ def init_auth(app: Flask) -> None:
 
 
 def auth_enabled() -> bool:
-    """Auth is on if an env admin is configured OR any file-based user exists."""
+    """Auth is on if an env admin is configured OR any file-based user exists
+    OR if explicitly forced via env var (e.g. on public hosting).
+    By default, we also enable it if running on Render or in a production-like env.
+    """
+    if os.environ.get("SEO_SUITE_NO_AUTH") == "1":
+        return False
+    if os.environ.get("RENDER") == "true" or os.environ.get("SEO_SUITE_FORCE_AUTH") == "1":
+        return True
     return bool(os.environ.get("SEO_SUITE_PASSWORD_HASH")) or bool(_load_users())
 
 

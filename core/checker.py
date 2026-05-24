@@ -162,6 +162,11 @@ def fetch_sitemap_urls(sitemap_url: str, _depth: int = 0, _seen: set | None = No
         _seen = set()
     if sitemap_url in _seen:
         return []
+    try:
+        sitemap_url = _validate_url(sitemap_url)
+    except Exception as e:
+        logger.error("SSRF guard blocked sitemap URL %s: %s", sitemap_url, e)
+        return []
     _seen.add(sitemap_url)
     parsed = urlparse(sitemap_url)
     if parsed.scheme not in ("http", "https"):

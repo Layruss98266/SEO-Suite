@@ -225,3 +225,94 @@ def draft_meta(url: str, current_title: str, current_desc: str,
         return {"ok": True, "variants": variants[:3], "model": model}
     except Exception as exc:
         return {"ok": False, "error": safe_error(exc)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Explain Site Audit
+# ══════════════════════════════════════════════════════════════════════════════
+def explain_site_audit(audits: list[dict], api_key: str, model: str = _DEFAULT_MODEL) -> dict:
+    """
+    Generate a plain-English site audit executive summary using Groq.
+    audits: list of audit dictionaries, each containing: url, score, results, counts, etc.
+    """
+    if not api_key:
+        return {"ok": False, "error": "Groq API key not configured"}
+
+    # Aggregate core findings
+    total_urls = len(audits)
+    avg_score = round(sum(a["score"] for a in audits) / total_urls) if total_urls else 0
+
+    fails = []
+    warnings = []
+    for a in audits:
+        url = a.get("url", "")
+        # Parse results list
+        results_list = a.get("results", []) or []
+        for r in results_list:
+            status = r.get("status", "")
+            tool = r.get("tool", "")
+            msg = r.get("message", "")
+            entry = f"- URL: {url} | Issue: {tool} | Details: {msg}"
+            if status == "fail":
+                fails.append(entry)
+            elif status == "warning":
+                warnings.append(entry)
+
+    # Limit summary data to stay within token/context caps
+    summary_text = ""
+    if fails:
+        summary_text += "FAILED CHECKS:\n" + "\n".join(fails[:15]) + "\n\n"
+    if warnings:
+        summary_text += "WARNING CHECKS:\n" + "\n".join(warnings[:10]) + "\n\n"
+
+    system_msg = (
+        "You are an elite enterprise SEO Director. "
+        "You are writing a concise executive briefing and a prioritized 4-step remediation roadmap "
+        "for a website owner after a comprehensive multi-page technical SEO audit. "
+        "Do NOT repeat raw counts or code formats back; write for human stakeholders."
+    )
+    user_msg = (
+        f"Here are the aggregated technical SEO audit results across {total_urls} pages.\n"
+        f"Average SEO Health Score: {avg_score}/100\n\n"
+        f"{summary_text}\n"
+        f"Please write:\n"
+        f"1. A high-level Executive Summary (2-3 sentences max) outlining the most prominent site-wide technical threats in plain English.\n"
+        f"2. A prioritized 4-step Remediation Roadmap (one short, action-oriented sentence per step starting with a verb).\n"
+        f"Format EXACTLY as:\n"
+        f"EXECUTIVE SUMMARY: ...\n"
+        f"ROADMAP:\n"
+        f"1. ...\n"
+        f"2. ...\n"
+        f"3. ...\n"
+        f"4. ...\n"
+    )
+
+    try:
+        reply = _chat(
+            [{"role": "system", "content": system_msg},
+             {"role": "user",   "content": user_msg}],
+            api_key, model=model, max_tokens=600, temperature=0.3
+        )
+
+        # Parse reply
+        import re
+        summary_m = re.search(r"EXECUTIVE SUMMARY:\s*(.*?)(?=ROADMAP:|$)", reply, re.DOTALL | re.IGNORECASE)
+        roadmap_m = re.search(r"ROADMAP:\s*(.*)", reply, re.DOTALL | re.IGNORECASE)
+
+        summary = summary_m.group(1).strip() if summary_m else "Technical audit complete. See details below."
+        roadmap_raw = roadmap_m.group(1).strip() if roadmap_m else ""
+        roadmap = [re.sub(r"^[\d]+[\.\)]\s*", "", line).strip() for line in roadmap_raw.splitlines() if line.strip()][:4]
+
+        # Pad roadmap if needed
+        while len(roadmap) < 4:
+            roadmap.append("Review remaining page-level audits in detail.")
+
+        return {
+            "ok": True,
+            "summary": summary,
+            "roadmap": roadmap[:4],
+            "model": model
+        }
+    except Exception as e:
+        return {"ok": False, "error": safe_error(e)}
+

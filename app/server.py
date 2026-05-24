@@ -1849,6 +1849,96 @@ def api_gsc_opportunities():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@app.route("/api/tools/gsc_opp_ai_draft", methods=["POST"])
+@login_required
+def api_gsc_opp_ai_draft():
+    """Fetch live metadata, get top GSC queries, and generate 3 CTR-optimized variants using Groq."""
+    data     = request.get_json(force=True) or {}
+    url      = _norm_url((data.get("url") or "").strip())
+    site_url = _norm_url((data.get("site_url") or "").strip())
+
+    if not url or not site_url:
+        return jsonify({"ok": False, "error": "url and site_url required"}), 400
+    if (rej := _reject_unsafe(url)): return rej
+    if (rej := _require_public_url(site_url, "site_url"))[1]: return rej[1]
+
+    # Verify GSC is configured & enabled
+    gsc_cfg = CFG.get("gsc", {})
+    if not gsc_cfg.get("enabled"):
+        return jsonify({"ok": False, "error": "Google Search Console not enabled — go to Settings → GSC"}), 400
+
+    # Verify Groq is configured
+    groq_api_key = (CFG.get("groq_api_key", "") or os.getenv("GROQ_API_KEY", "")).strip()
+    if not groq_api_key:
+        return jsonify({"ok": False, "error": "Groq API key required (Settings → groq_api_key or GROQ_API_KEY env)"}), 400
+
+    # 1. Fetch live page HTML and parse Title and Meta Description
+    from bs4 import BeautifulSoup
+    from tools._common import fetch_html
+
+    current_title = ""
+    current_desc = ""
+    try:
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            )
+        }
+        resp = fetch_html(url, headers=headers)
+        soup = BeautifulSoup(resp.text, "lxml")
+
+        title_tag = soup.find("title")
+        current_title = title_tag.get_text(strip=True) if title_tag else ""
+
+        desc_tag = (
+            soup.find("meta", attrs={"name": "description"})
+            or soup.find("meta", attrs={"name": "Description"})
+            or soup.find("meta", attrs={"property": "og:description"})
+        )
+        if desc_tag:
+            val = desc_tag.get("content", "")
+            if isinstance(val, list | tuple):
+                current_desc = " ".join(str(item) for item in val).strip()
+            else:
+                current_desc = str(val).strip()
+    except Exception as e:
+        logger.warning("Failed to fetch live metadata for AI Optimizer: %s", e)
+
+    # 2. Get top GSC queries for this URL
+    top_queries_list = []
+    try:
+        service = build_gsc_service()
+        from tools.phase3 import top_queries
+        queries_res = top_queries(url, service, site_url, top_n=10)
+        if queries_res.get("status") == "pass" and isinstance(queries_res.get("value"), list):
+            top_queries_list = [q["query"] for q in queries_res["value"] if isinstance(q, dict) and "query" in q]
+    except Exception as e:
+        logger.warning("Failed to fetch top GSC queries for AI Optimizer: %s", e)
+
+    # 3. Call Groq AI tag drafting helper
+    from tools.ai_assist import draft_meta
+    try:
+        res = draft_meta(url, current_title, current_desc, top_queries_list, groq_api_key)
+        if not res.get("ok"):
+            return jsonify({"ok": False, "error": res.get("error", "AI draft failed")}), 400
+
+        return jsonify({
+            "ok": True,
+            "url": url,
+            "current_title": current_title,
+            "current_description": current_desc,
+            "top_queries": top_queries_list,
+            "variants": res.get("variants", []),
+            "model": res.get("model", "")
+        })
+    except Exception as exc:
+        logger.error("gsc_opp_ai_draft error: %s", exc, exc_info=True)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ROUTES — GSC Analytics Tools (position tracker, CTR analyzer, coverage, sitemaps)
 # ══════════════════════════════════════════════════════════════════════════════

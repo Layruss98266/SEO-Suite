@@ -4670,6 +4670,9 @@ async function runGscOpps() {
   } catch(e) { _hide('gsc-opps-spinner'); _showErr('gsc-opps-error', e.message); }
 }
 
+// Global registry for GSC cannibalization data to avoid inline escaping issues
+let gGscCannibalRows = [];
+
 function _renderGscOpps(d) {
   // Opportunity pages
   const opp = d.opportunity_pages || {};
@@ -4683,7 +4686,10 @@ function _renderGscOpps(d) {
     <td>${r.ctr}%</td>
     <td>${r.position}</td>
     <td class="c-green"><b>+${r.est_extra_clicks.toLocaleString()}</b></td>
-    <td style="font-size:11px">${r.action}</td>
+    <td style="font-size:11px">
+      <div style="margin-bottom:6px">${r.action}</div>
+      <button class="btn btn-ghost btn-sm" onclick="runGscOppAiOptimize('${r.url.replace(/'/g, "\\'")}')">🤖 AI Optimize</button>
+    </td>
   </tr>`).join('') || '<tr><td colspan="6" style="color:var(--c-muted)">No opportunities found</td></tr>';
 
   // Position decay
@@ -4693,7 +4699,10 @@ function _renderGscOpps(d) {
   const decTb = document.querySelector('#gsc-opps-decay-table tbody');
   const sevClass = s => s==='high'?'c-red':s==='medium'?'c-yellow':'c-muted';
   decTb.innerHTML = decRows.slice(0,50).map(r => `<tr>
-    <td style="font-size:11px;word-break:break-all">${r.url}</td>
+    <td style="font-size:11px;word-break:break-all">
+      <div style="margin-bottom:4px">${r.url}</div>
+      <button class="btn btn-ghost btn-xs" onclick="trackGscPosTrend('${r.url.replace(/'/g, "\\'")}')">📈 View Trend</button>
+    </td>
     <td>${r.pos_start}</td>
     <td>${r.pos_end}</td>
     <td class="c-red"><b>▼${r.delta}</b></td>
@@ -4704,15 +4713,179 @@ function _renderGscOpps(d) {
   // Cannibalization
   const can = d.keyword_cannibalization || {};
   const canRows = (can.value || []);
+  gGscCannibalRows = canRows; // save to global variable
   document.getElementById('gsc-opps-cannibal-summary').textContent = can.message || '';
   const canTb = document.querySelector('#gsc-opps-cannibal-table tbody');
-  canTb.innerHTML = canRows.slice(0,50).map(r => `<tr>
-    <td><b>${r.query}</b></td>
+  canTb.innerHTML = canRows.slice(0,50).map((r, i) => `<tr>
+    <td>
+      <div style="font-weight:700;margin-bottom:4px">${r.query}</div>
+      <button class="btn btn-ghost btn-sm" onclick="visualiseCannibalization(${i})">🔍 Visualise</button>
+    </td>
     <td class="c-yellow">${r.competing_pages}</td>
     <td>${(r.total_impressions||0).toLocaleString()}</td>
     <td style="font-size:11px;word-break:break-all">${r.winner||'—'}</td>
     <td style="font-size:11px">${r.recommendation||''}</td>
   </tr>`).join('') || '<tr><td colspan="5" style="color:var(--c-muted)">No cannibalization detected</td></tr>';
+}
+
+// ── AI CTR Optimizer Modal Helpers ──
+function closeAiOptModal() {
+  document.getElementById('ai-opt-modal').classList.remove('open');
+  document.getElementById('ai-opt-mask').classList.remove('on');
+}
+
+async function runGscOppAiOptimize(url) {
+  const site_url = (document.getElementById('gsc-opps-site').value || '').trim();
+  if (!url || !site_url) return;
+  
+  // Show modal with loading state
+  document.getElementById('ai-opt-url-subtitle').textContent = url;
+  document.getElementById('ai-opt-curr-title').textContent = 'Fetching current title...';
+  document.getElementById('ai-opt-curr-desc').textContent = 'Fetching current description...';
+  document.getElementById('ai-opt-top-queries').innerHTML = '<span style="color:var(--c-muted)">Querying GSC queries...</span>';
+  document.getElementById('ai-opt-variants-container').innerHTML = '<div class="spinner" style="display:block;margin:24px auto"></div>';
+  
+  document.getElementById('ai-opt-modal').classList.add('open');
+  document.getElementById('ai-opt-mask').classList.add('on');
+  
+  try {
+    const d = await _api('/api/tools/gsc_opp_ai_draft', {url, site_url});
+    if (!d.ok) {
+      document.getElementById('ai-opt-variants-container').innerHTML = `<div class="error-box" style="display:block">${d.error || 'Failed to generate variants'}</div>`;
+      return;
+    }
+    
+    // Fill current metadata
+    document.getElementById('ai-opt-curr-title').textContent = d.current_title || '(No title tag found)';
+    document.getElementById('ai-opt-curr-desc').textContent = d.current_description || '(No description found)';
+    
+    // Fill queries
+    const qList = d.top_queries || [];
+    if (qList.length === 0) {
+      document.getElementById('ai-opt-top-queries').innerHTML = '<span style="color:var(--c-muted)">No high-volume keywords found for this URL</span>';
+    } else {
+      document.getElementById('ai-opt-top-queries').innerHTML = qList.map(q => 
+        `<span style="display:inline-block;padding:2px 8px;background:var(--c-surface);border:1px solid var(--c-border2);border-radius:12px;font-weight:600">${q}</span>`
+      ).join('');
+    }
+    
+    // Fill AI variants
+    const variants = d.variants || [];
+    if (variants.length === 0) {
+      document.getElementById('ai-opt-variants-container').innerHTML = '<div style="color:var(--c-muted);text-align:center;padding:16px">Llama-3 returned no variants. Make sure your Groq API key is active.</div>';
+      return;
+    }
+    
+    document.getElementById('ai-opt-variants-container').innerHTML = variants.map((v, i) => {
+      const titleLen = v.title.length;
+      const descLen = v.description.length;
+      const titleCol = titleLen > 60 ? 'c-red' : 'c-green';
+      const descCol = descLen > 155 ? 'c-red' : descLen < 140 ? 'c-yellow' : 'c-green';
+      
+      return `<div class="card" style="margin-bottom:12px;background:var(--c-surface2);border:1px solid var(--c-border2);padding:14px">
+        <div style="font-size:12px;color:var(--c-muted);font-weight:700;margin-bottom:6px">VARIANT ${i+1}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin:4px 0">
+          ${v.title}
+          <span style="font-size:11px;color:var(--c-muted);margin-left:8px;font-weight:400"><b class="${titleCol}">${titleLen}</b>/60 chars</span>
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin:4px 0;line-height:1.4">
+          ${v.description}
+          <span style="font-size:11px;color:var(--c-muted);margin-left:8px;font-weight:400"><b class="${descCol}">${descLen}</b>/155 chars</span>
+        </div>
+        ${v.rationale ? `<div style="font-size:11.5px;color:var(--c-muted);margin-top:6px;font-style:italic">💡 ${v.rationale}</div>` : ''}
+        <div style="margin-top:10px;display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${v.title.replace(/'/g, "\\'")}') || toast('Title copied')">📋 Copy Title</button>
+          <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${v.description.replace(/'/g, "\\'")}') || toast('Description copied')">📋 Copy Desc</button>
+        </div>
+      </div>`;
+    }).join('');
+    
+  } catch(e) {
+    document.getElementById('ai-opt-variants-container').innerHTML = `<div class="error-box" style="display:block">✖ Error: ${e.message}</div>`;
+  }
+}
+
+// ── Cannibalization Merger & Visualizer Helpers ──
+function closeCannibalModal() {
+  document.getElementById('cannibal-modal').classList.remove('open');
+  document.getElementById('cannibal-mask').classList.remove('on');
+}
+
+function switchCannibalTab(tab) {
+  ['redirect', 'canonical', 'linking'].forEach(t => {
+    document.getElementById('cannibal-content-' + t).style.display = t === tab ? '' : 'none';
+    const btn = document.getElementById('tab-btn-' + t);
+    if (t === tab) {
+      btn.className = 'btn btn-primary btn-sm';
+    } else {
+      btn.className = 'btn btn-ghost btn-sm';
+    }
+  });
+}
+
+function visualiseCannibalization(index) {
+  const r = gGscCannibalRows[index];
+  if (!r) return;
+  
+  document.getElementById('cannibal-query-title').textContent = r.query;
+  
+  // Render side-by-side comparison table
+  const tbody = document.querySelector('#cannibal-side-table tbody');
+  const pages = r.pages || [];
+  tbody.innerHTML = pages.map((p, idx) => {
+    const isWinner = p.page === r.winner;
+    const roleBadge = isWinner 
+      ? '<span class="status-pass" style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Winner</span>' 
+      : '<span class="status-warn" style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Competitor</span>';
+    const trBg = isWinner ? 'background:rgba(16,185,129,0.06)' : '';
+    
+    return `<tr style="${trBg}">
+      <td style="font-size:11px;word-break:break-all;font-family:monospace;color:var(--text)">${p.page}</td>
+      <td>${p.impressions.toLocaleString()}</td>
+      <td>${p.clicks.toLocaleString()}</td>
+      <td>${p.ctr}%</td>
+      <td>${p.position}</td>
+      <td>${roleBadge}</td>
+    </tr>`;
+  }).join('');
+  
+  // Get paths
+  let winnerPath = '/';
+  let weakerPath = '/';
+  try {
+    const wUrl = new URL(r.winner);
+    winnerPath = wUrl.pathname;
+  } catch {}
+  
+  const weakerPage = pages.find(p => p.page !== r.winner) || pages[1] || {};
+  try {
+    const lUrl = new URL(weakerPage.page);
+    weakerPath = lUrl.pathname;
+  } catch {}
+  
+  // Generate code snippets
+  document.getElementById('code-nginx').textContent = `rewrite ^${weakerPath}$ ${winnerPath} permanent;`;
+  document.getElementById('code-apache').textContent = `Redirect 301 ${weakerPath} ${winnerPath}`;
+  document.getElementById('code-canonical').textContent = `<link rel="canonical" href="${r.winner}">`;
+  document.getElementById('code-linking').textContent = `<a href="${r.winner}" rel="canonical">Read more about ${r.query}</a>`;
+  
+  // Switch to redirect tab by default
+  switchCannibalTab('redirect');
+  
+  // Show modal
+  document.getElementById('cannibal-modal').classList.add('open');
+  document.getElementById('cannibal-mask').classList.add('on');
+}
+
+// ── Position Decay Trend Transition Helper ──
+function trackGscPosTrend(url) {
+  const site = (document.getElementById('gsc-opps-site').value || '').trim();
+  navLink('panel-tool-gsc-position');
+  const pageInput = document.getElementById('gsc-pos-url');
+  const siteInput = document.getElementById('gsc-pos-site');
+  if (pageInput) pageInput.value = url;
+  if (siteInput) siteInput.value = site;
+  runGscPosition();
 }
 
 function clearGscOpps() {

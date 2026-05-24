@@ -508,6 +508,11 @@ def internal_links_check(url: str) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 def sitemap_validate(sitemap_url: str) -> dict:
     try:
+        sitemap_url = validate_public_url(sitemap_url)
+    except Exception as e:
+        return result(sitemap_url, "sitemap", "error", None, f"SSRF guard blocked sitemap URL: {e}")
+
+    try:
         resp = safe_requests_get(sitemap_url, headers=HEADERS, timeout=8)
         resp.raise_for_status()
     except Exception as e:

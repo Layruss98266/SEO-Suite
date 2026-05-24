@@ -939,7 +939,371 @@ def score_color(score: int) -> str:
     if score >= 50: return "score-good"
     return "score-poor"
 
+def find_previous_audit(current_timestamp: str) -> list[dict] | None:
+    try:
+        files = sorted(list(REPORTS_DIR.glob("seo_audit_*_full.json")))
+        valid_files = []
+        for f in files:
+            stem = f.name
+            parts = stem.split("_")
+            if len(parts) >= 4:
+                ts = f"{parts[2]}_{parts[3]}"
+                if ts < current_timestamp:
+                    valid_files.append((ts, f))
+        if not valid_files:
+            return None
+        valid_files.sort(key=lambda x: x[0])
+        prev_file = valid_files[-1][1]
+        with open(prev_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not load previous audit for diff: {e}")
+        return None
+
+def compare_audits(current_audits: list[dict], prev_audits: list[dict]) -> dict:
+    prev_map = {a["url"]: a for a in prev_audits}
+    curr_map = {a["url"]: a for a in current_audits}
+    
+    improved_urls = []
+    regressed_urls = []
+    resolved_issues = []
+    new_issues = []
+    
+    all_urls = set(prev_map.keys()) | set(curr_map.keys())
+    for url in sorted(all_urls):
+        prev_a = prev_map.get(url)
+        curr_a = curr_map.get(url)
+        
+        if prev_a and curr_a:
+            delta = curr_a["score"] - prev_a["score"]
+            if delta > 0:
+                improved_urls.append({
+                    "url": url,
+                    "prev_score": prev_a["score"],
+                    "curr_score": curr_a["score"],
+                    "delta": delta
+                })
+            elif delta < 0:
+                regressed_urls.append({
+                    "url": url,
+                    "prev_score": prev_a["score"],
+                    "curr_score": curr_a["score"],
+                    "delta": delta
+                })
+                
+            prev_results = {r["tool"]: r for r in prev_a.get("results", []) or []}
+            curr_results = {r["tool"]: r for r in curr_a.get("results", []) or []}
+            
+            for tool, pr in prev_results.items():
+                if pr.get("status") in ("fail", "warning"):
+                    cr = curr_results.get(tool)
+                    if not cr or cr.get("status") == "pass":
+                        resolved_issues.append({
+                            "url": url,
+                            "tool": tool,
+                            "past_status": pr.get("status"),
+                            "past_msg": pr.get("message", ""),
+                            "curr_status": cr.get("status") if cr else "pass"
+                        })
+                        
+            for tool, cr in curr_results.items():
+                if cr.get("status") in ("fail", "warning"):
+                    pr = prev_results.get(tool)
+                    if not pr or pr.get("status") == "pass":
+                        new_issues.append({
+                            "url": url,
+                            "tool": tool,
+                            "past_status": pr.get("status") if pr else "pass",
+                            "curr_status": cr.get("status"),
+                            "curr_msg": cr.get("message", "")
+                        })
+                        
+    return {
+        "improved_urls": improved_urls,
+        "regressed_urls": regressed_urls,
+        "resolved_issues": resolved_issues,
+        "new_issues": new_issues
+    }
+
 def generate_html_report(audits: list[dict], p3_site_data: list[dict], timestamp: str) -> str:
+    # Save the full audits list as a high-fidelity JSON for future diff runs
+    try:
+        full_json_path = REPORTS_DIR / f"seo_audit_{timestamp}_full.json"
+        full_json_path.write_text(json.dumps(audits, indent=2), encoding="utf-8")
+    except Exception as je:
+        logger.warning(f"Error saving full audit JSON: {je}")
+
+    # ── Executive AI Summary ──
+    groq_api_key = CFG.get("groq", {}).get("api_key")
+    ai_ok = False
+    ai_summary = ""
+    ai_roadmap = []
+    
+    if groq_api_key:
+        try:
+            from tools.ai_assist import explain_site_audit
+            ai_res = explain_site_audit(audits, groq_api_key)
+            if ai_res.get("ok"):
+                ai_ok = True
+                ai_summary = ai_res.get("summary", "")
+                ai_roadmap = ai_res.get("roadmap", [])
+        except Exception as ae:
+            logger.warning(f"Error calling explain_site_audit: {ae}")
+
+    if ai_ok:
+        step1 = esc(ai_roadmap[0]) if len(ai_roadmap) > 0 else "Review remaining page-level audits in detail."
+        step2 = esc(ai_roadmap[1]) if len(ai_roadmap) > 1 else "Review remaining page-level audits in detail."
+        step3 = esc(ai_roadmap[2]) if len(ai_roadmap) > 2 else "Review remaining page-level audits in detail."
+        step4 = esc(ai_roadmap[3]) if len(ai_roadmap) > 3 else "Review remaining page-level audits in detail."
+        ai_summary_html = f"""
+        <div class="ai-summary-card">
+          <h2>🤖 Executive AI Summary</h2>
+          <p class="ai-brief">{esc(ai_summary)}</p>
+          <div class="ai-roadmap-title">Remediation Roadmap</div>
+          <div class="ai-roadmap-list">
+            <div class="ai-roadmap-step">
+              <div class="ai-step-num">1</div>
+              <div class="ai-step-text">{step1}</div>
+            </div>
+            <div class="ai-roadmap-step">
+              <div class="ai-step-num">2</div>
+              <div class="ai-step-text">{step2}</div>
+            </div>
+            <div class="ai-roadmap-step">
+              <div class="ai-step-num">3</div>
+              <div class="ai-step-text">{step3}</div>
+            </div>
+            <div class="ai-roadmap-step">
+              <div class="ai-step-num">4</div>
+              <div class="ai-step-text">{step4}</div>
+            </div>
+          </div>
+        </div>
+        """
+    else:
+        ai_summary_html = """
+        <div class="ai-summary-card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+          <h2>🤖 Executive AI Summary</h2>
+          <p class="ai-brief">
+            AI-generated technical health brief is currently offline. Connect your Groq API key in configuration settings to automatically activate natural language diagnostics and prioritised remediation steps on subsequent runs.
+          </p>
+          <div class="ai-roadmap-title">How to activate</div>
+          <div class="ai-roadmap-list">
+            <div class="ai-roadmap-step">
+              <div class="ai-step-num">1</div>
+              <div class="ai-step-text">Get a free Groq API key at console.groq.com</div>
+            </div>
+            <div class="ai-roadmap-step">
+              <div class="ai-step-num">2</div>
+              <div class="ai-step-text">Add <code>"groq": {"api_key": "YOUR_KEY"}</code> in <code>config.json</code></div>
+            </div>
+          </div>
+        </div>
+        """
+
+    # ── Run Diff & Regression Tracker ──
+    prev_audits = find_previous_audit(timestamp)
+    if prev_audits is None:
+        diff_html = """
+        <div class="diff-card">
+          <h2>🔄 Changes Since Last Run</h2>
+          <div style="font-size: 13px; color: var(--text2); padding: 10px 0;">
+            ℹ️ First audit run detected. Subsequent runs will display side-by-side regressions, improvements, and issue diffs here.
+          </div>
+        </div>
+        """
+    else:
+        diff_data = compare_audits(audits, prev_audits)
+        imp_cnt = len(diff_data["improved_urls"])
+        reg_cnt = len(diff_data["regressed_urls"])
+        res_cnt = len(diff_data["resolved_issues"])
+        new_cnt = len(diff_data["new_issues"])
+        
+        imp_rows = ""
+        for item in diff_data["improved_urls"]:
+            imp_rows += f"""
+            <tr>
+              <td><a href="{esc(item['url'])}" target="_blank">{esc(item['url'])}</a></td>
+              <td>{item['prev_score']}</td>
+              <td>{item['curr_score']}</td>
+              <td><span class="diff-badge up">+{item['delta']}</span></td>
+            </tr>
+            """
+            
+        reg_rows = ""
+        for item in diff_data["regressed_urls"]:
+            reg_rows += f"""
+            <tr>
+              <td><a href="{esc(item['url'])}" target="_blank">{esc(item['url'])}</a></td>
+              <td>{item['prev_score']}</td>
+              <td>{item['curr_score']}</td>
+              <td><span class="diff-badge down">{item['delta']}</span></td>
+            </tr>
+            """
+            
+        res_rows = ""
+        for item in diff_data["resolved_issues"]:
+            icon = STATUS_ICON.get(item["past_status"], "❓")
+            res_rows += f"""
+            <tr>
+              <td><a href="{esc(item['url'])}" target="_blank">{esc(item['url'])}</a></td>
+              <td>{esc(_pretty(item['tool']))}</td>
+              <td>{icon} {esc(item['past_msg'])}</td>
+              <td><span class="diff-badge resolved">Resolved</span></td>
+            </tr>
+            """
+            
+        new_rows = ""
+        for item in diff_data["new_issues"]:
+            icon = STATUS_ICON.get(item["curr_status"], "❓")
+            new_rows += f"""
+            <tr>
+              <td><a href="{esc(item['url'])}" target="_blank">{esc(item['url'])}</a></td>
+              <td>{esc(_pretty(item['tool']))}</td>
+              <td>{icon} {esc(item['curr_msg'])}</td>
+              <td><span class="diff-badge new-issue">New Issue</span></td>
+            </tr>
+            """
+
+        tabs_buttons = ""
+        tabs_content = ""
+        
+        active_tab = ""
+        if reg_cnt:
+            active_tab = "reg"
+        elif new_cnt:
+            active_tab = "new"
+        elif imp_cnt:
+            active_tab = "imp"
+        elif res_cnt:
+            active_tab = "res"
+            
+        if reg_cnt:
+            tabs_buttons += f'<button class="fbtn {"active" if active_tab == "reg" else ""}" id="btn-diff-reg" onclick="showDiffTab(\'reg\')">Regressions ({reg_cnt})</button>'
+            tabs_content += f"""
+            <div class="diff-tab-content" id="tab-diff-reg" style="display: {'block' if active_tab == 'reg' else 'none'}">
+              <div class="diff-table-container">
+                <table class="diff-table">
+                  <thead>
+                    <tr>
+                      <th>URL</th>
+                      <th style="width: 100px;">Past Score</th>
+                      <th style="width: 100px;">Current Score</th>
+                      <th style="width: 80px;">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>{reg_rows}</tbody>
+                </table>
+              </div>
+            </div>
+            """
+            
+        if new_cnt:
+            tabs_buttons += f'<button class="fbtn {"active" if active_tab == "new" else ""}" id="btn-diff-new" onclick="showDiffTab(\'new\')">New Issues ({new_cnt})</button>'
+            tabs_content += f"""
+            <div class="diff-tab-content" id="tab-diff-new" style="display: {'block' if active_tab == 'new' else 'none'}">
+              <div class="diff-table-container">
+                <table class="diff-table">
+                  <thead>
+                    <tr>
+                      <th>URL</th>
+                      <th style="width: 180px;">Check</th>
+                      <th>Issue Details</th>
+                      <th style="width: 100px;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>{new_rows}</tbody>
+                </table>
+              </div>
+            </div>
+            """
+            
+        if imp_cnt:
+            tabs_buttons += f'<button class="fbtn {"active" if active_tab == "imp" else ""}" id="btn-diff-imp" onclick="showDiffTab(\'imp\')">Improvements ({imp_cnt})</button>'
+            tabs_content += f"""
+            <div class="diff-tab-content" id="tab-diff-imp" style="display: {'block' if active_tab == 'imp' else 'none'}">
+              <div class="diff-table-container">
+                <table class="diff-table">
+                  <thead>
+                    <tr>
+                      <th>URL</th>
+                      <th style="width: 100px;">Past Score</th>
+                      <th style="width: 100px;">Current Score</th>
+                      <th style="width: 80px;">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>{imp_rows}</tbody>
+                </table>
+              </div>
+            </div>
+            """
+            
+        if res_cnt:
+            tabs_buttons += f'<button class="fbtn {"active" if active_tab == "res" else ""}" id="btn-diff-res" onclick="showDiffTab(\'res\')">Resolved ({res_cnt})</button>'
+            tabs_content += f"""
+            <div class="diff-tab-content" id="tab-diff-res" style="display: {'block' if active_tab == 'res' else 'none'}">
+              <div class="diff-table-container">
+                <table class="diff-table">
+                  <thead>
+                    <tr>
+                      <th>URL</th>
+                      <th style="width: 180px;">Check</th>
+                      <th>Past Issue Details</th>
+                      <th style="width: 100px;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>{res_rows}</tbody>
+                </table>
+              </div>
+            </div>
+            """
+
+        if imp_cnt or reg_cnt or res_cnt or new_cnt:
+            diff_html = f"""
+            <div class="diff-card">
+              <h2>🔄 Changes Since Last Run</h2>
+              <div class="diff-grid">
+                <div class="diff-stat {'good-stat' if imp_cnt else 'neutral-stat'}">
+                  <div class="n">{imp_cnt}</div>
+                  <div class="l">Improved URLs</div>
+                </div>
+                <div class="diff-stat {'bad-stat' if reg_cnt else 'neutral-stat'}">
+                  <div class="n">{reg_cnt}</div>
+                  <div class="l">Regressed URLs</div>
+                </div>
+                <div class="diff-stat {'good-stat' if res_cnt else 'neutral-stat'}">
+                  <div class="n">{res_cnt}</div>
+                  <div class="l">Resolved Issues</div>
+                </div>
+                <div class="diff-stat {'bad-stat' if new_cnt else 'neutral-stat'}">
+                  <div class="n">{new_cnt}</div>
+                  <div class="l">New Issues</div>
+                </div>
+              </div>
+              <div class="diff-tabs" style="margin-top: 16px;">
+                <div style="display: flex; gap: 8px; border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                  {tabs_buttons}
+                </div>
+                {tabs_content}
+              </div>
+            </div>
+            """
+        else:
+            diff_html = """
+            <div class="diff-card">
+              <h2>🔄 Changes Since Last Run</h2>
+              <div class="diff-grid">
+                <div class="diff-stat neutral-stat"><div class="n">0</div><div class="l">Improved URLs</div></div>
+                <div class="diff-stat neutral-stat"><div class="n">0</div><div class="l">Regressed URLs</div></div>
+                <div class="diff-stat neutral-stat"><div class="n">0</div><div class="l">Resolved Issues</div></div>
+                <div class="diff-stat neutral-stat"><div class="n">0</div><div class="l">New Issues</div></div>
+              </div>
+              <div style="font-size: 13px; color: var(--text2); padding: 10px 0; text-align: center;">
+                🎉 No changes detected since the last run. SEO health remains stable!
+              </div>
+            </div>
+            """
+
     total_urls  = len(audits)
     avg_score   = round(sum(a["score"] for a in audits) / total_urls) if total_urls else 0
     total_fails  = sum(len(a["issues"]) for a in audits)
@@ -1107,6 +1471,178 @@ td{{padding:9px 13px;border-bottom:1px solid var(--border);color:var(--text2)}}
 tr:last-child td{{border-bottom:none}}
 tbody tr:hover td{{background:var(--surface2)}}
 
+.fix-hint{{
+  margin-top:5px;padding:6px 10px;
+  background:#FFFBEB;border-left:3px solid var(--warn);
+  border-radius:0 6px 6px 0;font-size:11px;color:#78350F;line-height:1.4;
+}}
+
+/* ── Executive AI Summary ── */
+.ai-summary-card {{
+  background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+  color: #fff;
+  border-radius: var(--r);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}}
+.ai-summary-card::before {{
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  pointer-events: none;
+}}
+.ai-summary-card h2 {{
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e0e7ff;
+  border-bottom: none !important;
+}}
+.ai-summary-card p.ai-brief {{
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.9;
+  margin-bottom: 20px;
+}}
+.ai-roadmap-title {{
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #c7d2fe;
+  font-weight: 700;
+  margin-bottom: 12px;
+}}
+.ai-roadmap-list {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}}
+.ai-roadmap-step {{
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: transform 0.2s, background 0.2s;
+}}
+.ai-roadmap-step:hover {{
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(99, 102, 241, 0.4);
+}}
+.ai-step-num {{
+  background: #6366f1;
+  color: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}}
+.ai-step-text {{
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #f1f5f9;
+}}
+
+/* ── Changes Since Last Run ── */
+.diff-card {{
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 22px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}}
+.diff-card h2 {{
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: none !important;
+}}
+.diff-grid {{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}}
+.diff-stat {{
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid var(--border);
+}}
+.diff-stat.good-stat {{ background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }}
+.diff-stat.bad-stat {{ background: #fef2f2; border-color: #fecaca; color: #b91c1c; }}
+.diff-stat.neutral-stat {{ background: #f8fafc; border-color: #e2e8f0; color: #475569; }}
+.diff-stat .n {{ font-size: 24px; font-weight: 800; line-height: 1.2; }}
+.diff-stat .l {{ font-size: 10px; text-transform: uppercase; font-weight: 600; margin-top: 4px; }}
+
+.diff-table-container {{
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 10px;
+}}
+.diff-table {{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}}
+.diff-table th {{
+  background: var(--surface2);
+  position: sticky;
+  top: 0;
+  font-weight: 700;
+  color: var(--text2);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}}
+.diff-table td {{
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}}
+.diff-badge {{
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}}
+.diff-badge.up {{ background: #dcfce7; color: #166534; }}
+.diff-badge.down {{ background: #fee2e2; color: #991b1b; }}
+.diff-badge.resolved {{ background: #dbeafe; color: #1e40af; }}
+.diff-badge.new-issue {{ background: #ffedd5; color: #9a3412; }}
+
+/* ── Filter bar ── */
+.filter-bar{{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}}
+
 /* ── URL cards ── */
 .url-cards-wrap{{display:flex;flex-direction:column;gap:8px}}
 .url-card{{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;transition:box-shadow .15s}}
@@ -1225,6 +1761,10 @@ tbody tr:hover td{{background:var(--surface2)}}
     <div class="stat-card"><div class="n c-red">{total_fails}</div><div class="l">Issues</div></div>
   </div>
 
+  {ai_summary_html}
+
+  {diff_html}
+
   <!-- Charts -->
   <div class="charts-row">
     <div class="section" style="margin:0">
@@ -1272,6 +1812,16 @@ tbody tr:hover td{{background:var(--surface2)}}
 </div>
 
 <script>
+// ── Show Diff Tab ──
+function showDiffTab(tabId){{
+  document.querySelectorAll('.diff-tab-content').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.diff-tabs .fbtn').forEach(el=>el.classList.remove('active'));
+  const target=document.getElementById('tab-diff-'+tabId);
+  if(target) target.style.display='block';
+  const btn=document.getElementById('btn-diff-'+tabId);
+  if(btn) btn.classList.add('active');
+}}
+
 new Chart(document.getElementById('dist'),{{
   type:'bar',
   data:{{

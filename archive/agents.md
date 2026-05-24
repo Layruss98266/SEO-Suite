@@ -74,6 +74,10 @@ When working in this repo, prioritize:
 
 ## Non-Negotiable Safety Rules
 
+### Git Push / Remotes (Absolute Constraint)
+
+- **DO NOT PUSH COMMITS TO REMOTE REPOSITORIES**: Under no circumstances should any git push operation (`git push`, `git push origin`, etc.) be executed unless the user has explicitly, literally, and directly instructed you to push in the current conversation. This rule is absolute and non-negotiable for this project. All commits must remain strictly local.
+
 ### URL handling
 
 Do:

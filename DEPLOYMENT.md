@@ -19,14 +19,17 @@ point a domain at it — the marketing pages are served by the same app.
 
 1. Push this repo to GitHub (done).
 2. In Render: **New → Blueprint**, select the repo. Render reads `render.yaml`.
-3. It builds the `Dockerfile`, attaches a 1 GB disk at `/app/data`, and sets a
-   generated `SEO_SUITE_SECRET`.
+3. It builds the `Dockerfile` and sets a generated `SEO_SUITE_SECRET`.
 4. Open the URL. Create your admin account at `/signup` (the first account is an
    admin), or set `SEO_SUITE_USERNAME` / `SEO_SUITE_PASSWORD_HASH` env vars.
 
-> Free tier note: persistent disks need a paid (starter) instance. On free, the
-> app still runs but `/app/data` is ephemeral, so reports and accounts reset on
-> redeploy.
+`render.yaml` ships on the **free** tier so you can deploy at zero cost. Free
+instances have no persistent disk and sleep when idle, so `/app/data` (reports,
+accounts, saved API keys) resets on redeploy/cold start.
+
+**Upgrade to persistent (production):** in `render.yaml`, change `plan: free` to
+`plan: starter` and uncomment the `disk:` block, then redeploy. Now `/app/data`
+survives restarts.
 
 ## Fly.io
 

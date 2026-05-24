@@ -1,24 +1,32 @@
 # Render Blueprint — deploy SEO Suite with one click.
 # In Render: New > Blueprint, point it at this repo. Render reads this file.
 # Docs: https://render.com/docs/blueprint-spec
+#
+# This file is set up for the FREE tier (zero cost) so you can deploy first.
+# Trade-off: free instances have no persistent disk and sleep when idle, so the
+# data directory (reports, uploads, users.json, saved API keys) resets on each
+# redeploy/cold start. Fine for a demo or trial.
+#
+# To make it production-ready (data survives restarts), see "UPGRADE" below:
+#   1. change `plan: free` to `plan: starter`
+#   2. uncomment the `disk:` block
 services:
   - type: web
     name: seo-suite
     runtime: docker
     dockerfilePath: ./Dockerfile
-    # A persistent disk requires a paid instance type. On the free tier the
-    # disk is ephemeral (reports/users.json reset on redeploy) but the app runs.
-    plan: starter
+    plan: free
     # Single instance ONLY — run state + SSE queues live in process memory and
-    # must not be split across instances.
+    # must not be split across instances. (Free tier is single-instance anyway.)
     numInstances: 1
     healthCheckPath: /
-    disk:
-      name: seo-suite-data
-      mountPath: /app/data
-      sizeGB: 1
+    # ── UPGRADE: uncomment for persistent data (requires plan: starter) ──
+    # disk:
+    #   name: seo-suite-data
+    #   mountPath: /app/data
+    #   sizeGB: 1
     envVars:
-      - key: SEO_SUITE_SECRET     # signs session cookies; keep it stable
+      - key: SEO_SUITE_SECRET     # signs session cookies; persists across restarts
         generateValue: true
       - key: SEO_SUITE_DATA_DIR
         value: /app/data

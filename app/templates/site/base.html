@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}SEO Suite — Professional SEO Platform{% endblock %}</title>
-<meta name="description" content="{% block description %}Audit, index, and optimize your site with SEO Suite — a self-hosted platform for technical SEO audits, indexation checks, schema generators, and Search Console insights.{% endblock %}">
+<title>{% block title %}SEO Suite · Professional SEO Platform{% endblock %}</title>
+<meta name="description" content="{% block description %}Audit, index, and optimize your site with SEO Suite, a self-hosted platform for technical SEO audits, indexation checks, schema generators, and Search Console insights.{% endblock %}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
@@ -20,6 +20,7 @@
     <nav class="nav-links">
       <a href="/features" {% if active=='features' %}class="active"{% endif %}>Features</a>
       <a href="/pricing"  {% if active=='pricing'  %}class="active"{% endif %}>Pricing</a>
+      <a href="/blog"     {% if active=='blog'     %}class="active"{% endif %}>Blog</a>
       <a href="/about"    {% if active=='about'    %}class="active"{% endif %}>About</a>
       <a href="/contact"  {% if active=='contact'  %}class="active"{% endif %}>Contact</a>
     </nav>
@@ -47,13 +48,14 @@
           <span class="brand-mark"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
           <span>SEO Suite</span>
         </a>
-        <p style="color:var(--text-3);font-size:14px;max-width:280px">Self-hosted technical SEO — audits, indexation, generators, and Search Console insights in one dashboard.</p>
+        <p style="color:var(--text-3);font-size:14px;max-width:280px">Self-hosted technical SEO. Audits, indexation, generators, and Search Console insights, all in one dashboard.</p>
       </div>
       <div>
         <h4>Product</h4>
         <div class="footer-links">
           <a href="/features">Features</a>
           <a href="/pricing">Pricing</a>
+          <a href="/blog">Blog</a>
           <a href="/app">Open App</a>
         </div>
       </div>
@@ -93,7 +95,7 @@
     entries.forEach(function (en) { if (en.isIntersecting) { show(en.target); io.unobserve(en.target); } });
   }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
   els.forEach(function (e) { io.observe(e); });
-  // Safety net — guarantees content appears even if the observer never fires.
+  // Safety net: guarantees content appears even if the observer never fires.
   setTimeout(function () { els.forEach(show); }, 1600);
 })();
 </script>

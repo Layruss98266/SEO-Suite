@@ -377,6 +377,11 @@ def site_pricing():
     return render_template("site/pricing.html", active="pricing", **_site_ctx())
 
 
+@app.route("/blog")
+def site_blog():
+    return render_template("site/blog.html", active="blog", **_site_ctx())
+
+
 @app.route("/about")
 def site_about():
     return render_template("site/about.html", active="about", **_site_ctx())
@@ -396,7 +401,7 @@ def site_contact():
             return jsonify({"ok": False, "error": "Please enter a valid email."}), 400
         # No outbound mail dependency — log the enquiry; ops can wire delivery later.
         logger.info("Contact form submission from %s <%s>: %s", name, email, message[:500])
-        return jsonify({"ok": True, "message": "Thanks — your message has been received."})
+        return jsonify({"ok": True, "message": "Thanks, your message has been received."})
     return render_template("site/contact.html", active="contact", **_site_ctx())
 
 

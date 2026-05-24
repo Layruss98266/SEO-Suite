@@ -1,5 +1,5 @@
 {% extends "site/base.html" %}
-{% block title %}Contact — SEO Suite{% endblock %}
+{% block title %}Contact · SEO Suite{% endblock %}
 
 {% block content %}
 <section class="hero" style="padding:90px 0 40px">
@@ -51,13 +51,13 @@ async function submitContact(e) {
     var d = await r.json();
     if (r.ok && d.ok) {
       msg.className = 'form-msg ok';
-      msg.textContent = d.message || 'Thanks — your message has been received.';
+      msg.textContent = d.message || 'Thanks, your message has been received.';
       document.getElementById('contact-form').reset();
     } else {
       msg.className = 'form-msg err'; msg.textContent = (d && d.error) || 'Something went wrong. Please try again.';
     }
   } catch (err) {
-    msg.className = 'form-msg err'; msg.textContent = 'Network error — please try again.';
+    msg.className = 'form-msg err'; msg.textContent = 'Network error. Please try again.';
   } finally {
     btn.disabled = false; btn.textContent = orig;
   }

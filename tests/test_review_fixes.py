@@ -213,8 +213,6 @@ def test_progress_key_stable():
     assert a == b
 
 
-# ── #3: crawler uses redirect-validating safe_requests_get ───────────────────
-
 def test_crawler_uses_safe_requests_get(monkeypatch):
     """crawl_site must route HTTP through safe_requests_get so redirects to
     private IPs are blocked. We assert by patching the function and confirming
@@ -234,3 +232,75 @@ def test_crawler_uses_safe_requests_get(monkeypatch):
     checker.crawl_site("https://example.com/", max_pages=1, max_depth=0)
     assert calls, "crawl_site should call safe_requests_get"
     assert calls[0].startswith("https://example.com")
+
+
+# ── Login ?next= redirect + open-redirect prevention ─────────────────────────
+
+class TestLoginNextRedirect:
+    """Verifies that the login route honours ?next= for same-origin paths and
+    blocks open-redirect attempts using // or external URLs."""
+
+    @pytest.fixture
+    def auth_client(self, monkeypatch):
+        from werkzeug.security import generate_password_hash
+        monkeypatch.setenv("SEO_SUITE_USERNAME", "tester")
+        monkeypatch.setenv("SEO_SUITE_PASSWORD_HASH", generate_password_hash("hunter2hunter2"))
+        from app.server import app
+        app.config["TESTING"] = True
+        with app.test_client() as c:
+            yield c
+
+    def test_valid_next_redirects_after_login(self, auth_client):
+        """Successful login with ?next=/app should land on /app, not the default."""
+        r = auth_client.post(
+            "/login?next=/app",
+            data={"username": "tester", "password": "hunter2hunter2", "next": "/app"},
+        )
+        assert r.status_code == 302
+        assert r.headers["Location"] == "/app"
+
+    def test_no_next_defaults_to_app(self, auth_client):
+        """Without ?next=, login should redirect to /app as before."""
+        r = auth_client.post(
+            "/login",
+            data={"username": "tester", "password": "hunter2hunter2"},
+        )
+        assert r.status_code == 302
+        assert r.headers["Location"] == "/app"
+
+    def test_open_redirect_double_slash_blocked(self, auth_client):
+        """next=//evil.com looks like a relative path but browsers treat it as
+        protocol-relative. Must be rejected and fall back to /app."""
+        r = auth_client.post(
+            "/login",
+            data={"username": "tester", "password": "hunter2hunter2", "next": "//evil.com"},
+        )
+        assert r.status_code == 302
+        assert r.headers["Location"] == "/app"
+
+    def test_open_redirect_external_url_blocked(self, auth_client):
+        """next= that does not start with / must be rejected."""
+        r = auth_client.post(
+            "/login",
+            data={"username": "tester", "password": "hunter2hunter2", "next": "https://evil.com"},
+        )
+        assert r.status_code == 302
+        assert r.headers["Location"] == "/app"
+
+    def test_login_required_embeds_next_in_redirect(self, auth_client):
+        """Accessing a protected page while unauthenticated should redirect to
+        /login?next=/app (preserving the destination)."""
+        r = auth_client.get("/app")
+        assert r.status_code == 302
+        loc = r.headers["Location"]
+        assert "/login" in loc
+        assert "next=" in loc and "/app" in loc
+
+    def test_get_login_with_next_embeds_hidden_field(self, auth_client):
+        """GET /login?next=/app should include a hidden field with value /app
+        so the destination survives the POST form submission."""
+        r = auth_client.get("/login?next=/app")
+        assert r.status_code == 200
+        assert b'name="next"' in r.data
+        assert b'value="/app"' in r.data
+

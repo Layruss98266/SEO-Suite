@@ -83,22 +83,28 @@ def init_auth(app: Flask) -> None:
     from datetime import timedelta
     _secret = os.environ.get("SEO_SUITE_SECRET")
     if not _secret:
-        # No secret configured — generate ephemeral key and warn. Sessions will be
-        # invalidated on every restart, forcing re-login. Set SEO_SUITE_SECRET in
-        # .env to get persistent sessions across restarts.
-        _log.warning(
-            "SEO_SUITE_SECRET not set — using ephemeral session key. "
-            "Sessions will be lost on server restart. "
-            "Set SEO_SUITE_SECRET=<random-32-char-string> in your .env to persist logins."
-        )
+        # No secret configured — generate an ephemeral key and warn loudly.
+        # Every server restart (including Render cold-starts and re-deploys) will
+        # produce a new key, invalidating all existing session cookies and forcing
+        # every user to sign in again.
+        #
+        # FIX: copy the key printed below and set SEO_SUITE_SECRET to that value
+        # in your hosting dashboard (Render → Environment) so it stays stable.
         _secret = secrets.token_hex(32)
+        _log.warning(
+            "SEO_SUITE_SECRET is not set — sessions will be lost on every restart.\n"
+            "  To fix: add the following to your environment variables:\n"
+            "    SEO_SUITE_SECRET=%s\n"
+            "  On Render: Dashboard → your service → Environment → Add Variable.",
+            _secret,
+        )
     app.secret_key = _secret
     # Harden the session cookie. HTTPS is opt-in via env so local dev still works.
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("SEO_SUITE_COOKIE_SECURE", "") == "1",
-        # permanent sessions last 30 days; login_required sets session.permanent=True
+        # permanent sessions last 30 days; login sets session.permanent=True
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
     )
 
@@ -214,10 +220,11 @@ def login_required(fn):
     def wrapper(*args, **kwargs):
         if not auth_enabled() or session.get("authed") is True:
             return fn(*args, **kwargs)
-        # API callers get 401 JSON; browsers get redirected to /login
+        # API callers get 401 JSON; browsers get redirected to /login?next=<path>
         if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
             return jsonify({"error": "Authentication required"}), 401
-        return redirect(url_for("login"))
+        # Preserve the requested path so the user lands back here after login.
+        return redirect(url_for("login", next=request.path))
     return wrapper
 
 
@@ -408,6 +415,7 @@ input:focus::placeholder{color:#5C6480}
         </div>
       </div>
 
+      __NEXT__
       <button class="btn" type="submit" id="sub-btn">
         <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
         Sign in

@@ -435,11 +435,26 @@ def login():
             session["username"] = identity["username"]
             session["is_admin"] = identity["is_admin"]
             session.permanent = True
-            return ("", 302, {"Location": "/app"})
+            # Honour ?next= so login_required can bounce users back to their
+            # original destination (e.g. /app). Validate strictly: must be a
+            # relative path starting with / and must not start with // (which
+            # browsers treat as a protocol-relative URL, enabling open-redirect).
+            _next = request.form.get("next") or request.args.get("next") or ""
+            _next = _next.strip()
+            if _next and _next.startswith("/") and not _next.startswith("//"):
+                dest = _next
+            else:
+                dest = "/app"
+            return ("", 302, {"Location": dest})
         page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
         return page, 401, {"Content-Type": "text/html"}
-    page = LOGIN_PAGE.replace("__ERROR__", "")
+    # GET — embed ?next= into the form as a hidden field so it survives the POST
+    _next = request.args.get("next", "")
+    _next = _next.strip() if (_next.startswith("/") and not _next.startswith("//")) else ""
+    next_field = f'<input type="hidden" name="next" value="{esc(_next)}">' if _next else ""
+    page = LOGIN_PAGE.replace("__NEXT__", next_field).replace("__ERROR__", "")
     return page, 200, {"Content-Type": "text/html"}
+
 
 
 @app.route("/signup", methods=["GET", "POST"])

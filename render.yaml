@@ -7,6 +7,11 @@
 # data directory (reports, uploads, users.json, saved API keys) resets on each
 # redeploy/cold start. Fine for a demo or trial.
 #
+# SESSION PERSISTENCE: After your first deploy, go to Render Dashboard → Environment
+# and manually set SEO_SUITE_SECRET to a stable random 64-char hex string.
+# Generate one locally with: python -c "import secrets; print(secrets.token_hex(32))"
+# A stable secret ensures logins survive restarts and re-deploys.
+#
 # To make it production-ready (data survives restarts), see "UPGRADE" below:
 #   1. change `plan: free` to `plan: starter`
 #   2. uncomment the `disk:` block
@@ -26,10 +31,17 @@ services:
     #   mountPath: /app/data
     #   sizeGB: 1
     envVars:
-      - key: SEO_SUITE_SECRET     # signs session cookies; persists across restarts
-        generateValue: true
+      # IMPORTANT: Set this manually in Render Dashboard → Environment to a stable
+      # 64-char hex string. Using generateValue would create a new secret on every
+      # deploy, invalidating all user sessions and forcing everyone to re-login.
+      # Generate once: python -c "import secrets; print(secrets.token_hex(32))"
+      - key: SEO_SUITE_SECRET
+        sync: false
       - key: SEO_SUITE_DATA_DIR
         value: /app/data
+      # Enable secure (HTTPS-only) session cookies — Render always serves HTTPS.
+      - key: SEO_SUITE_COOKIE_SECURE
+        value: "1"
       - key: PYTHONUNBUFFERED
         value: "1"
       # Optional: set these to enable the env superadmin (otherwise use /signup).

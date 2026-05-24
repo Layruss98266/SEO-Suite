@@ -123,19 +123,25 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR   = Path(__file__).parent / "static"
 
 # Anchor every filesystem path to the project root so the server behaves the
-# same regardless of cwd.
+# same regardless of cwd. SEO_SUITE_DATA_DIR lets a host point data at a writable
+# mount (e.g. a Render/Fly volume) without code changes.
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-_LOG_DIR = PROJECT_ROOT / "data"
-_LOG_DIR.mkdir(exist_ok=True)
+_DATA_BASE = Path(os.environ.get("SEO_SUITE_DATA_DIR", PROJECT_ROOT / "data"))
 
 # ── Logging ───────────────────────────────────────────────────────────────────
+# File logging is best-effort: on a read-only filesystem (e.g. a serverless
+# host) the FileHandler is skipped so import never crashes. Stream logging
+# always works and is what container/PaaS log collectors read anyway.
+_log_handlers: list[logging.Handler] = [logging.StreamHandler()]
+try:
+    _DATA_BASE.mkdir(parents=True, exist_ok=True)
+    _log_handlers.insert(0, logging.FileHandler(_DATA_BASE / "app.log", encoding="utf-8"))
+except OSError:
+    pass  # read-only FS — stream logging only
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(_LOG_DIR / "app.log", encoding="utf-8"),
-        logging.StreamHandler(),
-    ]
+    handlers=_log_handlers,
 )
 logger = logging.getLogger(__name__)
 
@@ -192,8 +198,14 @@ limiter = Limiter(
 CONFIG_PATH  = PROJECT_ROOT / "config.json"
 CFG = load_config()
 
-DATA_DIR    = PROJECT_ROOT / "data";    DATA_DIR.mkdir(exist_ok=True)
-REPORTS_DIR = DATA_DIR / "reports";     REPORTS_DIR.mkdir(exist_ok=True)
+DATA_DIR    = _DATA_BASE
+REPORTS_DIR = DATA_DIR / "reports"
+# Best-effort dir creation — never crash import on a read-only filesystem.
+for _d in (DATA_DIR, REPORTS_DIR):
+    try:
+        _d.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
 
 # PDF generation spawns Playwright per request — cap concurrency so a burst of
 # /api/reports/pdf calls can't OOM the host with parallel chromium processes.
@@ -1307,7 +1319,10 @@ def api_settings_test(provider):
     return jsonify(run_test(provider, data, CFG))
 
 UPLOAD_DIR    = DATA_DIR / "uploads"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass  # read-only FS — uploads will fail at runtime but import won't crash
 PROFILES_PATH = DATA_DIR / "profiles.json"
 
 def _load_profiles():

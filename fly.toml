@@ -1,0 +1,29 @@
+# Fly.io config — deploy with: fly launch --copy-config --now  (then `fly deploy`).
+# Docs: https://fly.io/docs/reference/configuration/
+app = "seo-suite"
+primary_region = "iad"   # change to a region near you
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  SEO_SUITE_DATA_DIR = "/app/data"
+  SEO_SUITE_HOST = "0.0.0.0"
+  PYTHONUNBUFFERED = "1"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Single instance only — run state + SSE queues live in process memory.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+# Persistent volume for reports/uploads/users.json.
+# Create once: fly volumes create seo_suite_data --size 1
+[mounts]
+  source = "seo_suite_data"
+  destination = "/app/data"
+
+# Set the session secret before exposing publicly:
+#   fly secrets set SEO_SUITE_SECRET=$(python -c "import secrets;print(secrets.token_hex(32))")

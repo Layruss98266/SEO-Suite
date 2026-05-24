@@ -1,0 +1,86 @@
+# Deploying SEO Suite
+
+SEO Suite is a stateful Flask app: it runs background jobs, streams live progress
+over SSE, drives a real Chromium browser (Playwright) for indexation, and writes
+reports and accounts to disk. That means it needs **a persistent server or
+container running a single process**, not a serverless/functions platform.
+
+## Will it run on Vercel / Netlify?
+
+**No, not the app.** Serverless platforms give you short-lived function
+invocations, a read-only filesystem, no background threads, and tight bundle-size
+limits. SEO Suite needs the opposite on every count (long-running jobs, SSE,
+Playwright, a writable data directory). A Vercel deploy fails with
+`FUNCTION_INVOCATION_FAILED`. Use one of the options below instead. If you only
+want the public marketing pages somewhere fast, host the app on Render/Fly and
+point a domain at it — the marketing pages are served by the same app.
+
+## Recommended: Render (one click)
+
+1. Push this repo to GitHub (done).
+2. In Render: **New → Blueprint**, select the repo. Render reads `render.yaml`.
+3. It builds the `Dockerfile`, attaches a 1 GB disk at `/app/data`, and sets a
+   generated `SEO_SUITE_SECRET`.
+4. Open the URL. Create your admin account at `/signup` (the first account is an
+   admin), or set `SEO_SUITE_USERNAME` / `SEO_SUITE_PASSWORD_HASH` env vars.
+
+> Free tier note: persistent disks need a paid (starter) instance. On free, the
+> app still runs but `/app/data` is ephemeral, so reports and accounts reset on
+> redeploy.
+
+## Fly.io
+
+```bash
+fly launch --copy-config --no-deploy     # uses fly.toml
+fly volumes create seo_suite_data --size 1
+fly secrets set SEO_SUITE_SECRET=$(python -c "import secrets;print(secrets.token_hex(32))")
+fly deploy
+```
+
+## Docker (any host / VPS)
+
+```bash
+docker build -t seo-suite .
+docker run -d -p 8080:8080 \
+  -e SEO_SUITE_SECRET=$(python -c "import secrets;print(secrets.token_hex(32))") \
+  -v seo_suite_data:/app/data \
+  --name seo-suite seo-suite
+```
+
+Open http://localhost:8080.
+
+## Plain VPS (no Docker)
+
+```bash
+pip install -r requirements.txt
+python -m playwright install --with-deps chromium
+export SEO_SUITE_SECRET=...          # random 32+ char hex
+gunicorn --workers 1 --threads 8 --worker-class gthread --timeout 0 \
+  --bind 0.0.0.0:8080 app.server:app
+```
+
+Put nginx (or Caddy) in front for TLS.
+
+## Key rules for any host
+
+- **One instance / one process.** Run state and SSE subscriber queues live in
+  memory, so multiple workers or instances would split the state. Scale up (more
+  CPU/RAM), not out.
+- **Persistent volume at `SEO_SUITE_DATA_DIR`** (default `/app/data`) for reports,
+  uploads, and `users.json`.
+- **Set `SEO_SUITE_SECRET`** to a stable random value so logins survive restarts.
+- **Auth:** either set `SEO_SUITE_USERNAME` + `SEO_SUITE_PASSWORD_HASH`, or just
+  create the first account at `/signup` (it becomes the admin and turns auth on).
+- **API keys** (PageSpeed, GSC, Moz, DataForSEO, SerpAPI, Groq) are entered in
+  Settings and stored in `config.json` under the data directory.
+
+## Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `SEO_SUITE_SECRET` | Signs session cookies. Set a stable random value. |
+| `SEO_SUITE_DATA_DIR` | Writable dir for data/reports/uploads (default `/app/data`). |
+| `SEO_SUITE_USERNAME` / `SEO_SUITE_PASSWORD_HASH` | Optional env superadmin. |
+| `SEO_SUITE_HOST` / `PORT` | Bind host/port (Render and Fly set `PORT`). |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins. |
+| `SENTRY_DSN` | Optional error tracking. |

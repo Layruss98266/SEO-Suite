@@ -885,6 +885,8 @@ def generate_html(rows: list[dict], path: Path, counts: dict, type_summary: dict
           <canvas id="trend" height="80"></canvas>
         </div>"""
 
+    other_btn = f"<button class='btn' onclick=\"filterRows('other',this)\">⚠️ Other ({other})</button>" if other else ""
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -977,7 +979,7 @@ tr:hover td{{background:#f8f9fb}}
       <button class="btn active" onclick="filterRows('all',this)">All ({total})</button>
       <button class="btn" onclick="filterRows('indexed',this)">✅ Indexed ({indexed})</button>
       <button class="btn" onclick="filterRows('not-indexed',this)">❌ Not Indexed ({not_indexed})</button>
-      {"<button class='btn' onclick=\"filterRows('other',this)\">⚠️ Other (" + str(other) + ")</button>" if other else ""}
+      {other_btn}
       <button class="btn" onclick="filterRows('high-pri',this)">🔴 High Priority</button>
     </div>
     <table id="results-table">

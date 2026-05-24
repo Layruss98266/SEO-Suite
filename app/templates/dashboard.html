@@ -11,6 +11,9 @@
 
 <!-- ═══ TOP BAR ════════════════════════════════════════════════════════════ -->
 <header class="topbar">
+  <button class="tb-hamburger" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
   <a class="topbar-logo" onclick="navTo('home');return false">
     <span class="logo-mark"><span class="logo-dot"></span></span>
     <span class="logo-text">SEO Suite</span>
@@ -253,19 +256,19 @@
         <div id="cannibal-content-redirect">
           <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Consolidate traffic by redirecting the weaker page to the winner:</div>
           <div style="font-weight:600;font-size:11px;color:var(--text3);margin-bottom:4px">Nginx:</div>
-          <pre id="code-nginx" style="background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;font-size:11px;font-family:monospace;overflow-x:auto;margin-bottom:10px;color:var(--text)"></pre>
+          <pre id="code-nginx" class="code-block"></pre>
           <div style="font-weight:600;font-size:11px;color:var(--text3);margin-bottom:4px">Apache (.htaccess):</div>
-          <pre id="code-apache" style="background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;font-size:11px;font-family:monospace;overflow-x:auto;color:var(--text)"></pre>
+          <pre id="code-apache" class="code-block"></pre>
         </div>
         <!-- Canonical -->
         <div id="cannibal-content-canonical" style="display:none">
           <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Point the weaker page's canonical tag to the winner URL to consolidate ranking equity:</div>
-          <pre id="code-canonical" style="background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;font-size:11px;font-family:monospace;overflow-x:auto;color:var(--text)"></pre>
+          <pre id="code-canonical" class="code-block"></pre>
         </div>
         <!-- Internal Link -->
         <div id="cannibal-content-linking" style="display:none">
           <div style="font-size:12px;color:var(--text2);margin-bottom:8px">If you wish to keep both pages, place a contextual link from the weaker page to the winner with appropriate anchor text:</div>
-          <pre id="code-linking" style="background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;font-size:11px;font-family:monospace;overflow-x:auto;white-space:normal;word-break:break-all;color:var(--text)"></pre>
+          <pre id="code-linking" class="code-block" style="white-space:normal;word-break:break-all"></pre>
         </div>
       </div>
     </div>

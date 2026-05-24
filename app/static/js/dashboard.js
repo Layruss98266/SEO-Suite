@@ -2485,6 +2485,29 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('idx-badge')?.classList.add('tb-hidden');
   document.getElementById('aud-badge')?.classList.add('tb-hidden');
   sbRestoreGroups();
+
+  // Touch/click navigation dropdowns (important for tablet and touch devices)
+  document.querySelectorAll('.navbar .nav-has-dd').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const parent = btn.closest('.nav-group');
+      const wasOpen = parent?.classList.contains('open');
+      
+      // Close all dropdowns
+      document.querySelectorAll('.navbar .nav-group').forEach(grp => grp.classList.remove('open'));
+      
+      // Toggle current
+      if (parent && !wasOpen) {
+        parent.classList.add('open');
+      }
+    });
+  });
+
+  // Click outside to close dropdowns
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.navbar .nav-group').forEach(grp => grp.classList.remove('open'));
+  });
 });
 function resetStat(ids,val){ ids.forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=val;}); }
 

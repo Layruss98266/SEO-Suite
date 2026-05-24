@@ -1152,6 +1152,31 @@ td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--surface-2)}
 
+/* Table responsive wrapper */
+.table-wrap {
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  margin-bottom:20px;
+}
+
+/* Code Snippet block (readability + Dark mode) */
+.code-block {
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  padding:10px;
+  border-radius:6px;
+  font-size:11px;
+  font-family:monospace;
+  overflow-x:auto;
+  margin-bottom:10px;
+  color:var(--text);
+}
+body.dark .code-block {
+  background:var(--bg-2);
+  border-color:var(--border);
+}
+
 /* ═══ SETTINGS ══════════════════════════════════════════════════════════════ */
 .settings-header{
   display:flex;align-items:flex-start;justify-content:space-between;
@@ -1464,6 +1489,9 @@ body.dark .rep-card.selected{
   .tb-quick{padding:0 10px;min-width:36px}
 }
 @media (max-width: 720px){
+  .navbar{display:none!important}
+  .app{padding-top:58px!important}
+
   /* ── Sidebar: full-width overlay, show all labels ── */
   .sidebar{
     width:240px!important;padding:16px 0;
@@ -1505,6 +1533,9 @@ body.dark .rep-card.selected{
   /* ── Use case format tabs wrap ── */
   .uc-fmt-tabs{gap:6px}
   .uc-fmt-tab{font-size:11.5px;padding:5px 10px}
+}
+@media (max-width: 600px) {
+  .tb-quick { display: none !important; }
 }
 @media (max-width: 480px){
   /* ── Bottom navigation bar ── */
@@ -2379,7 +2410,9 @@ body.dark .home-strip-item{background:var(--sb-2);border-color:var(--sb-border)}
 body.dark .home-strip-item:hover{border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
 
 /* ═══ LAYOUT: HIDE SIDEBAR, FULL-WIDTH MAIN ════════════════════════════════ */
-.sidebar,.sb-mask,.tb-hamburger{display:none!important}
+@media (min-width: 721px) {
+  .sidebar,.sb-mask,.tb-hamburger{display:none!important}
+}
 
 /* ═══ NAVBAR ════════════════════════════════════════════════════════════════ */
 .navbar{
@@ -2453,7 +2486,7 @@ body.dark .home-strip-item:hover{border-color:#6366F1;box-shadow:0 0 0 3px rgba(
   height:8px;
   background:transparent;
 }
-.nav-group:hover>.nav-dd{display:flex}
+.nav-group:hover>.nav-dd,.nav-group.open>.nav-dd{display:flex}
 .nav-dd-item{
   display:flex;align-items:center;gap:8px;
   padding:8px 12px;
@@ -2479,7 +2512,7 @@ body.dark .home-strip-item:hover{border-color:#6366F1;box-shadow:0 0 0 3px rgba(
   flex-direction:row!important;
   padding:8px;
 }
-.nav-group:hover>.nav-mega{display:flex}
+.nav-group:hover>.nav-mega,.nav-group.open>.nav-mega{display:flex}
 .nav-mega-col{
   flex:1;
   display:flex;flex-direction:column;

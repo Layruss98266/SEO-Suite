@@ -2556,8 +2556,8 @@ const HELP_CONTENT = {
     <h3>What is SEO Suite?</h3>
     <p>A self-hosted toolkit for indexing checks and full SEO audits. Two main flows:</p>
     <ul>
-      <li><b>🔍 Indexing Checker</b> — verifies which URLs Google has indexed via Playwright + Google's <code>site:</code> search.</li>
-      <li><b>🔬 SEO Audit</b> — runs up to <b>35+ checks per URL</b> across 7 use cases, scored 0-100.</li>
+      <li><b>🔍 Indexing Checker</b> · verifies which URLs Google has indexed via Playwright + Google's <code>site:</code> search.</li>
+      <li><b>🔬 SEO Audit</b> · runs up to <b>35+ checks per URL</b> across 7 use cases, scored 0-100.</li>
     </ul>
     <h3>Workflow</h3>
     <ol>
@@ -2637,7 +2637,7 @@ const HELP_CONTENT = {
         <div class="help-uc-tip">Best for: content and SEO teams auditing landing pages, blog posts, or product pages before publishing or after a rankings drop.</div>
         <div class="help-uc-out-lbl">Sample output</div>
         <div class="help-pre">URL: https://example.com/services
-  Title           PASS   58 chars — "SEO Audit Tools | Example"
+  Title           PASS   58 chars · "SEO Audit Tools | Example"
   Meta desc       WARN   Missing meta description
   H1              PASS   Exactly 1 H1 found
   Word count      PASS   1 240 words
@@ -2691,21 +2691,21 @@ const HELP_CONTENT = {
           </div>
         </div>
         <div class="help-uc-checks">
-          <span class="help-uc-check">PageSpeed score — mobile</span>
-          <span class="help-uc-check">PageSpeed score — desktop</span>
+          <span class="help-uc-check">PageSpeed score (mobile)</span>
+          <span class="help-uc-check">PageSpeed score (desktop)</span>
           <span class="help-uc-check">mobile vs desktop gap</span>
           <span class="help-uc-check">GSC URL inspection</span>
-          <span class="help-uc-check">LCP — Largest Contentful Paint</span>
-          <span class="help-uc-check">CLS — Cumulative Layout Shift</span>
-          <span class="help-uc-check">FCP — First Contentful Paint</span>
-          <span class="help-uc-check">INP — Interaction to Next Paint</span>
+          <span class="help-uc-check">LCP (Largest Contentful Paint)</span>
+          <span class="help-uc-check">CLS (Cumulative Layout Shift)</span>
+          <span class="help-uc-check">FCP (First Contentful Paint)</span>
+          <span class="help-uc-check">INP (Interaction to Next Paint)</span>
         </div>
         <div class="help-uc-tip">Best for: Core Web Vitals checks before a Google algorithm update, or finding the slowest pages in a CSV of URLs to prioritise dev work. See <b>API Keys</b> tab to set up the free PageSpeed key.</div>
         <div class="help-uc-out-lbl">Sample output</div>
         <div class="help-pre">URL: https://example.com/
   PageSpeed mobile  WARN   61 / 100
   PageSpeed desktop PASS   88 / 100
-  Mobile gap        WARN   27-point gap — optimise images &amp; defer JS
+  Mobile gap        WARN   27-point gap (optimise images &amp; defer JS)
   GSC inspection    PASS   URL indexed, no issues
   LCP               WARN   3.2 s  (target &lt; 2.5 s)
   CLS               PASS   0.04   (target &lt; 0.1)
@@ -2732,7 +2732,7 @@ const HELP_CONTENT = {
           <span class="help-uc-check">coverage errors</span>
           <span class="help-uc-check">manual actions</span>
         </div>
-        <div class="help-uc-tip">Best for: understanding real search traffic and query data from Google — no third-party estimates. Requires a service-account JSON and the site added to your Search Console property. See <b>API Keys</b> tab for the full setup guide.</div>
+        <div class="help-uc-tip">Best for: understanding real search traffic and query data straight from Google without relying on third-party estimates. Requires a service-account JSON and the site added to your Search Console property. See <b>API Keys</b> tab for the full setup guide.</div>
         <div class="help-uc-out-lbl">Sample output</div>
         <div class="help-pre">URL: https://example.com/blog/seo-guide
   Clicks (28d)    1 240
@@ -2797,7 +2797,7 @@ const HELP_CONTENT = {
           <span class="help-uc-check">rank change vs last run</span>
           <span class="help-uc-check">estimated traffic share</span>
         </div>
-        <div class="help-uc-tip">Enter keywords in the field that appears when you select this use case. Run regularly to track rank movement. The free SerpAPI tier gives 100 searches/month — enough for weekly tracking of ~15 keywords. See <b>API Keys</b> tab for setup.</div>
+        <div class="help-uc-tip">Enter keywords in the field that appears when you select this use case. Run regularly to track rank movement. The free SerpAPI tier gives 100 searches per month, which is enough for weekly tracking of about 15 keywords. See <b>API Keys</b> tab for setup.</div>
         <div class="help-uc-out-lbl">Sample output</div>
         <div class="help-pre">URL: https://example.com/ · 3 keywords
   Keyword rankings:
@@ -2817,13 +2817,13 @@ const HELP_CONTENT = {
     <p style="font-size:12.5px;color:var(--text2)">Each individual check carries a weight of 1–15 points based on SEO importance. The use-case score is <code>earned_points / total_points × 100</code>. <b>Pass</b> = full weight · <b>Warning</b> = half weight · <b>Fail / Error</b> = 0 points. The full-audit score averages all selected use cases.</p>
   `,
   keys: `
-    <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px">Three use cases work completely free. Four others unlock richer data when you add an API key. All keys are stored server-side in <code>data/config.json</code> — never exposed to the browser.</p>
+    <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px">Three use cases work completely free. Four others unlock richer data when you add an API key. All keys are stored server-side in <code>data/config.json</code> · never exposed to the browser.</p>
 
     <div class="help-api-list">
 
       <div class="help-api-card">
         <div class="help-api-hd">⚡ PageSpeed Insights API <span class="help-tag free">Free</span></div>
-        <p style="font-size:12px;color:var(--text2);margin:0 0 10px">Required for the <b>Performance</b> use case — Core Web Vitals, LCP, CLS, mobile score.</p>
+        <p style="font-size:12px;color:var(--text2);margin:0 0 10px">Required for the <b>Performance</b> use case · Core Web Vitals, LCP, CLS, mobile score.</p>
         <ol class="help-steps">
           <li>Go to <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> and sign in with your Google account.</li>
           <li>Create a new project (or select an existing one) from the top dropdown.</li>
@@ -2843,12 +2843,42 @@ const HELP_CONTENT = {
   "ttfb": 320,       // Time to First Byte (ms)
   "fcp":  1.1        // First Contentful Paint (s)
 }</div>
-        <div class="help-note">Quota: <b>25 000 free requests/day</b> — more than enough for any audit. No billing required unless you exceed this.</div>
+        <div class="help-note">Quota: <b>25 000 free requests/day</b> · more than enough for any audit. No billing required unless you exceed this.</div>
+      </div>
+
+      <div class="help-api-card">
+        <div class="help-api-hd">🤖 Groq API Key <span class="help-tag free">Free Tier</span></div>
+        <p style="font-size:12px;color:var(--text2);margin:0 0 10px">Required for the local <b>AI SEO Assistant</b> · explains technical audit errors in plain English and drafts optimized meta tags on the fly.</p>
+        <ol class="help-steps">
+          <li>Go to <a href="https://console.groq.com/" target="_blank">console.groq.com</a> and sign up for a free account.</li>
+          <li>In the left sidebar, click on <b>API Keys</b>.</li>
+          <li>Click the <b>Create API Key</b> button.</li>
+          <li>Enter a label (e.g. <code>seo-suite-ai</code>) and click <b>Generate</b>.</li>
+          <li>Copy the generated key (starts with <code>gsk_</code>).</li>
+          <li>In SEO Suite: open <b>Settings</b> from the sidebar → paste the key into <code>Groq API Key</code> → click <b>Save Settings</b>.</li>
+        </ol>
+        <div class="help-out-lbl">What you unlock</div>
+        <div class="help-pre">Clicking "Explain with AI" on any audit warning instantly uses local LLMs (like Llama 3 or Mistral) to translate complex crawler codes into a simple, step-by-step remediation plan.</div>
+      </div>
+
+      <div class="help-api-card">
+        <div class="help-api-hd">📡 IndexNow API Key &amp; Host <span class="help-tag free">Free</span></div>
+        <p style="font-size:12px;color:var(--text2);margin:0 0 10px">Required for the <b>IndexNow Submit</b> tool · instantly indexes your pages in Bing, Yandex, and other search engines.</p>
+        <ol class="help-steps">
+          <li>Navigate to the <b>Tools → IndexNow Submit</b> panel inside SEO Suite.</li>
+          <li>Click the <b>"Generate"</b> button to instantly create a valid, unique IndexNow key.</li>
+          <li>Create a plain text file on your computer named exactly <code>[your_generated_key].txt</code>.</li>
+          <li>Open this text file, paste your generated key as the only content inside it, and save it.</li>
+          <li>Upload this <code>.txt</code> file to the <b>root directory</b> of your website server (so it is publicly accessible at <code>https://yourdomain.com/[your_generated_key].txt</code>).</li>
+          <li>In SEO Suite: open <b>Settings</b> from the sidebar → paste your key into <code>IndexNow API Key</code> → enter your website's main domain name in <code>IndexNow Host</code> → click <b>Save Settings</b>.</li>
+        </ol>
+        <div class="help-out-lbl">What you unlock</div>
+        <div class="help-pre">You can now batch-submit any newly created or updated URLs directly to IndexNow endpoint APIs. Search engines will discover and crawl your changes in minutes instead of days.</div>
       </div>
 
       <div class="help-api-card">
         <div class="help-api-hd">📊 Google Search Console API <span class="help-tag paid">Service account (free)</span></div>
-        <p style="font-size:12px;color:var(--text2);margin:0 0 10px">Required for the <b>Search Console</b> use case — real clicks, impressions, positions, and top queries from Google.</p>
+        <p style="font-size:12px;color:var(--text2);margin:0 0 10px">Required for the <b>Search Console</b> use case · real clicks, impressions, positions, and top queries from Google.</p>
         <ol class="help-steps">
           <li>Go to <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> → your project → <b>APIs &amp; Services → Library</b>.</li>
           <li>Search <b>"Google Search Console API"</b> → Enable it.</li>

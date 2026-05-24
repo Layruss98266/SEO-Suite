@@ -27,6 +27,8 @@ This repository also includes planning and reference documents for product roadm
 - **Scheduling** — automated checks on a daily/hourly schedule via `config.json`
 - **Proxy support** — pass a list of proxy URLs in `config.json`
 - **Dark mode** — full dark theme with persistence
+- **Website Navigation** — seamless glassmorphic shortcut button to return to the public website home page from the live dashboard
+- **Interactive Setup Guides** — step-by-step setup guides for Groq API Key (AI Assistant) and IndexNow Host directly inside the dashboard Help modal
 
 ## Setup
 

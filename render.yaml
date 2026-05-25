@@ -24,7 +24,7 @@ services:
     # Single instance ONLY — run state + SSE queues live in process memory and
     # must not be split across instances. (Free tier is single-instance anyway.)
     numInstances: 1
-    healthCheckPath: /
+    healthCheckPath: /health
     # ── UPGRADE: uncomment for persistent data (requires plan: starter) ──
     # disk:
     #   name: seo-suite-data

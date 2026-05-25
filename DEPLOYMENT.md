@@ -91,3 +91,13 @@ Put nginx (or Caddy) in front for TLS.
 | `SEO_SUITE_HOST` / `PORT` | Bind host/port (Render and Fly set `PORT`). |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins. |
 | `SENTRY_DSN` | Optional error tracking. |
+| `SEO_SUITE_LOG_JSON` | Set to `1` to emit structured JSON logs (for ELK / Datadog / Loki). |
+
+## Health checks
+
+| Endpoint | Purpose | Status codes |
+|----------|---------|--------------|
+| `GET /health` | Liveness probe — minimal, no auth, no run-state. | Always 200 if the process is alive. |
+| `GET /health/ready` | Readiness probe — checks data dir is writable + sub-directories exist. | 200 healthy, 503 degraded (with per-check details in JSON body). |
+
+Configure your load balancer / orchestrator to use `/health/ready` for readiness gating and `/health` for liveness checks. On Render, the default health check path is `/`; you can override to `/health` in `render.yaml`'s `healthCheckPath`.

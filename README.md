@@ -109,16 +109,19 @@ SEO Suite/
 ├── .env.example         ← template for .env
 │
 ├── app/                 ← Flask application
-│   ├── server.py        ← Flask app factory + remaining routes (indexing, audit, use-case runner)
+│   ├── server.py        ← Slim Flask factory (~165 lines) — app + middleware + blueprint wiring
 │   ├── state.py         ← Shared run-state, paths, helpers, constants
 │   ├── middleware.py    ← Security headers, CSRF, error handlers
-│   ├── blueprints/      ← Route groups split out of server.py
+│   ├── blueprints/      ← Every route lives here, grouped by domain
 │   │   ├── site.py      ← Public marketing pages (/, /features, /pricing, /blog, /about, /contact)
 │   │   ├── auth_views.py ← /login, /signup, /logout, /api/users, /api/auth_status
-│   │   ├── misc.py      ← /app, /health, /api/use_cases, /api/tasks
+│   │   ├── misc.py      ← /app, /health, /health/ready, /api/use_cases, /api/tasks
 │   │   ├── reports.py   ← /api/reports/*, /api/open, /api/download, /api/history, PDF export
 │   │   ├── settings.py  ← /api/settings, /api/profiles, /api/upload, /api/compare
-│   │   └── tools.py     ← /api/tools/* (33 routes: quick tools, GSC, Bing, AI, generators, etc.)
+│   │   ├── tools.py     ← /api/tools/* (33 routes: quick tools, GSC, Bing, AI, generators, etc.)
+│   │   ├── indexing.py  ← /api/index/* (run/stream/cancel/pause/resume/retry/partial)
+│   │   ├── audit.py     ← /api/audit/* (run/stream/cancel/pause/resume/partial/phase)
+│   │   └── runners.py   ← /api/usecase/run, /api/usecase/run_bulk
 │   ├── templates/
 │   │   ├── dashboard.html
 │   │   └── site/        ← Marketing site templates (home, features, pricing, blog, about, contact)

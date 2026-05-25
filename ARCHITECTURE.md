@@ -63,17 +63,21 @@ For setup and usage, see [README.md](README.md). For contributing conventions, s
 
 ```
 app/
-├── server.py              ← Flask factory + indexing/audit/use-case routes (~940 lines)
+├── server.py              ← Slim Flask factory (~165 lines) — app construction
+│                            + CORS + Sentry + limiter + blueprint registration
 ├── state.py               ← Shared state, paths, helpers, constants
 ├── middleware.py          ← Security headers, CSRF, error handlers
 ├── __init__.py            ← create_app() factory wrapper
-├── blueprints/            ← Route groups split out of server.py
+├── blueprints/            ← Every route lives here, grouped by domain
 │   ├── site.py            ← /, /features, /pricing, /blog, /about, /contact
 │   ├── auth_views.py      ← /login, /signup, /logout, /api/users, /api/auth_status
-│   ├── misc.py            ← /app, /health, /api/use_cases, /api/tasks
+│   ├── misc.py            ← /app, /health, /health/ready, /api/use_cases, /api/tasks
 │   ├── reports.py         ← /api/reports/*, /api/open, /api/download, /api/history, PDF
 │   ├── settings.py        ← /api/settings, /api/profiles, /api/upload, /api/compare
-│   └── tools.py           ← /api/tools/* (33 routes)
+│   ├── tools.py           ← /api/tools/* (33 routes)
+│   ├── indexing.py        ← /api/index/* (run/stream/cancel/pause/resume/retry/partial)
+│   ├── audit.py           ← /api/audit/* (run/stream/cancel/pause/resume/partial/phase)
+│   └── runners.py         ← /api/usecase/run, /api/usecase/run_bulk
 ├── templates/
 │   ├── dashboard.html     ← Single-page app shell for /app
 │   └── site/              ← Marketing site templates
@@ -296,17 +300,23 @@ A future SQLite migration is on the roadmap for `users.json`, `history.json`, an
 
 ## Observability
 
-Currently minimal:
-
-- **Logging** — Python `logging` to stdout + `data/app.log`
-- **Sentry** — Opt-in via `SENTRY_DSN` env var; 5% transaction sampling
-- **Health check** — `GET /health` returns `{"status":"ok"}` (intentionally minimal — no run state, no version)
+- **Logging** — Python `logging` to stdout + `data/app.log`. Set
+  `SEO_SUITE_LOG_JSON=1` to emit structured JSON logs (ELK / Datadog / Loki
+  pipelines) via `python-json-logger`. Falls back to text format if the lib
+  isn't installed.
+- **Sentry** — Opt-in via `SENTRY_DSN` env var; 5% transaction sampling.
+- **Liveness probe** — `GET /health` returns `{"status":"ok"}`
+  (intentionally minimal — no run state, no version, no auth).
+- **Readiness probe** — `GET /health/ready` checks the data directory is
+  writable and that the `reports/` + `uploads/` sub-directories exist.
+  Returns 200 + `{"status":"ok","checks":{...}}` when healthy, 503 +
+  per-check failure details when degraded.
 
 Future:
 
-- Prometheus metrics endpoint
-- Structured JSON logging (`python-json-logger` already a dep)
-- Deeper readiness probe checking GSC creds + disk + writable paths
+- Prometheus `/metrics` endpoint (request counts, latencies, audit duration,
+  queue depth)
+- GSC credentials + Sentry DSN reachability in the readiness probe
 
 ---
 

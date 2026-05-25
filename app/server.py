@@ -46,17 +46,41 @@ from core.auth import init_auth
 # File logging is best-effort: on a read-only filesystem (e.g. a serverless
 # host) the FileHandler is skipped so import never crashes. Stream logging
 # always works and is what container/PaaS log collectors read anyway.
+#
+# Set SEO_SUITE_LOG_JSON=1 to emit structured JSON logs (drop-in for ELK /
+# Datadog / Loki pipelines that prefer JSON over text). Falls back to plain
+# text format when python-json-logger isn't installed or the env var is off.
 _log_handlers: list[logging.Handler] = [logging.StreamHandler()]
 try:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     _log_handlers.insert(0, logging.FileHandler(DATA_DIR / "app.log", encoding="utf-8"))
 except OSError:
     pass  # read-only FS — stream logging only
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=_log_handlers,
-)
+
+if os.getenv("SEO_SUITE_LOG_JSON") == "1":
+    try:
+        from pythonjsonlogger import jsonlogger
+
+        _json_fmt = jsonlogger.JsonFormatter(
+            "%(asctime)s %(levelname)s %(name)s %(message)s",
+            rename_fields={"asctime": "timestamp", "levelname": "level"},
+        )
+        for _h in _log_handlers:
+            _h.setFormatter(_json_fmt)
+        logging.basicConfig(level=logging.INFO, handlers=_log_handlers)
+    except ImportError:
+        # python-json-logger not installed — fall through to text format.
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(message)s",
+            handlers=_log_handlers,
+        )
+else:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=_log_handlers,
+    )
 logger = logging.getLogger(__name__)
 
 # ── App construction ──────────────────────────────────────────────────────────

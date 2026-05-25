@@ -9,13 +9,28 @@ import core.auth as auth
 
 @pytest.fixture
 def store(tmp_path, monkeypatch):
-    """Isolate the user store + config to tmp files, no env admin."""
+    """Isolate the user store + config to tmp files, no env admin.
+
+    Patches both the legacy JSON path and the SQLite DB path so tests work
+    regardless of the configured backend. Resets the db module's
+    initialised-paths cache so the new tmp DB path is treated as fresh.
+    """
     users = tmp_path / "users.json"
-    cfg   = tmp_path / "config.json"
+    db_path = tmp_path / "seo_suite.db"
+    cfg = tmp_path / "config.json"
     monkeypatch.setattr(auth, "_USERS_PATH", users)
+    monkeypatch.setattr(auth, "_USERS_DB", db_path)
     monkeypatch.setattr(auth, "_CONFIG_PATH", cfg)
     monkeypatch.delenv("SEO_SUITE_PASSWORD_HASH", raising=False)
     monkeypatch.delenv("SEO_SUITE_USERNAME", raising=False)
+    monkeypatch.delenv("SEO_SUITE_USERS_BACKEND", raising=False)
+
+    # Reset the db module's per-path init cache so this tmp DB is initialised
+    # cleanly (otherwise a previous test run's cache entry would skip schema
+    # creation for the freshly-created tmp file).
+    from core import db as _db
+
+    _db._reset_for_tests()
     return auth, users, cfg
 
 
@@ -50,9 +65,13 @@ class TestCreateUser:
         assert not ok and "exists" in err.lower()
 
     def test_password_not_stored_plaintext(self, store):
-        a, users, _ = store
+        a, _users_json, _ = store
         a.create_user("alice", "longenoughpw1")
-        assert "longenoughpw1" not in users.read_text()
+        # Backend-agnostic: check that no stored password_hash field contains
+        # the plaintext, regardless of whether we're on SQLite or JSON.
+        users = a._load_users()
+        assert "alice" in users
+        assert "longenoughpw1" not in users["alice"]["password_hash"]
 
 
 class TestAuthenticate:

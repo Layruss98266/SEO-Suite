@@ -279,11 +279,9 @@ Main thread          Gunicorn dispatches HTTP requests to threads
 
 ## Data Persistence
 
-All persistence is **file-based**. No SQL.
-
-| File | Format | Purpose |
-|------|--------|---------|
-| `data/users.json` | JSON | User accounts (hashed passwords, admin flags, created_at) |
+| Store | Backend | Purpose |
+|-------|---------|---------|
+| `data/seo_suite.db` (table `users`) | **SQLite (WAL)** | User accounts (hashed passwords, admin flags, created_at). Migrated from `users.json` on first read. |
 | `data/profiles.json` | JSON | Saved audit configurations |
 | `data/history.json` | JSON | Indexing run history (for trend chart) |
 | `data/reports/*.html` | HTML | Audit + indexing reports (primary file) |
@@ -294,7 +292,32 @@ All persistence is **file-based**. No SQL.
 | `config.json` | JSON | Non-secret settings + API keys (latter masked in GET responses) |
 | `.env` | KV | Secrets (DB-style: gitignored) |
 
-A future SQLite migration is on the roadmap for `users.json`, `history.json`, and `profiles.json`.
+### Why SQLite for users (and not the rest)
+
+The user store has the strictest atomicity needs:
+
+- A torn write would lock everyone out
+- Concurrent reads must not block (login is hot path)
+- We want indexed `WHERE username = ?` lookups as the table grows
+
+SQLite gives us atomic transactions, WAL-mode read concurrency, and indexed
+lookups for free. The migration is opportunistic — see `core/db.py`:
+`load_users()` checks if the table is empty and imports `users.json` on
+first read, then renames the file to `.migrated` so it isn't re-imported.
+
+`profiles.json` and `history.json` stay as JSON for now — they're rarely
+written and never read on the auth hot path.
+
+### Rollback
+
+If SQLite causes problems, force the legacy JSON backend:
+
+```bash
+SEO_SUITE_USERS_BACKEND=json python main.py
+```
+
+This skips the SQLite path entirely and reads/writes `users.json`. Rename
+`users.json.migrated` back to `users.json` first to recover the data.
 
 ---
 

@@ -92,6 +92,7 @@ Put nginx (or Caddy) in front for TLS.
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins. |
 | `SENTRY_DSN` | Optional error tracking. |
 | `SEO_SUITE_LOG_JSON` | Set to `1` to emit structured JSON logs (for ELK / Datadog / Loki). |
+| `SEO_SUITE_USERS_BACKEND` | `sqlite` (default) or `json` for emergency rollback to the legacy file backend. |
 
 ## Health checks
 

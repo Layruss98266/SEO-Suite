@@ -31,15 +31,27 @@ from flask import Flask, jsonify, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 # ── Multi-user store ───────────────────────────────────────────────────────────
-# Accounts live in data/users.json: {username: {password_hash, is_admin, created_at}}.
-# The env admin (SEO_SUITE_USERNAME, active only when SEO_SUITE_PASSWORD_HASH is
-# set) is a bootstrap superadmin that lives outside this file and can't be locked
-# out or deleted.
-_USERS_PATH  = Path(__file__).parent.parent / "data" / "users.json"
+# Accounts live in SQLite (data/seo_suite.db, table `users`). The env admin
+# (SEO_SUITE_USERNAME, active only when SEO_SUITE_PASSWORD_HASH is set) is a
+# bootstrap superadmin that lives outside the DB and can't be locked out or
+# deleted.
+#
+# Legacy: pre-SQLite installs kept accounts in data/users.json. On first read,
+# core.db opportunistically imports that file and renames it to
+# users.json.migrated. Set SEO_SUITE_USERS_BACKEND=json to force the legacy
+# path (e.g. for emergency rollback).
+_DATA_DIR    = Path(__file__).parent.parent / "data"
+_USERS_PATH  = _DATA_DIR / "users.json"
+_USERS_DB    = _DATA_DIR / "seo_suite.db"
 _CONFIG_PATH = Path(__file__).parent.parent / "config.json"
 _users_lock  = threading.Lock()
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{3,64}$")
 _MIN_PASSWORD_LEN = 12
+
+
+def _use_sqlite_backend() -> bool:
+    """True unless the user has explicitly opted into the legacy JSON path."""
+    return os.environ.get("SEO_SUITE_USERS_BACKEND", "sqlite").lower() != "json"
 
 # ── Account lockout (brute-force mitigation) ─────────────────────────────────
 _LOCKOUT_THRESHOLD = 10       # failed attempts before lockout
@@ -72,6 +84,16 @@ def _clear_failed_logins(username: str) -> None:
 
 
 def _load_users() -> dict:
+    """Return the user dict, transparently picking the configured backend.
+
+    Default backend is SQLite (atomic writes, indexed reads). Set
+    ``SEO_SUITE_USERS_BACKEND=json`` to fall back to the legacy file path.
+    """
+    if _use_sqlite_backend():
+        from core import db as _db
+
+        return _db.load_users(_USERS_DB, _USERS_PATH)
+    # Legacy JSON path — kept as an emergency rollback.
     try:
         data = json.loads(_USERS_PATH.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
@@ -80,6 +102,17 @@ def _load_users() -> dict:
 
 
 def _save_users(users: dict) -> None:
+    """Persist the user dict via the configured backend.
+
+    SQLite writes are transactional (DELETE + INSERT all rows in one BEGIN…
+    COMMIT block) so a mid-write crash rolls back to the previous state.
+    The legacy JSON writer is non-atomic — kept only for rollback.
+    """
+    if _use_sqlite_backend():
+        from core import db as _db
+
+        _db.save_users(_USERS_DB, users)
+        return
     _USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
     _USERS_PATH.write_text(json.dumps(users, indent=2), encoding="utf-8")
 

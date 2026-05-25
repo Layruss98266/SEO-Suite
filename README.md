@@ -134,6 +134,7 @@ SEO Suite/
 │   ├── seo_audit.py     ← SEO audit orchestrator
 │   ├── auth.py          ← Multi-user session auth + account lockout
 │   ├── security.py      ← SSRF protection, DNS rebinding guard, safe HTTP
+│   ├── db.py            ← SQLite-backed user store (auto-migrates from users.json)
 │   ├── report_generator.py ← HTML / Excel / CSV report builder
 │   ├── sitemap_parser.py   ← Sitemap fetching & parsing
 │   ├── notifier.py         ← Email / Slack / Teams notifications
@@ -153,6 +154,7 @@ SEO Suite/
     ├── progress/        ← Resume state for interrupted checks
     ├── reports/         ← Generated HTML / JSON / Excel reports (audit)
     ├── uploads/         ← Temporary CSV/XLSX files uploaded via the dashboard
+    ├── seo_suite.db     ← SQLite (users; future: history/profiles)
     ├── profiles.json    ← Saved audit profiles
     ├── history.json     ← Indexing run history (trend chart)
     └── app.log          ← Server error log

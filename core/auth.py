@@ -467,7 +467,20 @@ def authenticate(
         # acceptable trade-off — the user hasn't given us anywhere to send.
         if novel:
             _send_login_notification(username, ip, user_agent)
-        return {"username": username, "is_admin": bool(user.get("is_admin"))}
+        identity = {"username": username, "is_admin": bool(user.get("is_admin"))}
+        # 2FA gate: if TOTP is enabled, the caller must complete a second
+        # step before the session is upgraded to fully authed. We signal
+        # this by returning ``totp_required: True`` — the route layer
+        # stashes the username in a half-session and asks for a code.
+        if _use_sqlite_backend():
+            try:
+                from core import totp as _totp
+
+                if _totp.is_enabled(_USERS_DB, username):
+                    identity["totp_required"] = True
+            except Exception as exc:
+                _log.debug("totp check failed: %s", exc)
+        return identity
 
     # Anti-enumeration: when the user doesn't exist, still run a hash check
     # against the dummy so the wall-clock cost matches a real

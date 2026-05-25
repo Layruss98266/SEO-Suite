@@ -39,7 +39,7 @@ from typing import Iterator
 logger = logging.getLogger(__name__)
 
 # Bumped when the schema changes — guides automatic ALTER TABLE migrations.
-_SCHEMA_VERSION = 4
+_SCHEMA_VERSION = 5
 
 # Login history retention — attempts older than this are pruned at write time.
 # 90 days is a sensible default: long enough for audit / forensics, short
@@ -164,6 +164,20 @@ def _ensure_schema(db_path: Path) -> None:
                     ON sessions(username);
                 CREATE INDEX IF NOT EXISTS idx_sessions_expires
                     ON sessions(expires_at);
+
+                -- TOTP 2FA. One row per enrolled user. `secret` is the
+                -- base32 shared secret (RFC 6238); `enabled` is the boolean
+                -- that gates the login check (so we can stage enrolment
+                -- separately from enforcement). `backup_codes` is a JSON
+                -- array of single-use recovery codes hashed with SHA-256.
+                CREATE TABLE IF NOT EXISTS totp_secrets (
+                    username       TEXT PRIMARY KEY,
+                    secret         TEXT NOT NULL,
+                    enabled        INTEGER NOT NULL DEFAULT 0,
+                    created_at     TEXT NOT NULL,
+                    enabled_at     TEXT,
+                    backup_codes   TEXT NOT NULL DEFAULT '[]'
+                );
                 """
             )
             # Migrate existing v1 databases that don't have the new user

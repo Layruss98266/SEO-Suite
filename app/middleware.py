@@ -77,7 +77,7 @@ def _set_security_headers(response):
 
 # ── Before-request CSRF guard ────────────────────────────────────────────────
 
-_CSRF_PROTECTED_PATHS = ("/login", "/signup", "/contact")
+_CSRF_PROTECTED_PATHS = ("/login", "/signup", "/contact", "/login/totp")
 
 
 def _csrf_protect():

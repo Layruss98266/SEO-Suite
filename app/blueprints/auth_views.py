@@ -95,6 +95,17 @@ def login():
         )
         if identity:
             session.clear()
+
+            # 2FA gate: if the account has TOTP enabled, don't grant full
+            # session yet. Stash the username + intended state in a
+            # half-session and redirect to /login/totp for the second step.
+            # The half-session has NO `authed=True` so it can't access
+            # anything @login_required.
+            if identity.get("totp_required"):
+                session["pending_username"] = identity["username"]
+                session["pending_is_admin"] = identity["is_admin"]
+                return ("", 302, {"Location": "/login/totp"})
+
             session["authed"] = True
             session["username"] = identity["username"]
             session["is_admin"] = identity["is_admin"]
@@ -316,6 +327,223 @@ def api_users_delete(username):
     if not ok:
         return jsonify({"ok": False, "error": err}), 400
     return jsonify({"ok": True, "users": list_users()})
+
+
+# ── TOTP 2FA ──────────────────────────────────────────────────────────────────
+@bp.route("/login/totp", methods=["GET", "POST"])
+def login_totp():
+    """Second-factor challenge after a successful password step.
+
+    Only reachable with a pending half-session (set by /login after the
+    password check). Direct visits without the half-session redirect to
+    /login.
+    """
+    pending_username = session.get("pending_username")
+    if not pending_username:
+        return ("", 302, {"Location": "/login"})
+
+    if request.method == "POST":
+        code = (request.form.get("code") or "").strip()
+        use_backup = (request.form.get("use_backup") or "").strip()
+
+        from core import totp as _totp
+        from core.auth import _USERS_DB
+
+        ok = False
+        if use_backup:
+            ok = _totp.consume_backup_code(_USERS_DB, pending_username, code)
+        else:
+            ok = _totp.verify_code(_USERS_DB, pending_username, code)
+
+        if not ok:
+            return _totp_challenge_html("<div class='err'>Invalid code — try again</div>"), 401, {
+                "Content-Type": "text/html"
+            }
+
+        # Promote half-session to a full session.
+        username = pending_username
+        is_admin = bool(session.pop("pending_is_admin", False))
+        session.pop("pending_username", None)
+        session["authed"] = True
+        session["username"] = username
+        session["is_admin"] = is_admin
+        session.permanent = True
+
+        # Create server-side session row (same flow as /login).
+        if _use_sqlite_login_history():
+            try:
+                from core import db as _db
+
+                sid = _db.create_session(
+                    _USERS_DB,
+                    username,
+                    request.remote_addr,
+                    request.user_agent.string if request.user_agent else None,
+                )
+                session["sid"] = sid
+            except Exception as exc:
+                logger.debug("create_session after TOTP failed: %s", exc)
+
+        return ("", 302, {"Location": "/app"})
+
+    return _totp_challenge_html(""), 200, {"Content-Type": "text/html"}
+
+
+def _totp_challenge_html(error_html: str) -> str:
+    """Render the TOTP challenge form. Reuses the login page's CSS so the
+    UI feels continuous."""
+    from core.auth import LOGIN_PAGE
+    from app.middleware import generate_csrf_token
+
+    csrf = generate_csrf_token()
+    body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SEO Suite — Two-factor authentication</title>
+{LOGIN_PAGE.split('<style>')[1].split('</style>')[0]}
+</head>
+<body>
+<div class="grid"></div>
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Two-factor authentication</div>
+    <div class="card-sub">Enter the 6-digit code from your authenticator app, or use a backup code.</div>
+    <form method="post" action="/login/totp">
+      <input type="hidden" name="_csrf_token" value="{csrf}">
+      <div class="field">
+        <label for="code">Code</label>
+        <input id="code" name="code" type="text" inputmode="numeric"
+               autocomplete="one-time-code" placeholder="123456" required autofocus>
+      </div>
+      <button class="btn" type="submit">Verify</button>
+      {error_html}
+    </form>
+    <hr class="divider">
+    <div class="hint">
+      Lost your phone? <a href="#" onclick="document.getElementById('bk').style.display='block';return false" style="color:#8B5CF6">Use a backup code</a>
+    </div>
+    <form id="bk" method="post" action="/login/totp" style="display:none;margin-top:12px">
+      <input type="hidden" name="_csrf_token" value="{csrf}">
+      <input type="hidden" name="use_backup" value="1">
+      <div class="field">
+        <label for="bcode">Backup code</label>
+        <input id="bcode" name="code" type="text" placeholder="ABC123DEF456" required>
+      </div>
+      <button class="btn" type="submit">Use backup code</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>"""
+    return body
+
+
+@bp.route("/api/auth/totp/status", methods=["GET"])
+@login_required
+def api_totp_status():
+    """Is 2FA enabled for the current user? Used by Settings UI."""
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+    from core import totp as _totp
+    from core.auth import _USERS_DB
+
+    me = session.get("username") or ""
+    return jsonify(
+        {
+            "ok": True,
+            "enabled": _totp.is_enabled(_USERS_DB, me),
+            "remaining_backup_codes": _totp.remaining_backup_codes(_USERS_DB, me),
+        }
+    )
+
+
+@bp.route("/api/auth/totp/enroll", methods=["POST"])
+@login_required
+def api_totp_enroll():
+    """Mint a fresh TOTP secret. Returns the secret + provisioning URI so the
+    frontend can render a QR code."""
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+    from core import totp as _totp
+    from core.auth import _USERS_DB
+
+    me = session.get("username") or ""
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+
+    try:
+        secret, uri = _totp.enroll(_USERS_DB, me)
+    except Exception as exc:
+        logger.error("totp enroll failed: %s", exc)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+    return jsonify(
+        {
+            "ok": True,
+            "secret": secret,
+            "provisioning_uri": uri,
+            "message": "Scan the QR (render client-side from the URI) and submit a code to activate.",
+        }
+    )
+
+
+@bp.route("/api/auth/totp/activate", methods=["POST"])
+@login_required
+def api_totp_activate():
+    """Verify the user's first TOTP code and enable 2FA. Returns the
+    one-time-visible plaintext backup codes."""
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+    from core import totp as _totp
+    from core.auth import _USERS_DB
+
+    me = session.get("username") or ""
+    code = ((request.get_json(force=True) or {}).get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "code required"}), 400
+
+    ok, backup_codes = _totp.activate(_USERS_DB, me, code)
+    if not ok:
+        return jsonify({"ok": False, "error": "Invalid code — try again"}), 400
+
+    return jsonify(
+        {
+            "ok": True,
+            "message": (
+                "2FA enabled. Save these backup codes somewhere safe — "
+                "each works once, and they won't be shown again."
+            ),
+            "backup_codes": backup_codes,
+        }
+    )
+
+
+@bp.route("/api/auth/totp/disable", methods=["POST"])
+@login_required
+def api_totp_disable():
+    """Disable 2FA after re-verifying the user's password.
+
+    Requiring the password (not just the session) prevents a stolen cookie
+    from weakening the account behind the legitimate user's back.
+    """
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+    from core import totp as _totp
+    from core.auth import _USERS_DB, _safe_check, _load_users
+
+    me = session.get("username") or ""
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+
+    password = ((request.get_json(force=True) or {}).get("password") or "")
+    user = _load_users().get(me)
+    if not user or not _safe_check(user.get("password_hash", ""), password):
+        return jsonify({"ok": False, "error": "Password incorrect"}), 401
+
+    _totp.disable(_USERS_DB, me)
+    return jsonify({"ok": True, "message": "2FA disabled"})
 
 
 # ── Password reset (forgot password flow) ────────────────────────────────────

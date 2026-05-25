@@ -9,6 +9,7 @@ Strategy:
    empty-string ones. Any background threads that call load_config() during
    a test run will also call load_dotenv(), which will see the keys already
    present and leave them empty. auth_enabled() → bool("") → False throughout.
+3. Disable the rate limiter so tests are not throttled.
 """
 import os
 
@@ -20,3 +21,6 @@ from app import server as _server  # noqa: F401
 os.environ["SEO_SUITE_PASSWORD_HASH"] = ""
 os.environ["SEO_SUITE_USERNAME"] = ""
 os.environ["SEO_SUITE_SECRET"] = ""
+
+# 3. Disable rate limiting during tests.
+_server.limiter.enabled = False

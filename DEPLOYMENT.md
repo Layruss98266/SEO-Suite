@@ -58,7 +58,7 @@ Open http://localhost:8080.
 pip install -r requirements.txt
 python -m playwright install --with-deps chromium
 export SEO_SUITE_SECRET=...          # random 32+ char hex
-gunicorn --workers 1 --threads 8 --worker-class gthread --timeout 0 \
+gunicorn --workers 1 --threads 8 --worker-class gthread --timeout 300 \
   --bind 0.0.0.0:8080 app.server:app
 ```
 
@@ -87,6 +87,7 @@ Put nginx (or Caddy) in front for TLS.
 | `SEO_SUITE_DATA_DIR` | Writable dir for data/reports/uploads (default `/app/data`). |
 | `SEO_SUITE_USERNAME` / `SEO_SUITE_PASSWORD_HASH` | Optional env superadmin. |
 | `SEO_SUITE_FORCE_AUTH` | Force authentication strictly (automatically true on Render). |
+| `SEO_SUITE_COOKIE_SECURE` | Set to `1` for HTTPS-only session cookies + HSTS header. |
 | `SEO_SUITE_HOST` / `PORT` | Bind host/port (Render and Fly set `PORT`). |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins. |
 | `SENTRY_DSN` | Optional error tracking. |

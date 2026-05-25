@@ -26,5 +26,5 @@ EXPOSE 8080
 # Run state (run status, SSE subscriber queues) lives in process memory, so the
 # app must run as ONE process. Threads handle concurrency + SSE streaming.
 # Shell form so ${PORT} (set by Render/Fly) is expanded; falls back to 8080.
-CMD gunicorn --workers 1 --threads 8 --worker-class gthread --timeout 0 \
+CMD gunicorn --workers 1 --threads 8 --worker-class gthread --timeout 300 \
     --bind 0.0.0.0:${PORT:-8080} app.server:app

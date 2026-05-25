@@ -29,6 +29,7 @@ This repository also includes planning and reference documents for product roadm
 - **Dark mode** — full dark theme with persistence
 - **Website Navigation** — seamless glassmorphic shortcut button to return to the public website home page from the live dashboard
 - **Interactive Setup Guides** — step-by-step setup guides for Groq API Key (AI Assistant) and IndexNow Host directly inside the dashboard Help modal
+- **Security hardening** — HTTP security headers (CSP, X-Frame-Options, HSTS), CSRF protection on form endpoints, SSRF guards with DNS rebinding mitigation, account lockout after 10 failed logins, CSV formula injection sanitization on uploads, and rate limiting on auth/audit endpoints
 
 ## Setup
 
@@ -115,6 +116,8 @@ SEO Suite/
 ├── core/                ← SEO engine modules
 │   ├── checker.py       ← Google indexing checker (Playwright)
 │   ├── seo_audit.py     ← SEO audit orchestrator
+│   ├── auth.py          ← Multi-user session auth + account lockout
+│   ├── security.py      ← SSRF protection, DNS rebinding guard, safe HTTP
 │   ├── report_generator.py ← HTML / Excel / CSV report builder
 │   ├── sitemap_parser.py   ← Sitemap fetching & parsing
 │   ├── notifier.py         ← Email / Slack / Teams notifications

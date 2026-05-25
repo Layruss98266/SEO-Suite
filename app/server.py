@@ -16,6 +16,7 @@ import logging
 import os
 import queue
 import re
+import secrets
 import threading
 import time
 from datetime import datetime
@@ -38,6 +39,7 @@ from core.auth import (
     list_users,
     login_required,
     signup_allowed,
+    _is_locked_out,
 )
 from core.checker import (
     build_gsc_service,
@@ -185,11 +187,6 @@ from flask_limiter.util import get_remote_address
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    # Generous per-endpoint, per-IP abuse ceiling applied to EVERY route — this
-    # covers the 30+ /api/tools/* endpoints that fetch user-supplied URLs
-    # server-side and previously had no limit. It's an abuse cap, not a UX
-    # limit: a single dashboard user won't approach 240 req/min on one endpoint.
-    # Stricter per-route limits (e.g. index/audit run) stack on top of this.
     default_limits=["240 per minute"],
     storage_uri="memory://",
 )
@@ -211,6 +208,22 @@ for _d in (DATA_DIR, REPORTS_DIR):
 # /api/reports/pdf calls can't OOM the host with parallel chromium processes.
 _PDF_CONCURRENCY = max(1, int(os.environ.get("SEO_SUITE_PDF_WORKERS", "2")))
 _pdf_semaphore   = threading.Semaphore(_PDF_CONCURRENCY)
+
+
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+def _sanitize_csv(content: str) -> str:
+    """Strip leading formula characters from CSV cell values to prevent injection."""
+    lines = []
+    for line in content.splitlines(keepends=True):
+        cells = []
+        for cell in line.rstrip("\n\r").split(","):
+            stripped = cell.lstrip()
+            if stripped and stripped[0] in _CSV_FORMULA_PREFIXES:
+                cell = "'" + cell
+            cells.append(cell)
+        lines.append(",".join(cells) + ("\n" if line.endswith("\n") else ""))
+    return "".join(lines)
 
 
 def _safe_report_path(filename: str, allowed_exts: tuple[str, ...]) -> Path | None:
@@ -246,6 +259,56 @@ def _safe_upload_path(raw: str) -> Path | None:
         return target if target.is_file() else None
     except (ValueError, OSError):
         return None
+
+# ── Security headers ─────────────────────────────────────────────────────────
+@app.after_request
+def _set_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-XSS-Protection", "1; mode=block")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    if os.environ.get("SEO_SUITE_COOKIE_SECURE") == "1":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; connect-src 'self'",
+    )
+    return response
+
+
+# ── CSRF protection ──────────────────────────────────────────────────────────
+def _generate_csrf_token() -> str:
+    if "_csrf_token" not in session:
+        session["_csrf_token"] = secrets.token_hex(32)
+    return session["_csrf_token"]
+
+
+def _validate_csrf(resp_on_fail=True):
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    if request.path.startswith("/api/") and request.is_json:
+        return None
+    token = request.form.get("_csrf_token") or request.headers.get("X-CSRF-Token", "")
+    if not token or not secrets.compare_digest(token, session.get("_csrf_token", "")):
+        if resp_on_fail:
+            return jsonify({"error": "CSRF validation failed"}), 403
+        return None
+    return None
+
+
+app.jinja_env.globals["csrf_token"] = _generate_csrf_token
+
+@app.before_request
+def _csrf_protect():
+    if request.method == "POST" and request.path in ("/login", "/signup", "/contact"):
+        if "_csrf_token" in session:
+            result = _validate_csrf()
+            if result:
+                return result
+
 
 @app.errorhandler(413)
 def too_large(e):
@@ -409,7 +472,7 @@ def site_contact():
         message = (data.get("message") or "").strip()
         if not (name and email and message):
             return jsonify({"ok": False, "error": "All fields are required."}), 400
-        if "@" not in email or "." not in email.split("@")[-1]:
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$", email):
             return jsonify({"ok": False, "error": "Please enter a valid email."}), 400
         # No outbound mail dependency — log the enquiry; ops can wire delivery later.
         logger.info("Contact form submission from %s <%s>: %s", name, email, message[:500])
@@ -420,7 +483,7 @@ def site_contact():
 # ── Auth routes ──────────────────────────────────────────────────────────────
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("20 per minute")
+@limiter.limit("5 per minute")
 def login():
     if not auth_enabled():
         # Auth disabled (no SEO_SUITE_PASSWORD_HASH env). Send users straight in.
@@ -428,6 +491,9 @@ def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
+        if _is_locked_out(username):
+            page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Account temporarily locked — try again in 15 minutes</div>")
+            return page, 429, {"Content-Type": "text/html"}
         identity = authenticate(username, password)
         if identity:
             session.clear()
@@ -448,11 +514,13 @@ def login():
             return ("", 302, {"Location": dest})
         page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
         return page, 401, {"Content-Type": "text/html"}
-    # GET — embed ?next= into the form as a hidden field so it survives the POST
+    # GET — embed ?next= and CSRF token into the form as hidden fields
     _next = request.args.get("next", "")
     _next = _next.strip() if (_next.startswith("/") and not _next.startswith("//")) else ""
-    next_field = f'<input type="hidden" name="next" value="{esc(_next)}">' if _next else ""
-    page = LOGIN_PAGE.replace("__NEXT__", next_field).replace("__ERROR__", "")
+    hidden = f'<input type="hidden" name="_csrf_token" value="{_generate_csrf_token()}">'
+    if _next:
+        hidden += f'\n      <input type="hidden" name="next" value="{esc(_next)}">'
+    page = LOGIN_PAGE.replace("__NEXT__", hidden).replace("__ERROR__", "")
     return page, 200, {"Content-Type": "text/html"}
 
 
@@ -481,7 +549,8 @@ def signup():
         session["is_admin"] = identity["is_admin"]
         session.permanent = True
         return ("", 302, {"Location": "/app"})
-    page = SIGNUP_PAGE.replace("__ERROR__", "")
+    csrf_field = f'<input type="hidden" name="_csrf_token" value="{_generate_csrf_token()}">'
+    page = SIGNUP_PAGE.replace("__ERROR__", csrf_field)
     return page, 200, {"Content-Type": "text/html"}
 
 
@@ -1397,6 +1466,15 @@ def api_upload():
         f.save(str(dest))
     except Exception as e:
         return jsonify({"error": f"Save failed: {e}"}), 500
+
+    # Sanitize CSV content: strip formula prefixes that could execute in Excel
+    if safe.lower().endswith((".csv", ".tsv", ".txt")):
+        try:
+            raw = dest.read_text(encoding="utf-8", errors="replace")
+            sanitized = _sanitize_csv(raw)
+            dest.write_text(sanitized, encoding="utf-8")
+        except Exception:
+            pass  # best-effort — file is still usable even if sanitization fails
 
     # Try to count URLs
     warning = ""

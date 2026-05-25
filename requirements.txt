@@ -2,8 +2,6 @@
 flask>=3.0,<4
 gunicorn>=21.2          # production WSGI server (Docker / Render / Fly)
 flask-cors>=4.0
-flask-sqlalchemy>=3.1
-flask-session>=0.7
 flask-limiter>=3.5
 
 # ── HTTP & HTML parsing ───────────────────────────────────────────────────────
@@ -24,7 +22,6 @@ tqdm>=4.66
 
 # ── Scheduling ────────────────────────────────────────────────────────────────
 schedule>=1.2
-APScheduler>=3.10
 
 # ── Google APIs ───────────────────────────────────────────────────────────────
 google-api-python-client>=2.100

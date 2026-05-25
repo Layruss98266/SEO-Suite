@@ -20,6 +20,7 @@ import os
 import re
 import secrets
 import threading
+import time
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
@@ -39,6 +40,35 @@ _CONFIG_PATH = Path(__file__).parent.parent / "config.json"
 _users_lock  = threading.Lock()
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{3,64}$")
 _MIN_PASSWORD_LEN = 12
+
+# ── Account lockout (brute-force mitigation) ─────────────────────────────────
+_LOCKOUT_THRESHOLD = 10       # failed attempts before lockout
+_LOCKOUT_WINDOW    = 900      # seconds (15 min) — attempts older than this are forgotten
+_LOCKOUT_DURATION  = 900      # seconds (15 min) — how long the lockout lasts
+_failed_attempts: dict[str, list[float]] = {}   # username → [timestamp, ...]
+_lockout_lock = threading.Lock()
+
+
+def _record_failed_login(username: str) -> None:
+    now = time.monotonic()
+    with _lockout_lock:
+        attempts = _failed_attempts.setdefault(username, [])
+        attempts.append(now)
+        _failed_attempts[username] = [t for t in attempts if now - t < _LOCKOUT_WINDOW]
+
+
+def _is_locked_out(username: str) -> bool:
+    now = time.monotonic()
+    with _lockout_lock:
+        attempts = _failed_attempts.get(username, [])
+        recent = [t for t in attempts if now - t < _LOCKOUT_WINDOW]
+        _failed_attempts[username] = recent
+        return len(recent) >= _LOCKOUT_THRESHOLD
+
+
+def _clear_failed_logins(username: str) -> None:
+    with _lockout_lock:
+        _failed_attempts.pop(username, None)
 
 
 def _load_users() -> dict:
@@ -125,19 +155,27 @@ def authenticate(username: str, password: str) -> dict | None:
     """Return {username, is_admin} on success, else None.
 
     Checks the env superadmin first, then the file-based user store.
+    Enforces account lockout after repeated failures.
     """
     username = (username or "").strip()
     if not username:
         return None
+    if _is_locked_out(username):
+        _log.warning("Login blocked (account locked out): %s", username)
+        return None
     env_user = _env_admin()
     if env_user and username == env_user:
         if _safe_check(os.environ.get("SEO_SUITE_PASSWORD_HASH", ""), password):
+            _clear_failed_logins(username)
             return {"username": username, "is_admin": True}
+        _record_failed_login(username)
         _log.warning("Failed login attempt for username: %s", username)
         return None
     user = _load_users().get(username)
     if user and _safe_check(user.get("password_hash", ""), password):
+        _clear_failed_logins(username)
         return {"username": username, "is_admin": bool(user.get("is_admin"))}
+    _record_failed_login(username)
     _log.warning("Failed login attempt for username: %s", username)
     return None
 

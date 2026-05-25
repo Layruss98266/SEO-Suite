@@ -24,12 +24,12 @@ import threading
 from datetime import datetime
 from urllib.parse import urlparse
 
-from flask import Flask, Response, jsonify, render_template, request, session
+from flask import Flask, Response, jsonify, request, session
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from app import state
-from app.middleware import generate_csrf_token, init_middleware
+from app.middleware import init_middleware
 from app.state import (
     _broadcast_audit,
     _broadcast_index,
@@ -84,20 +84,7 @@ from app.state import (
 # (``.update(...)``, ``.clear()``+``.update(...)``). Mutation preserves the
 # dict identity, so all importers — including tests that monkey-patch
 # ``server._audit_status`` — see the same object.
-from core.auth import (
-    LOGIN_PAGE,
-    SIGNUP_PAGE,
-    admin_required,
-    auth_enabled,
-    authenticate,
-    create_user,
-    delete_user,
-    init_auth,
-    list_users,
-    login_required,
-    signup_allowed,
-    _is_locked_out,
-)
+from core.auth import init_auth, login_required
 from core.checker import (
     build_gsc_service,
     crawl_site,
@@ -110,8 +97,7 @@ from core.checker import (
     load_from_csv_excel,
     load_history,
 )
-from core.security import esc, is_safe_url, validate_public_url
-from core.version import VERSION
+from core.security import is_safe_url, validate_public_url
 from core.seo_audit import audit_single_url, generate_excel_report, generate_html_report
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -187,176 +173,15 @@ threading.Thread(target=_cleanup_subscribers, daemon=True, name="sse-cleanup").s
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ROUTES — Indexing
+# BLUEPRINTS — extracted route groups
 # ══════════════════════════════════════════════════════════════════════════════
+from app.blueprints import auth_views as _auth_bp
+from app.blueprints import misc as _misc_bp
+from app.blueprints import site as _site_bp
 
-@app.route("/app")
-@login_required
-def app_dashboard():
-    return (TEMPLATE_DIR / "dashboard.html").read_text(encoding="utf-8"), 200, {"Content-Type": "text/html"}
-
-
-# ── Public marketing site ─────────────────────────────────────────────────────
-
-def _site_ctx() -> dict:
-    """Shared template context for the marketing pages."""
-    return {"year": datetime.now().year, "version": VERSION}
-
-
-@app.route("/")
-def site_home():
-    return render_template("site/home.html", active="home", **_site_ctx())
-
-
-@app.route("/features")
-def site_features():
-    return render_template("site/features.html", active="features", **_site_ctx())
-
-
-@app.route("/pricing")
-def site_pricing():
-    return render_template("site/pricing.html", active="pricing", **_site_ctx())
-
-
-@app.route("/blog")
-def site_blog():
-    return render_template("site/blog.html", active="blog", **_site_ctx())
-
-
-@app.route("/about")
-def site_about():
-    return render_template("site/about.html", active="about", **_site_ctx())
-
-
-@app.route("/contact", methods=["GET", "POST"])
-@limiter.limit("10 per hour", methods=["POST"])
-def site_contact():
-    if request.method == "POST":
-        data    = request.get_json(silent=True) or {}
-        name    = (data.get("name") or "").strip()
-        email   = (data.get("email") or "").strip()
-        message = (data.get("message") or "").strip()
-        if not (name and email and message):
-            return jsonify({"ok": False, "error": "All fields are required."}), 400
-        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$", email):
-            return jsonify({"ok": False, "error": "Please enter a valid email."}), 400
-        # No outbound mail dependency — log the enquiry; ops can wire delivery later.
-        logger.info("Contact form submission from %s <%s>: %s", name, email, message[:500])
-        return jsonify({"ok": True, "message": "Thanks, your message has been received."})
-    return render_template("site/contact.html", active="contact", **_site_ctx())
-
-
-# ── Auth routes ──────────────────────────────────────────────────────────────
-
-@app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
-def login():
-    if not auth_enabled():
-        # Auth disabled (no SEO_SUITE_PASSWORD_HASH env). Send users straight in.
-        return ("", 302, {"Location": "/app"})
-    if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
-        if _is_locked_out(username):
-            page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Account temporarily locked — try again in 15 minutes</div>")
-            return page, 429, {"Content-Type": "text/html"}
-        identity = authenticate(username, password)
-        if identity:
-            session.clear()
-            session["authed"]   = True
-            session["username"] = identity["username"]
-            session["is_admin"] = identity["is_admin"]
-            session.permanent = True
-            # Honour ?next= so login_required can bounce users back to their
-            # original destination (e.g. /app). Validate strictly: must be a
-            # relative path starting with / and must not start with // (which
-            # browsers treat as a protocol-relative URL, enabling open-redirect).
-            _next = request.form.get("next") or request.args.get("next") or ""
-            _next = _next.strip()
-            if _next and _next.startswith("/") and not _next.startswith("//"):
-                dest = _next
-            else:
-                dest = "/app"
-            return ("", 302, {"Location": dest})
-        page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
-        return page, 401, {"Content-Type": "text/html"}
-    # GET — embed ?next= and CSRF token into the form as hidden fields
-    _next = request.args.get("next", "")
-    _next = _next.strip() if (_next.startswith("/") and not _next.startswith("//")) else ""
-    hidden = f'<input type="hidden" name="_csrf_token" value="{generate_csrf_token()}">'
-    if _next:
-        hidden += f'\n      <input type="hidden" name="next" value="{esc(_next)}">'
-    page = LOGIN_PAGE.replace("__NEXT__", hidden).replace("__ERROR__", "")
-    return page, 200, {"Content-Type": "text/html"}
-
-
-
-@app.route("/signup", methods=["GET", "POST"])
-@limiter.limit("10 per minute")
-def signup():
-    if not signup_allowed():
-        return ("Signups are disabled.", 403, {"Content-Type": "text/plain"})
-    if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
-        confirm  = request.form.get("confirm") or ""
-        if password != confirm:
-            page = SIGNUP_PAGE.replace("__ERROR__", "<div class='err'>Passwords do not match</div>")
-            return page, 400, {"Content-Type": "text/html"}
-        ok, err = create_user(username, password)
-        if not ok:
-            page = SIGNUP_PAGE.replace("__ERROR__", f"<div class='err'>{esc(err)}</div>")
-            return page, 400, {"Content-Type": "text/html"}
-        # Auto-login the new account so the first signup isn't locked out.
-        identity = authenticate(username, password)
-        session.clear()
-        session["authed"]   = True
-        session["username"] = identity["username"]
-        session["is_admin"] = identity["is_admin"]
-        session.permanent = True
-        return ("", 302, {"Location": "/app"})
-    csrf_field = f'<input type="hidden" name="_csrf_token" value="{generate_csrf_token()}">'
-    page = SIGNUP_PAGE.replace("__ERROR__", csrf_field)
-    return page, 200, {"Content-Type": "text/html"}
-
-
-@app.route("/logout", methods=["POST", "GET"])
-def logout():
-    session.clear()
-    return ("", 302, {"Location": "/login"})
-
-
-# ── User management (admin only) ──────────────────────────────────────────────
-
-@app.route("/api/users", methods=["GET"])
-@admin_required
-def api_users_list():
-    return jsonify({"ok": True, "users": list_users(),
-                    "me": session.get("username"), "signup_allowed": signup_allowed()})
-
-
-@app.route("/api/users", methods=["POST"])
-@admin_required
-def api_users_create():
-    data     = request.get_json(force=True) or {}
-    username = (data.get("username") or "").strip()
-    password = data.get("password") or ""
-    is_admin = bool(data.get("is_admin"))
-    ok, err = create_user(username, password, is_admin=is_admin)
-    if not ok:
-        return jsonify({"ok": False, "error": err}), 400
-    return jsonify({"ok": True, "users": list_users()})
-
-
-@app.route("/api/users/<username>", methods=["DELETE"])
-@admin_required
-def api_users_delete(username):
-    if username == session.get("username"):
-        return jsonify({"ok": False, "error": "You cannot delete your own account"}), 400
-    ok, err = delete_user(username)
-    if not ok:
-        return jsonify({"ok": False, "error": err}), 400
-    return jsonify({"ok": True, "users": list_users()})
+_site_bp.register(app, limiter)
+_misc_bp.register(app)
+_auth_bp.register(app, limiter)
 
 
 @app.route("/api/index/run", methods=["POST"])
@@ -2186,66 +2011,6 @@ def api_link_health():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-
-@app.route("/api/auth_status")
-@login_required
-def api_auth_status():
-    """Return current auth configuration state (for Settings → Security card)."""
-    return jsonify({
-        "auth_enabled": auth_enabled(),
-        "username":     os.getenv("SEO_SUITE_USERNAME", "admin"),
-        "secret_set":   bool(os.getenv("SEO_SUITE_SECRET")),
-    })
-
-
-@app.route("/api/auth/change_credentials", methods=["POST"])
-@login_required
-def api_auth_change_credentials():
-    """
-    Generate a new password hash for the supplied username + password and
-    return it so the user can paste it into their .env file.
-
-    We intentionally do NOT write to .env automatically — env changes must be
-    explicit and deliberate. The hash is returned in the response so the user
-    can update SEO_SUITE_USERNAME / SEO_SUITE_PASSWORD_HASH themselves.
-    """
-    data     = request.get_json(force=True) or {}
-    username = (data.get("username") or "").strip()
-    password = data.get("password") or ""
-    if not username:
-        return jsonify({"ok": False, "error": "username required"}), 400
-    if len(password) < 12:
-        return jsonify({"ok": False, "error": "password must be at least 12 characters"}), 400
-    from werkzeug.security import generate_password_hash
-    pw_hash = generate_password_hash(password)
-    logger.info("Credential change requested for username: %s", username)
-    return jsonify({
-        "ok":      True,
-        "message": "Hash generated — update your .env file with these values and restart the server",
-        "env_snippet": (
-            f"SEO_SUITE_USERNAME={username}\n"
-            f"SEO_SUITE_PASSWORD_HASH={pw_hash}"
-        ),
-    })
-
-
-@app.route("/api/use_cases")
-@login_required
-def api_use_cases():
-    from core.seo_audit import USE_CASES
-    return jsonify(USE_CASES)
-
-@app.route("/api/tasks")
-@login_required
-def api_tasks():
-    from core.seo_audit import TASKS
-    return jsonify(TASKS)
-
-@app.route("/health")
-def health():
-    # Public, intentionally minimal — no version, no run-state. Use authed
-    # endpoints (e.g. /api/history) for in-depth status. Probes only need 200.
-    return jsonify({"status": "ok"})
 
 def _save_partial_index_report() -> tuple[str, str]:
     """Save a partial indexing CSV+HTML from whatever has been collected so far.

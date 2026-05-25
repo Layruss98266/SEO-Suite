@@ -262,7 +262,7 @@ def login_required(fn):
         if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
             return jsonify({"error": "Authentication required"}), 401
         # Preserve the requested path so the user lands back here after login.
-        return redirect(url_for("login", next=request.path))
+        return redirect(url_for("auth_views.login", next=request.path))
     return wrapper
 
 
@@ -278,7 +278,7 @@ def admin_required(fn):
             return jsonify({"error": "Admin privileges required"}), 403
         if request.path.startswith("/api/") or request.accept_mimetypes.best == "application/json":
             return jsonify({"error": "Authentication required"}), 401
-        return redirect(url_for("login"))
+        return redirect(url_for("auth_views.login"))
     return wrapper
 
 

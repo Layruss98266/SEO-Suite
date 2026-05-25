@@ -7,9 +7,11 @@ on:
     branches: ["main", "master"]
 
 jobs:
-  lint-and-test:
+  # ── Tests ────────────────────────────────────────────────────────────────
+  test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
 
@@ -27,31 +29,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ── Lint ──────────────────────────────────────────────────────────────
-      - name: Ruff lint
-        run: ruff check . --output-format=github
-        continue-on-error: true   # warn-only until lint baseline is clean
+      - name: Install Playwright browsers
+        run: python -m playwright install chromium --with-deps
 
-      - name: Ruff format check
-        run: ruff format --check .
-        continue-on-error: true   # warn-only until format baseline is clean
-
-      # ── Type check ────────────────────────────────────────────────────────
-      - name: Mypy type check
-        run: mypy core/ tools/ app/ --ignore-missing-imports
-        continue-on-error: true   # type errors are warnings until coverage improves
-
-      # ── Tests ─────────────────────────────────────────────────────────────
       - name: Run tests with coverage
         run: |
           pytest tests/ \
+            --cov=app \
             --cov=core \
             --cov=tools \
             --cov-report=term-missing \
             --cov-report=xml \
-            -v
+            --tb=short -q
         env:
-          # Prevent any real network calls during tests
           PAGESPEED_API_KEY: ""
           SERPAPI_KEY: ""
 
@@ -61,3 +51,62 @@ jobs:
         with:
           name: coverage-${{ matrix.python-version }}
           path: coverage.xml
+
+  # ── Lint ─────────────────────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install ruff
+
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+        continue-on-error: true   # warn-only until lint baseline is clean
+
+      - name: Ruff format check
+        run: ruff format --check .
+        continue-on-error: true   # warn-only until format baseline is clean
+
+  # ── Type check ───────────────────────────────────────────────────────────
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Mypy
+        run: mypy core/ tools/ app/ --ignore-missing-imports
+        continue-on-error: true   # warn-only until type coverage improves
+
+  # ── Security ─────────────────────────────────────────────────────────────
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install pip-audit bandit
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: pip-audit -r requirements.txt --strict
+        continue-on-error: true   # warn-only — surfaces CVEs in deps
+
+      - name: Static security scan (bandit)
+        run: bandit -r app/ core/ tools/ -ll -ii
+        continue-on-error: true   # warn-only — surfaces common security smells

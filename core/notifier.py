@@ -66,6 +66,36 @@ class NotificationService:
         except Exception as e:
             logger.warning("Email failed: %s", e)
 
+    def send_email_to(self, recipient: str, subject: str, html_body: str) -> bool:
+        """Send an email to a single ad-hoc recipient (used by auth flows).
+
+        Distinct from ``send_email`` which goes to the configured ``cfg["to"]``
+        notification list. Returns True on apparent success, False on any
+        error or when email is disabled in config.
+        """
+        cfg = self._cfg.get("email", {})
+        if not cfg.get("enabled"):
+            logger.info("Email disabled in config — skipping ad-hoc send to %s", recipient)
+            return False
+        if not recipient or "@" not in recipient:
+            logger.warning("send_email_to: invalid recipient %r", recipient)
+            return False
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = cfg["from"]
+            msg["To"] = recipient
+            msg.attach(MIMEText(html_body, "html"))
+            with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"]) as s:
+                s.starttls()
+                s.login(cfg["username"], cfg["password"])
+                s.sendmail(cfg["from"], [recipient], msg.as_string())
+            logger.info("Ad-hoc email sent to %s ✓", recipient)
+            return True
+        except Exception as e:
+            logger.warning("Ad-hoc email to %s failed: %s", recipient, e)
+            return False
+
     def send_slack(self, message: str) -> None:
         cfg = self._cfg.get("slack", {})
         if not cfg.get("enabled"):

@@ -171,6 +171,170 @@ def api_users_delete(username):
     return jsonify({"ok": True, "users": list_users()})
 
 
+# ── Password reset (forgot password flow) ────────────────────────────────────
+@bp.route("/api/auth/request_password_reset", methods=["POST"])
+def api_request_password_reset():
+    """Email a single-use reset link to the user.
+
+    Anti-enumeration: ALWAYS returns 200 + the same message regardless of
+    whether the username exists. A user-existence oracle is too useful to
+    an attacker. We log internally and only actually send mail when the
+    account is real.
+    """
+    data = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    generic_response = jsonify(
+        {
+            "ok": True,
+            "message": (
+                "If that account exists, a password reset link has been sent. "
+                "Check your inbox (and spam folder)."
+            ),
+        }
+    )
+    if not username:
+        return generic_response
+
+    from app import state
+    from core import db as _db
+    from core.auth import _USERS_DB
+    from core.notifier import NotificationService
+
+    if not _use_sqlite_login_history():
+        # Tokens are stored in SQLite — reset isn't supported on the JSON backend.
+        logger.warning("Password reset attempted with JSON backend — no-op")
+        return generic_response
+
+    users = _db.load_users(_USERS_DB)
+    if username not in users:
+        # Burn time so timing doesn't leak existence (auth.py uses dummy
+        # hashing for the same reason).
+        import time as _time
+
+        _time.sleep(0.05)
+        return generic_response
+
+    # Username doubles as email when it contains "@". This is the common SaaS
+    # pattern. If your usernames aren't email addresses you'd need a separate
+    # email column on users — out of scope here.
+    if "@" not in username:
+        logger.warning("Password reset for %s skipped: username is not an email", username)
+        return generic_response
+
+    try:
+        raw_token = _db.issue_auth_token(_USERS_DB, username, "password_reset", ttl_seconds=3600)
+    except Exception as exc:
+        logger.error("Failed to issue password reset token for %s: %s", username, exc)
+        return generic_response
+
+    reset_path = f"/reset_password?token={raw_token}"
+    body = f"""
+    <h2>Password reset for SEO Suite</h2>
+    <p>We received a request to reset your password. Click the link below to set a new one.
+    This link expires in 1 hour and can only be used once.</p>
+    <p><a href="{reset_path}">{reset_path}</a></p>
+    <p>If you didn't request this, ignore the email — your password hasn't changed.</p>
+    """
+    svc = NotificationService(state.CFG)
+    svc.send_email_to(username, "Reset your SEO Suite password", body)
+    return generic_response
+
+
+@bp.route("/api/auth/reset_password", methods=["POST"])
+def api_reset_password():
+    """Consume a reset token and set a new password.
+
+    Token is single-use: a successful reset OR an attempted reset with a
+    consumed/expired token both make the token invalid afterward.
+    """
+    data = request.get_json(force=True) or {}
+    token = (data.get("token") or "").strip()
+    new_password = data.get("new_password") or ""
+
+    if not token or not new_password:
+        return jsonify({"ok": False, "error": "token and new_password required"}), 400
+
+    from core import db as _db
+    from core.auth import _MIN_PASSWORD_LEN, _USERS_DB, _hash_password
+    from core.password_policy import validate_new_password
+
+    if len(new_password) < _MIN_PASSWORD_LEN:
+        return jsonify(
+            {"ok": False, "error": f"Password must be at least {_MIN_PASSWORD_LEN} characters"}
+        ), 400
+
+    username = _db.consume_auth_token(_USERS_DB, token, "password_reset")
+    if not username:
+        return jsonify({"ok": False, "error": "Invalid or expired reset token"}), 400
+
+    pol_ok, pol_err = validate_new_password(new_password, username=username)
+    if not pol_ok:
+        # Token was already consumed by this point. That's fine — user just
+        # has to request a fresh one. Prevents bypassing the policy by
+        # rapid-fire submissions until a weak one slips through.
+        return jsonify({"ok": False, "error": pol_err}), 400
+
+    if not _db.reset_password_hash(_USERS_DB, username, _hash_password(new_password)):
+        return jsonify({"ok": False, "error": "Password reset failed"}), 500
+
+    logger.info("Password reset successful for %s", username)
+    return jsonify({"ok": True, "message": "Password updated — you can now log in."})
+
+
+# ── Email verification ────────────────────────────────────────────────────────
+@bp.route("/api/auth/send_verification", methods=["POST"])
+@login_required
+def api_send_verification():
+    """Email a fresh verification link to the current user. Always returns 200."""
+    me = session.get("username") or ""
+    if not me or "@" not in me:
+        return jsonify({"ok": False, "error": "Your account isn't an email address"}), 400
+
+    from app import state
+    from core import db as _db
+    from core.auth import _USERS_DB
+    from core.notifier import NotificationService
+
+    if _db.get_email_verified(_USERS_DB, me):
+        return jsonify({"ok": True, "message": "Email is already verified"})
+
+    try:
+        raw_token = _db.issue_auth_token(_USERS_DB, me, "email_verify", ttl_seconds=86400)
+    except Exception as exc:
+        logger.error("Failed to issue verification token for %s: %s", me, exc)
+        return jsonify({"ok": False, "error": "Could not issue verification token"}), 500
+
+    verify_path = f"/verify_email?token={raw_token}"
+    body = f"""
+    <h2>Verify your SEO Suite email</h2>
+    <p>Click the link below to confirm your email address. The link expires in 24 hours.</p>
+    <p><a href="{verify_path}">{verify_path}</a></p>
+    <p>If you didn't sign up for SEO Suite, ignore this email.</p>
+    """
+    svc = NotificationService(state.CFG)
+    sent = svc.send_email_to(me, "Verify your SEO Suite email", body)
+    return jsonify({"ok": True, "sent": sent, "message": "Verification email sent (if SMTP is configured)"})
+
+
+@bp.route("/api/auth/verify_email", methods=["POST"])
+def api_verify_email():
+    """Consume an email-verify token and mark the account as verified."""
+    data = request.get_json(force=True) or {}
+    token = (data.get("token") or "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "token required"}), 400
+
+    from core import db as _db
+    from core.auth import _USERS_DB
+
+    username = _db.consume_auth_token(_USERS_DB, token, "email_verify")
+    if not username:
+        return jsonify({"ok": False, "error": "Invalid or expired verification token"}), 400
+
+    _db.set_email_verified(_USERS_DB, username, True)
+    return jsonify({"ok": True, "message": "Email verified", "username": username})
+
+
 # ── Password change ───────────────────────────────────────────────────────────
 @bp.route("/api/auth/change_password", methods=["POST"])
 @login_required

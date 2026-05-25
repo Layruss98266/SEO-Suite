@@ -39,7 +39,7 @@ from typing import Iterator
 logger = logging.getLogger(__name__)
 
 # Bumped when the schema changes — guides automatic ALTER TABLE migrations.
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 # Login history retention — attempts older than this are pruned at write time.
 # 90 days is a sensible default: long enough for audit / forensics, short
@@ -123,6 +123,25 @@ def _ensure_schema(db_path: Path) -> None:
                     ON login_attempts(username, ts DESC);
                 CREATE INDEX IF NOT EXISTS idx_login_attempts_ts
                     ON login_attempts(ts DESC);
+
+                -- Single-use tokens for password reset + email verification.
+                -- We store only the SHA-256 hash so a database leak can't be
+                -- used to mint a working reset link. Tokens are short-lived
+                -- (default 1h) and consumed-on-use.
+                CREATE TABLE IF NOT EXISTS auth_tokens (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username    TEXT NOT NULL,
+                    kind        TEXT NOT NULL,   -- 'password_reset' | 'email_verify'
+                    token_hash  TEXT NOT NULL,
+                    created_at  TEXT NOT NULL,
+                    expires_at  TEXT NOT NULL,
+                    consumed_at TEXT
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_auth_tokens_hash
+                    ON auth_tokens(token_hash);
+                CREATE INDEX IF NOT EXISTS idx_auth_tokens_username_kind
+                    ON auth_tokens(username, kind);
                 """
             )
             # Migrate existing v1 databases that don't have the new user
@@ -446,6 +465,163 @@ def count_recent_failures(
         logger.error("count_recent_failures failed: %s", e)
         return 0
     return int(row["n"] or 0)
+
+
+# ── Auth tokens (password reset + email verification) ───────────────────────
+# We store SHA-256 of the raw token so a DB leak can't mint working links.
+# Tokens are single-use: the consume path marks consumed_at and any later
+# verify on the same token fails.
+
+def _hash_token(token: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def issue_auth_token(
+    db_path: Path, username: str, kind: str, ttl_seconds: int = 3600
+) -> str:
+    """Mint a fresh single-use token. Returns the RAW token (only time it's exposed).
+
+    Caller is responsible for transmitting the raw token via a side channel
+    (email, signed URL parameter, etc.) — we only store the hash.
+
+    Invalidates any existing un-consumed tokens of the same kind for the same
+    user so a stolen previous token can't be reused after a new one is issued.
+    """
+    import secrets
+    from datetime import datetime, timedelta, timezone
+
+    _ensure_schema(db_path)
+    raw = secrets.token_urlsafe(48)  # ~64 chars of base64url
+    h = _hash_token(raw)
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(seconds=ttl_seconds)
+
+    try:
+        with _connect(db_path) as conn:
+            conn.execute("BEGIN")
+            # Revoke older outstanding tokens of this kind for the same user.
+            conn.execute(
+                """
+                UPDATE auth_tokens
+                   SET consumed_at = ?
+                 WHERE username = ?
+                   AND kind = ?
+                   AND consumed_at IS NULL
+                """,
+                (now.isoformat(), username, kind),
+            )
+            conn.execute(
+                """
+                INSERT INTO auth_tokens
+                    (username, kind, token_hash, created_at, expires_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (username, kind, h, now.isoformat(), expires.isoformat()),
+            )
+            conn.execute("COMMIT")
+    except Exception:
+        # Don't swallow — caller needs to know if the token issuance failed.
+        raise
+    return raw
+
+
+def consume_auth_token(db_path: Path, token: str, kind: str) -> str | None:
+    """Verify, consume, and return the associated username if valid; else None.
+
+    Atomic check-and-set under a transaction so the same token can't be used
+    by two concurrent requests (e.g. a double-click). Expired tokens fail
+    cleanly. Already-consumed tokens fail.
+    """
+    from datetime import datetime, timezone
+
+    _ensure_schema(db_path)
+    if not token:
+        return None
+    h = _hash_token(token)
+    now = datetime.now(timezone.utc).isoformat()
+
+    try:
+        with _connect(db_path) as conn:
+            conn.execute("BEGIN")
+            row = conn.execute(
+                """
+                SELECT id, username, expires_at, consumed_at
+                  FROM auth_tokens
+                 WHERE token_hash = ? AND kind = ?
+                """,
+                (h, kind),
+            ).fetchone()
+            if row is None or row["consumed_at"] is not None:
+                conn.execute("ROLLBACK")
+                return None
+            if row["expires_at"] < now:
+                conn.execute("ROLLBACK")
+                return None
+            conn.execute(
+                "UPDATE auth_tokens SET consumed_at = ? WHERE id = ?",
+                (now, row["id"]),
+            )
+            conn.execute("COMMIT")
+            return row["username"]
+    except sqlite3.Error as e:
+        logger.error("consume_auth_token failed: %s", e)
+        return None
+
+
+def reset_password_hash(db_path: Path, username: str, new_hash: str) -> bool:
+    """Update a user's password hash directly. Used by the password-reset flow
+    (we've already verified the reset token; the user doesn't need to supply
+    their old password).
+    """
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            cur = conn.execute(
+                "UPDATE users SET password_hash = ? WHERE username = ?",
+                (new_hash, username),
+            )
+            return cur.rowcount == 1
+    except sqlite3.Error as e:
+        logger.error("reset_password_hash failed: %s", e)
+        return False
+
+
+# ── Email verification flag ──────────────────────────────────────────────────
+def set_email_verified(db_path: Path, username: str, verified: bool = True) -> bool:
+    """Flag a user's email as verified. Adds the column if it's missing."""
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            try:
+                conn.execute("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # column already exists
+            cur = conn.execute(
+                "UPDATE users SET email_verified = ? WHERE username = ?",
+                (1 if verified else 0, username),
+            )
+            return cur.rowcount == 1
+    except sqlite3.Error as e:
+        logger.error("set_email_verified failed: %s", e)
+        return False
+
+
+def get_email_verified(db_path: Path, username: str) -> bool:
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            try:
+                row = conn.execute(
+                    "SELECT email_verified FROM users WHERE username = ?",
+                    (username,),
+                ).fetchone()
+            except sqlite3.OperationalError:
+                return False
+            return bool(row and row["email_verified"])
+    except sqlite3.Error:
+        return False
 
 
 # Test helpers — clear the initialised cache so a fresh tmp_path is picked up.

@@ -91,6 +91,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 
 ## Documentation
 - `docs/SETUP_GUIDES.md`: step-by-step setup guides for all 11 API integrations (GSC, PageSpeed, Groq, SerpAPI, Moz, DataForSEO, Bing, SMTP, Slack, Teams, Sentry).
+- `docs/USECASE_GUIDES.md`: detailed walkthroughs for all 7 audit use cases — what each one checks, what API keys it needs, how to interpret results, and common fixes.
 - `DEPLOYMENT.md`: deployment guides for Render, Fly.io, Docker, and plain VPS.
 - `NEW_TOOLS_USECASES.md`: product and tool roadmap guidance for the current repo surface.
 - `REPO_REVIEW_AND_CLEANUP.md`: current review blockers, cleanup recommendations, and planning notes.

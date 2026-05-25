@@ -206,6 +206,36 @@ paths:
       responses:
         "200": {description: Deleted}
         "400": {description: Cannot delete env admin or self}
+  /api/auth/change_password:
+    post:
+      tags: [Auth]
+      summary: Change your own password
+      description: |
+        Re-hashes the current user's password with argon2id after verifying
+        the current password. The env admin (hash lives in
+        `SEO_SUITE_PASSWORD_HASH`) is rejected — rotate that out-of-band.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: {type: string, format: password}
+                new_password: {type: string, format: password, minLength: 12}
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: {type: boolean}
+                  message: {type: string}
+        "400": {description: "Policy violation (too short, same as current, etc.)"}
+        "401": {description: Current password incorrect, or not logged in}
   /api/auth/login_history:
     get:
       tags: [Auth]

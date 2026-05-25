@@ -30,6 +30,7 @@ from core.auth import (
     admin_required,
     auth_enabled,
     authenticate,
+    change_password,
     create_user,
     delete_user,
     list_users,
@@ -168,6 +169,36 @@ def api_users_delete(username):
     if not ok:
         return jsonify({"ok": False, "error": err}), 400
     return jsonify({"ok": True, "users": list_users()})
+
+
+# ── Password change ───────────────────────────────────────────────────────────
+@bp.route("/api/auth/change_password", methods=["POST"])
+@login_required
+def api_change_password():
+    """Change the current user's own password.
+
+    Requires the current password (so a stolen session cookie alone can't
+    permanently take over an account). The env admin is rejected — their
+    hash lives in ``SEO_SUITE_PASSWORD_HASH`` and must be rotated out-of-band.
+    """
+    data = request.get_json(force=True) or {}
+    current = data.get("current_password") or ""
+    new = data.get("new_password") or ""
+    me = session.get("username") or ""
+
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+    if not current or not new:
+        return jsonify({"ok": False, "error": "current_password and new_password required"}), 400
+
+    ok, err = change_password(me, current, new)
+    if not ok:
+        # Don't leak whether the failure was a bad current pw vs a policy
+        # violation — but we do echo the policy errors (length, "same as old")
+        # because those are clearly NOT a credential-validation result.
+        status = 400 if err and "password" not in err.lower() or "differ" in (err or "").lower() else 401
+        return jsonify({"ok": False, "error": err}), status
+    return jsonify({"ok": True, "message": "Password updated"})
 
 
 # ── Login history (audit trail) ───────────────────────────────────────────────

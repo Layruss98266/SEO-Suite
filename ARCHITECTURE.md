@@ -206,8 +206,17 @@ None of this is done yet.
 ### Auth Layers
 
 1. **Session-based** — Flask sessions signed with `SEO_SUITE_SECRET`, HttpOnly + SameSite=Lax cookies
-2. **Password hashing** — werkzeug `scrypt`, 32768 cost factor
+2. **Password hashing** — **argon2id** for new passwords (via `argon2-cffi`), with backward
+   compatibility for legacy `werkzeug` scrypt hashes. The verify path dispatches on hash prefix:
+   `$argon2*` → argon2-cffi, anything else → werkzeug. Existing users don't need to reset
+   passwords on upgrade.
 3. **Account lockout** — 10 failed attempts in 15 min → 15 min lock (`core/auth._is_locked_out`)
+3a. **Anti-enumeration on /login** — when the supplied username doesn't exist, we still run a
+   hash check against a dummy hash so wall-clock cost matches the real "wrong password" path.
+   Without this, an attacker can distinguish "no such user" (fast) from "wrong password" (slow)
+   via response timing.
+3b. **Constant-time env-admin username compare** — `hmac.compare_digest` instead of `==` so the
+   env admin's username can't leak via early-exit timing.
 4. **Rate limiting** — `/login` 5/min, `/signup` 10/min, `/api/audit/run` 10/hour, others 240/min default
 5. **Login activity log** — every authentication attempt (success + failure) is recorded in
    the SQLite `login_attempts` table with timestamp, IP, user-agent, and outcome code
@@ -217,6 +226,11 @@ None of this is done yet.
    - `GET /api/auth/login_history` — admin view with `?username=`, `?failures_only=1`, `?limit=` filters
 6. **Last-login stamp** — successful logins also update `users.last_login_at` + `last_login_ip` so the
    UI can show "Welcome back, last seen X" and admins can spot dormant accounts.
+7. **Self-service password change** — `POST /api/auth/change_password` lets a logged-in user rotate
+   their own password (current pw + new pw → re-hashed with argon2). Refuses to operate on the
+   env admin (its hash lives in `SEO_SUITE_PASSWORD_HASH` and must be rotated out-of-band).
+   On success, clears the in-memory lockout counter so a user who just rescued their account isn't
+   stuck behind stale failures.
 
 ### SSRF Protection
 

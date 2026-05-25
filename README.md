@@ -221,6 +221,7 @@ Key endpoints:
 | `GET` | `/api/use_cases` | Available audit use cases |
 | `GET` | `/api/tasks` | Available audit tasks |
 | `GET` | `/health` | Server health + running status |
+| `POST` | `/api/auth/change_password` | Change your own password (argon2id) |
 | `GET` | `/api/auth/my_logins` | Your own recent login attempts (last 50) |
 | `GET` | `/api/auth/login_history` | Admin: all login attempts (filter by username + failures-only) |
 

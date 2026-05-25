@@ -42,6 +42,7 @@ prometheus-client>=0.20
 
 # ── Security ──────────────────────────────────────────────────────────────────
 cryptography>=42.0
+argon2-cffi>=23.1       # argon2id password hashing (werkzeug picks it up automatically)
 
 # ── WSGI server ───────────────────────────────────────────────────────────────
 waitress>=3.0

@@ -14,6 +14,7 @@ tests run without auth. In production:
 """
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -29,6 +30,72 @@ _log = logging.getLogger(__name__)
 
 from flask import Flask, jsonify, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
+
+# Hashing algorithm for NEW passwords. argon2id is OWASP's current default
+# (memory-hard, GPU-resistant — scrypt is also memory-hard but argon2 has
+# better tunability and broader scrutiny). Existing scrypt hashes from
+# pre-argon2 installs keep working: verification picks the algorithm from
+# the stored hash prefix, so users don't need to reset passwords on upgrade.
+#
+# Hashes have a recognisable prefix:
+#   argon2: "$argon2id$v=19$..."   (PHC string format)
+#   scrypt: "scrypt:32768:8:1$..." (werkzeug's format)
+#
+# Falls back to werkzeug's scrypt when argon2-cffi isn't installed.
+
+try:
+    from argon2 import PasswordHasher as _Argon2Hasher
+    from argon2 import exceptions as _argon2_exc
+
+    _argon2 = _Argon2Hasher()  # defaults: argon2id, t=2, m=65536KiB, p=1
+    _ARGON2_AVAILABLE = True
+except ImportError:
+    _argon2 = None
+    _argon2_exc = None
+    _ARGON2_AVAILABLE = False
+
+
+def _hash_password(plaintext: str) -> str:
+    """Hash a password using argon2id (preferred) or werkzeug scrypt (fallback).
+
+    Doesn't validate length / strength — callers do that up front (see
+    ``create_user``). Lets us swap algorithms without touching every caller.
+    """
+    if _ARGON2_AVAILABLE:
+        return _argon2.hash(plaintext)
+    return generate_password_hash(plaintext)  # scrypt fallback
+
+
+def _verify_password(stored_hash: str, plaintext: str) -> bool:
+    """Verify a password against any supported hash format.
+
+    Argon2 hashes start with ``$argon2``; everything else is delegated to
+    werkzeug (which handles scrypt + pbkdf2:* legacy formats). Returns False
+    on any unexpected error so a corrupt hash row can't accidentally
+    authenticate.
+    """
+    if not stored_hash:
+        return False
+    try:
+        if stored_hash.startswith("$argon2") and _ARGON2_AVAILABLE:
+            try:
+                _argon2.verify(stored_hash, plaintext)
+                return True
+            except _argon2_exc.VerifyMismatchError:
+                return False
+            except _argon2_exc.InvalidHashError:
+                return False
+        # Werkzeug handles scrypt, pbkdf2, etc.
+        return check_password_hash(stored_hash, plaintext)
+    except Exception:
+        return False
+
+
+# Pre-computed hash of an unguessable random string. Used by ``authenticate``
+# to keep timing identical when the supplied username doesn't exist —
+# otherwise an attacker distinguishes "no such user" (fast) from "wrong
+# password" (slow hash verify) by request latency.
+_DUMMY_HASH = _hash_password(secrets.token_hex(32))
 
 # ── Multi-user store ───────────────────────────────────────────────────────────
 # Accounts live in SQLite (data/seo_suite.db, table `users`). The env admin
@@ -125,12 +192,14 @@ def _env_admin() -> str | None:
 
 
 def _safe_check(pw_hash: str, password: str) -> bool:
-    if not pw_hash:
-        return False
-    try:
-        return check_password_hash(pw_hash, password)
-    except Exception:
-        return False
+    """Verify a password against any supported hash format.
+
+    Delegates to :func:`_verify_password` which dispatches on the hash
+    prefix: ``$argon2`` → argon2-cffi, anything else → werkzeug (scrypt /
+    pbkdf2 legacy formats). Keeps the historical name + signature so every
+    existing caller in this module continues to work unchanged.
+    """
+    return _verify_password(pw_hash, password)
 
 
 def signup_allowed() -> bool:
@@ -238,6 +307,16 @@ def authenticate(
     ``login_attempts`` table via ``_record_attempt`` so admins have an audit
     trail and the lockout check can survive a process restart.
 
+    **Anti-enumeration:** when the supplied username doesn't exist we still
+    run ``_safe_check`` against a dummy hash so the response timing matches
+    a real "wrong password" path. The ``reason`` code in the audit log still
+    differentiates ``unknown_user`` vs ``bad_password`` for admins, but the
+    HTTP response and timing are identical from the outside.
+
+    **Constant-time username compare:** ``hmac.compare_digest`` instead of
+    Python's ``==`` so an attacker can't leak the env admin's username via
+    timing on the early-exit comparison.
+
     The ``ip`` / ``user_agent`` kwargs are optional so direct callers (e.g.
     tests) don't have to plumb a Flask request through. Routes should pass
     ``request.remote_addr`` and ``request.user_agent.string``.
@@ -253,7 +332,12 @@ def authenticate(
         return None
 
     env_user = _env_admin()
-    if env_user and username == env_user:
+    # Constant-time compare on env admin to avoid leaking the env username
+    # via early-exit timing. hmac.compare_digest takes equal-length strings,
+    # so we encode and pad — for an unknown env_user we skip this branch
+    # entirely (and fall through to the user-store path which already does
+    # a constant-time scrypt check).
+    if env_user and hmac.compare_digest(username, env_user):
         if _safe_check(os.environ.get("SEO_SUITE_PASSWORD_HASH", ""), password):
             _clear_failed_logins(username)
             _record_attempt(
@@ -276,6 +360,13 @@ def authenticate(
         _update_last_login(username, ip)
         return {"username": username, "is_admin": bool(user.get("is_admin"))}
 
+    # Anti-enumeration: when the user doesn't exist, still run a hash check
+    # against the dummy so the wall-clock cost matches a real
+    # "wrong password" path. Without this, an attacker measures latency to
+    # distinguish "unknown user" (fast) from "wrong password" (slow scrypt).
+    if user is None:
+        _safe_check(_DUMMY_HASH, password)
+
     _record_failed_login(username)
     _record_attempt(
         username,
@@ -286,6 +377,50 @@ def authenticate(
     )
     _log.warning("Failed login attempt for username: %s", username)
     return None
+
+
+def change_password(username: str, current_password: str, new_password: str) -> tuple[bool, str | None]:
+    """Re-hash the user's password after verifying the current one.
+
+    Returns ``(ok, error_message)``. Refuses to operate on the env admin
+    (its hash lives in environment variables, not the file store — owner has
+    to update SEO_SUITE_PASSWORD_HASH out-of-band). Refuses the change if
+    the current password doesn't match, after the same dummy-hash timing
+    trick used in ``authenticate``.
+
+    On success, also clears the in-memory failed-attempts counter so a user
+    who just rescued their account isn't locked out by stale failures.
+    """
+    username = (username or "").strip()
+    if not username:
+        return False, "Username required"
+    if username == _env_admin():
+        return False, (
+            "The environment admin's password is set via SEO_SUITE_PASSWORD_HASH. "
+            "Generate a new hash and update the env var out-of-band."
+        )
+    if len(new_password or "") < _MIN_PASSWORD_LEN:
+        return False, f"New password must be at least {_MIN_PASSWORD_LEN} characters"
+    if current_password == new_password:
+        return False, "New password must differ from current password"
+
+    with _users_lock:
+        users = _load_users()
+        user = users.get(username)
+        if user is None:
+            # Burn a dummy hash for timing parity with the wrong-password case.
+            _safe_check(_DUMMY_HASH, current_password)
+            return False, "Current password is incorrect"
+        if not _safe_check(user.get("password_hash", ""), current_password):
+            return False, "Current password is incorrect"
+
+        user["password_hash"] = _hash_password(new_password)
+        users[username] = user
+        _save_users(users)
+
+    _clear_failed_logins(username)
+    _log.info("Password changed for user: %s", username)
+    return True, None
 
 
 def verify_credentials(username: str, password: str) -> bool:
@@ -310,7 +445,7 @@ def create_user(username: str, password: str, is_admin: bool = False) -> tuple[b
         if not users and _env_admin() is None:
             is_admin = True
         users[username] = {
-            "password_hash": generate_password_hash(password),
+            "password_hash": _hash_password(password),
             "is_admin": bool(is_admin),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }

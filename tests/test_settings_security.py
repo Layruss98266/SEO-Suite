@@ -17,7 +17,7 @@ sys.modules.setdefault("playwright.sync_api", _pw.sync_api)
 import pytest
 
 from app import server
-from app.server import _SECRET_SENTINEL
+from app.blueprints.settings import _SECRET_SENTINEL
 
 
 @pytest.fixture
@@ -31,7 +31,10 @@ def client(tmp_path, monkeypatch):
                   "smtp_pass": "realpw", "smtp_user": "u@x.com"},
         "slack": {"enabled": False, "webhook_url": "https://hooks.slack.com/services/real"},
     }))
-    monkeypatch.setattr(server, "CONFIG_PATH", cfg)
+    # Patch the state module (single source of truth) so all blueprints see it.
+    from app import state as _state
+    monkeypatch.setattr(_state, "CONFIG_PATH", cfg)
+    monkeypatch.setattr(server, "CONFIG_PATH", cfg)  # backward-compat for any direct reads
     server.app.config["TESTING"] = True
     with server.app.test_client() as c:
         yield c, cfg

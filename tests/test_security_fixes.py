@@ -170,8 +170,10 @@ def test_settings_post_rejects_unknown_keys(tmp_path, monkeypatch):
 
     cfg = tmp_path / "config.json"
     cfg.write_text("{}")
-    # Point CONFIG_PATH at the tmp file — server no longer reads from cwd.
-    monkeypatch.setattr(server, "CONFIG_PATH", cfg)
+    # Point CONFIG_PATH at the tmp file — patch state (single source of truth).
+    from app import state as _state
+    monkeypatch.setattr(_state, "CONFIG_PATH", cfg)
+    monkeypatch.setattr(server, "CONFIG_PATH", cfg)  # backward-compat for direct readers
 
     client = server.app.test_client()
     resp = client.post("/api/settings", json={

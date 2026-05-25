@@ -17,8 +17,10 @@ attached so the limiter sees the bound view functions.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request, session
 
@@ -816,6 +818,158 @@ def api_my_logins():
 
     rows = _db.get_login_history(_USERS_DB, username=me, limit=50)
     return jsonify({"ok": True, "rows": rows, "count": len(rows)})
+
+
+# ── GDPR / self-service account ops ───────────────────────────────────────────
+@bp.route("/api/auth/me/export", methods=["GET"])
+@login_required
+def api_export_my_data():
+    """Return everything we have on the current user as a single JSON dump.
+
+    Helps satisfy GDPR Article 15 (right of access) without admin
+    intervention. Includes:
+      - account fields (excluding password hash)
+      - full login history
+      - active sessions (sids redacted except the current one)
+      - TOTP status (secret never exported, even to the user themselves)
+      - saved profiles (TODO: not yet keyed by user; out of scope)
+
+    Returns a downloadable JSON file so the user can archive it locally.
+    """
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+
+    from core import db as _db
+    from core import totp as _totp
+    from core.auth import _USERS_DB
+
+    me = session.get("username") or ""
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+
+    user_row = _db.get_user(_USERS_DB, me)
+    if user_row:
+        # Strip the hash — it's a credential, not personal data the user
+        # would need or want to export.
+        user_row.pop("password_hash", None)
+
+    login_history = _db.get_login_history(_USERS_DB, username=me, limit=500)
+    sessions_list = _db.list_sessions(_USERS_DB, me)
+    current_sid = session.get("sid")
+    for s in sessions_list:
+        if s["sid"] != current_sid:
+            s.pop("sid", None)
+
+    totp_row = _totp.get_row(_USERS_DB, me)
+    totp_status = {
+        "enabled": bool(totp_row and totp_row["enabled"]),
+        "remaining_backup_codes": _totp.remaining_backup_codes(_USERS_DB, me),
+        # Deliberately NOT exporting the secret or backup codes.
+    }
+
+    body = {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "username": me,
+        "account": user_row,
+        "login_history": login_history,
+        "sessions": sessions_list,
+        "totp": totp_status,
+        "notice": (
+            "Sensitive credentials (password hash, TOTP secret, backup codes) "
+            "are deliberately excluded from this export."
+        ),
+    }
+    payload = json.dumps(body, indent=2)
+    return payload, 200, {
+        "Content-Type": "application/json",
+        "Content-Disposition": f'attachment; filename="seosuite_export_{me}.json"',
+    }
+
+
+@bp.route("/api/auth/me/delete", methods=["POST"])
+@login_required
+def api_delete_my_account():
+    """Self-service account deletion.
+
+    Requires the current password (so a stolen session can't nuke the
+    account permanently) AND an explicit ``confirm: "DELETE"`` in the body.
+    Wipes the user row, every related session row, every login_attempts
+    row, every auth_token, and the TOTP secret. Logs the user out
+    afterwards.
+
+    Refuses to delete the env admin (their hash lives in env vars; the
+    operator must remove SEO_SUITE_PASSWORD_HASH out-of-band) and refuses
+    to delete the last admin user (would lock everyone out).
+    """
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+
+    from core import db as _db
+    from core import totp as _totp
+    from core.auth import _USERS_DB, _env_admin, _load_users, _safe_check
+    from core.db import _connect
+
+    me = session.get("username") or ""
+    data = request.get_json(force=True) or {}
+    password = data.get("password") or ""
+    confirm = (data.get("confirm") or "").strip()
+
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+    if confirm != "DELETE":
+        return jsonify(
+            {"ok": False, "error": "Set confirm=\"DELETE\" to confirm account deletion"}
+        ), 400
+    if me == _env_admin():
+        return jsonify(
+            {
+                "ok": False,
+                "error": (
+                    "The environment admin account can't be self-deleted. "
+                    "Remove SEO_SUITE_PASSWORD_HASH from the environment instead."
+                ),
+            }
+        ), 400
+
+    users = _load_users()
+    user = users.get(me)
+    if not user or not _safe_check(user.get("password_hash", ""), password):
+        return jsonify({"ok": False, "error": "Password incorrect"}), 401
+
+    # Last-admin guard.
+    if user.get("is_admin") and _env_admin() is None:
+        others = [u for u, v in users.items() if u != me and v.get("is_admin")]
+        if not others:
+            return jsonify(
+                {
+                    "ok": False,
+                    "error": (
+                        "Cannot delete the last admin — promote another user first."
+                    ),
+                }
+            ), 400
+
+    # Wipe everything related to this user. Wrapped in a transaction so a
+    # partial failure leaves either the whole user intact or nothing.
+    try:
+        with _connect(_USERS_DB) as conn:
+            conn.execute("BEGIN")
+            conn.execute("DELETE FROM users WHERE username = ?", (me,))
+            conn.execute("DELETE FROM login_attempts WHERE username = ?", (me,))
+            conn.execute("DELETE FROM sessions WHERE username = ?", (me,))
+            conn.execute("DELETE FROM auth_tokens WHERE username = ?", (me,))
+            conn.execute("DELETE FROM totp_secrets WHERE username = ?", (me,))
+            conn.execute("COMMIT")
+    except Exception as exc:
+        logger.error("self-delete failed for %s: %s", me, exc)
+        return jsonify({"ok": False, "error": "Deletion failed"}), 500
+
+    # Best-effort TOTP wipe via the dedicated helper (in case schema changes).
+    _totp.disable(_USERS_DB, me)
+
+    session.clear()
+    logger.info("User self-deleted account: %s", me)
+    return jsonify({"ok": True, "message": "Account deleted"})
 
 
 def _use_sqlite_login_history() -> bool:

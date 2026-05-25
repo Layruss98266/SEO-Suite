@@ -22,7 +22,22 @@ cp .env.example .env
 # 4. Run the app
 python main.py
 # Open http://localhost:8080
+
+# 5. (Optional) Install pre-commit hooks so lint/format runs on every commit
+pip install pre-commit detect-secrets
+pre-commit install
 ```
+
+### Pre-commit hooks
+
+The repo ships a `.pre-commit-config.yaml` that runs on every `git commit`:
+
+- **Built-in checks** — trailing whitespace, end-of-file fixer, YAML/TOML/JSON validity, merge-conflict markers, large files, **private keys**, line endings
+- **Ruff** — auto-fix + format on staged Python files
+- **detect-secrets** — block accidentally committed credentials (tuned via `.secrets.baseline`)
+- **Smoke pytest** — runs `tests/test_server.py` + `tests/test_review_fixes.py` to catch obvious breakage
+
+Skip with `git commit --no-verify` if you really need to (don't make it a habit — CI runs the same checks).
 
 ## Development Workflow
 

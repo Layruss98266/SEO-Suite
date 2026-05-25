@@ -7,13 +7,17 @@ Includes:
 * ``GET /health/ready`` — deeper readiness probe (data dir writable, etc.)
 * ``GET /api/use_cases`` — registered audit use cases
 * ``GET /api/tasks`` — registered audit tasks
+* ``GET /openapi.yaml`` — OpenAPI 3.1 spec (raw YAML)
+* ``GET /docs`` — Swagger UI viewer for the spec
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flask import Blueprint, jsonify
 
-from app.state import DATA_DIR, REPORTS_DIR, TEMPLATE_DIR, UPLOAD_DIR
+from app.state import DATA_DIR, PROJECT_ROOT, REPORTS_DIR, TEMPLATE_DIR, UPLOAD_DIR
 from core.auth import login_required
 
 bp = Blueprint("misc", __name__)
@@ -86,6 +90,79 @@ def api_tasks():
     from core.seo_audit import TASKS
 
     return jsonify(TASKS)
+
+
+# ── OpenAPI spec + Swagger UI ─────────────────────────────────────────────────
+
+_OPENAPI_SPEC_PATH = PROJECT_ROOT / "docs" / "openapi.yaml"
+
+_SWAGGER_UI_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SEO Suite API · Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body { margin: 0; }
+    .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      SwaggerUIBundle({
+        url: '/openapi.yaml',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        docExpansion: 'list',
+        defaultModelsExpandDepth: -1,
+      });
+    };
+  </script>
+</body>
+</html>"""
+
+
+@bp.route("/openapi.yaml")
+def openapi_spec():
+    """Serve the OpenAPI 3.1 spec as YAML. Unauthenticated — public API docs."""
+    if not _OPENAPI_SPEC_PATH.is_file():
+        return "OpenAPI spec not found", 404
+    return (
+        _OPENAPI_SPEC_PATH.read_text(encoding="utf-8"),
+        200,
+        {"Content-Type": "application/yaml; charset=utf-8"},
+    )
+
+
+@bp.route("/docs")
+def api_docs():
+    """Swagger UI viewer for the OpenAPI spec at /openapi.yaml.
+
+    Unauthenticated so integrators can discover the API without an account.
+    The UI itself just renders the spec — no auth is granted.
+
+    Returns a relaxed CSP allowing the unpkg.com CDN for the Swagger UI
+    bundle. This only affects this route; every other response keeps the
+    default CSP from app/middleware.py.
+    """
+    return (
+        _SWAGGER_UI_HTML,
+        200,
+        {
+            "Content-Type": "text/html",
+            "Content-Security-Policy": (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+                "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+                "img-src 'self' data: https://unpkg.com; "
+                "connect-src 'self'"
+            ),
+        },
+    )
 
 
 def register(app) -> None:

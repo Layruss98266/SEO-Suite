@@ -1,0 +1,748 @@
+openapi: 3.1.0
+info:
+  title: SEO Suite API
+  version: "2.0.0"
+  summary: SEO audit + indexing checker dashboard
+  description: |
+    REST + Server-Sent Events API for SEO Suite.
+
+    **Versioning:** every path is reachable at both `/api/<path>` (current
+    default) and `/api/v1/<path>` (versioned alias). Use the versioned form
+    in new integrations so future breaking changes can ship as `/api/v2`
+    without disrupting existing clients.
+
+    **Auth:** session cookies issued by `/login`. All `/api/*` endpoints
+    require `@login_required` unless noted otherwise. Some admin endpoints
+    additionally require an admin flag.
+
+    **Rate limiting:** per-IP, defaults to 240/minute. Stricter limits on
+    `/login` (5/min), `/signup` (10/min), audit + indexing runs (10/hour).
+
+    **SSRF:** every URL the server fetches goes through
+    `validate_public_url()`, which rejects localhost / RFC1918 / link-local /
+    metadata addresses and re-validates each redirect hop.
+
+  contact:
+    name: SEO Suite
+    url: https://github.com/Surya8991/SEO-Suite
+  license:
+    name: MIT
+    url: https://github.com/Surya8991/SEO-Suite/blob/main/LICENSE
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://seo-suite.example.com
+    description: Production (replace with your domain)
+
+tags:
+  - name: Auth
+    description: Login, signup, logout, user management
+  - name: Site
+    description: Public marketing site (HTML)
+  - name: Health
+    description: Liveness + readiness probes and Prometheus scrape
+  - name: Audit
+    description: Multi-URL SEO audit workflow with SSE progress stream
+  - name: Indexing
+    description: Multi-URL Google indexing checker with SSE progress stream
+  - name: Tools
+    description: Single-URL tools (SERP preview, redirect chain, schema, etc.)
+  - name: Reports
+    description: List, preview, download, delete generated reports
+  - name: Settings
+    description: Config + saved profiles + file upload
+  - name: Use Cases
+    description: Single-use-case quick checks (crawlability, on-page, etc.)
+
+paths:
+  # ── Health ────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      security: []
+      responses:
+        "200":
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: "ok"}
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      security: []
+      description: |
+        Verifies the data directory is writable and the `reports/` /
+        `uploads/` sub-directories exist.
+      responses:
+        "200":
+          description: All dependencies healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: "ok"}
+                  checks:
+                    type: object
+                    additionalProperties: true
+        "503":
+          description: One or more dependencies degraded.
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus scrape endpoint
+      security: []
+      description: |
+        Returns counters/histograms/gauges in Prometheus text format. Restrict
+        access at the network layer in production (the endpoint is
+        intentionally unauthenticated).
+      responses:
+        "200":
+          description: Prometheus text-format metrics.
+          content:
+            text/plain:
+              schema: {type: string}
+        "503":
+          description: prometheus-client not installed.
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /login:
+    get:
+      tags: [Auth]
+      summary: Login form (HTML)
+      security: []
+      responses:
+        "200": {description: HTML login form}
+    post:
+      tags: [Auth]
+      summary: Submit login credentials
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: {type: string}
+                password: {type: string, format: password}
+                _csrf_token: {type: string}
+                next: {type: string, description: "Path to redirect to after login"}
+      responses:
+        "302": {description: Login OK, redirected to /app or ?next path}
+        "401": {description: Invalid credentials}
+        "429": {description: Account temporarily locked or rate limit hit}
+  /logout:
+    post:
+      tags: [Auth]
+      summary: Clear session
+      responses:
+        "302": {description: Redirects to /login}
+  /signup:
+    post:
+      tags: [Auth]
+      summary: Self-register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [username, password, confirm]
+              properties:
+                username: {type: string, minLength: 3, maxLength: 64}
+                password: {type: string, format: password, minLength: 12}
+                confirm: {type: string, format: password}
+                _csrf_token: {type: string}
+      responses:
+        "302": {description: Created + auto-logged-in, redirects to /app}
+        "400": {description: Validation error}
+        "403": {description: Signups disabled}
+  /api/users:
+    get:
+      tags: [Auth]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json: {schema: {$ref: "#/components/schemas/UsersList"}}
+        "401": {description: Not authenticated}
+        "403": {description: Not admin}
+    post:
+      tags: [Auth]
+      summary: Create a new user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: {type: string}
+                password: {type: string, format: password}
+                is_admin: {type: boolean, default: false}
+      responses:
+        "200": {description: Created}
+        "400": {description: Validation error}
+  /api/users/{username}:
+    delete:
+      tags: [Auth]
+      summary: Delete a user (admin only)
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: {type: string}
+      responses:
+        "200": {description: Deleted}
+        "400": {description: Cannot delete env admin or self}
+
+  # ── Audit ─────────────────────────────────────────────────────────────────
+  /api/audit/run:
+    post:
+      tags: [Audit]
+      summary: Start a multi-URL SEO audit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input: {type: string, description: "URL, sitemap, domain, or uploaded CSV path"}
+                input_type: {type: string, enum: [sitemap, domain, crawl, paste, list, csv], default: sitemap}
+                limit: {type: integer, minimum: 1, maximum: 500, default: 10}
+                workers: {type: integer, minimum: 1, maximum: 8, default: 3}
+                use_cases:
+                  type: array
+                  items: {type: string, enum: [crawlability, on_page, site_health, performance, search_console, authority, rankings]}
+                keywords: {type: array, items: {type: string}}
+                pattern: {type: string, description: "Glob pattern to filter URLs"}
+      responses:
+        "200":
+          description: Audit started — connect to /api/audit/stream for progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: {type: integer}
+                  started: {type: boolean}
+                  workers: {type: integer}
+        "400": {description: "Already running, or invalid input"}
+  /api/audit/stream:
+    get:
+      tags: [Audit]
+      summary: SSE stream of audit progress
+      description: |
+        Long-lived `text/event-stream` connection. Each line is a JSON event
+        with `type` ∈ `progress`, `done`, `error`, `cancelled`, `paused`,
+        `resumed`, or `ping`.
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema: {type: string}
+  /api/audit/cancel:
+    post:
+      tags: [Audit]
+      summary: Cancel the running audit
+      responses:
+        "200": {description: Cancellation signal sent, partial report saved}
+  /api/audit/pause:
+    post:
+      tags: [Audit]
+      responses:
+        "200": {description: Paused}
+        "400": {description: Not running}
+  /api/audit/resume:
+    post:
+      tags: [Audit]
+      responses:
+        "200": {description: Resumed}
+  /api/audit/partial:
+    get:
+      tags: [Audit]
+      summary: Download in-progress results as CSV
+      responses:
+        "200":
+          description: CSV with URL, Score, Issues, Warnings columns
+          content:
+            text/csv: {schema: {type: string}}
+        "404": {description: No results yet}
+  /api/audit/phase/{phase_num}:
+    post:
+      tags: [Audit]
+      summary: Run a single audit phase against one URL (synchronous)
+      parameters:
+        - in: path
+          name: phase_num
+          required: true
+          schema: {type: integer, minimum: 1, maximum: 4}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: {type: string, format: uri}
+                keywords: {type: array, items: {type: string}}
+      responses:
+        "200":
+          description: Phase results
+          content:
+            application/json: {schema: {$ref: "#/components/schemas/PhaseResult"}}
+        "400": {description: Bad request or missing credentials}
+
+  # ── Indexing ──────────────────────────────────────────────────────────────
+  /api/index/run:
+    post:
+      tags: [Indexing]
+      summary: Start a multi-URL Google indexing check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input: {type: string}
+                input_type: {type: string, enum: [sitemap, domain, paste, list, csv, multi], default: sitemap}
+                limit: {type: integer, minimum: 1, maximum: 500, default: 20}
+                pattern: {type: string}
+                headless: {type: boolean, default: false}
+                compare: {type: boolean, default: false}
+      responses:
+        "200": {description: Started}
+        "400": {description: Already running, or invalid input}
+  /api/index/stream:
+    get:
+      tags: [Indexing]
+      summary: SSE stream of indexing progress
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream: {schema: {type: string}}
+  /api/index/cancel:
+    post:
+      tags: [Indexing]
+      responses:
+        "200": {description: Cancelled + partial report saved}
+  /api/index/pause:
+    post:
+      tags: [Indexing]
+      responses:
+        "200": {description: Paused}
+        "400": {description: Not running}
+  /api/index/resume:
+    post:
+      tags: [Indexing]
+      responses:
+        "200": {description: Resumed}
+  /api/index/errors:
+    get:
+      tags: [Indexing]
+      summary: List URLs that errored in the last run
+      responses:
+        "200":
+          description: Error URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_urls: {type: array, items: {type: string}}
+                  count: {type: integer}
+  /api/index/retry:
+    post:
+      tags: [Indexing]
+      summary: Re-run only the URLs that errored in the last run
+      responses:
+        "200": {description: Retry started}
+        "400": {description: No failed URLs to retry, or already running}
+  /api/index/partial:
+    get:
+      tags: [Indexing]
+      summary: Download in-progress indexing results as CSV
+      responses:
+        "200":
+          description: CSV
+          content:
+            text/csv: {schema: {type: string}}
+        "404": {description: No results yet}
+
+  # ── Reports ───────────────────────────────────────────────────────────────
+  /api/reports:
+    get:
+      tags: [Reports]
+      summary: List the last 20 indexing + audit reports
+      responses:
+        "200":
+          description: Reports list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/ReportSummary"}
+  /api/open/{filename}:
+    get:
+      tags: [Reports]
+      summary: Serve a report HTML inline
+      parameters:
+        - in: path
+          name: filename
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Report HTML
+          content:
+            text/html: {schema: {type: string}}
+        "404": {description: Not found}
+  /api/download/{filename}:
+    get:
+      tags: [Reports]
+      summary: Download a report (XLSX, CSV, HTML, JSON, or PDF)
+      parameters:
+        - in: path
+          name: filename
+          required: true
+          schema: {type: string}
+      responses:
+        "200": {description: File download}
+        "404": {description: Not found}
+  /api/reports/pdf/{filename}:
+    get:
+      tags: [Reports]
+      summary: Render report HTML to PDF via Playwright
+      parameters:
+        - in: path
+          name: filename
+          required: true
+          schema: {type: string}
+      responses:
+        "200": {description: PDF}
+        "404": {description: Not found}
+        "503": {description: PDF generation pool exhausted, retry shortly}
+  /api/reports/delete/{filename}:
+    delete:
+      tags: [Reports]
+      parameters:
+        - in: path
+          name: filename
+          required: true
+          schema: {type: string}
+      responses:
+        "200": {description: Deleted}
+  /api/reports/delete_bulk:
+    post:
+      tags: [Reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                names: {type: array, items: {type: string}}
+      responses:
+        "200": {description: Per-name deletion status}
+  /api/reports/delete_all:
+    post:
+      tags: [Reports]
+      summary: Wipe all reports (requires confirm:"YES")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm: {type: string, enum: ["YES"]}
+      responses:
+        "200": {description: All deleted}
+        "400": {description: Missing confirmation}
+  /api/history:
+    get:
+      tags: [Reports]
+      summary: Indexing run history (trend chart data)
+      responses:
+        "200":
+          description: History entries
+          content:
+            application/json: {schema: {type: array, items: {type: object}}}
+
+  # ── Settings ──────────────────────────────────────────────────────────────
+  /api/settings:
+    get:
+      tags: [Settings]
+      summary: Read current config (secrets masked)
+      responses:
+        "200":
+          description: Config dict with secrets replaced by sentinel
+    post:
+      tags: [Settings]
+      summary: Update config (allow-listed keys, secret-preserving merge)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: true}
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: {type: string}
+                  rejected_keys: {type: array, items: {type: string}}
+  /api/settings/test/{provider}:
+    post:
+      tags: [Settings]
+      summary: Live "test connection" for a credential
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema: {type: string, enum: [pagespeed, gsc, serpapi, moz, dataforseo, groq, bing]}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: true}
+      responses:
+        "200": {description: Provider-specific result dict}
+  /api/profiles:
+    get:
+      tags: [Settings]
+      responses:
+        "200": {description: Saved profiles dict}
+    post:
+      tags: [Settings]
+      summary: Save a profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string}
+                use_cases: {type: array, items: {type: string}}
+                keywords: {type: string}
+                limit: {type: integer}
+      responses:
+        "200": {description: Profile saved}
+    delete:
+      tags: [Settings]
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema: {type: string}
+      responses:
+        "200": {description: Deleted}
+  /api/upload:
+    post:
+      tags: [Settings]
+      summary: Upload a CSV/Excel URL list
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        "200":
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path: {type: string}
+                  filename: {type: string}
+                  url_count: {type: integer}
+        "400": {description: Invalid file type}
+        "413": {description: File too large (>10 MB)}
+  /api/compare:
+    get:
+      tags: [Settings]
+      summary: Diff two audit XLSX reports
+      parameters:
+        - in: query
+          name: a
+          required: true
+          schema: {type: string}
+        - in: query
+          name: b
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Per-URL score deltas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows: {type: array}
+                  improved: {type: integer}
+                  declined: {type: integer}
+
+  # ── Use Cases ─────────────────────────────────────────────────────────────
+  /api/use_cases:
+    get:
+      tags: [Use Cases]
+      summary: Available use-case definitions
+      responses:
+        "200":
+          description: Use cases dict (id → label/icon/description/requirements)
+  /api/tasks:
+    get:
+      tags: [Use Cases]
+      summary: Available individual check tasks
+      responses:
+        "200": {description: Tasks dict}
+  /api/usecase/run:
+    post:
+      tags: [Use Cases]
+      summary: Run a single use case against one URL/sitemap/domain
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, use_case]
+              properties:
+                url: {type: string}
+                use_case: {type: string}
+                input_format: {type: string, enum: [url, sitemap, domain], default: url}
+                keywords: {type: string}
+      responses:
+        "200":
+          description: Use-case results
+          content:
+            application/json: {schema: {$ref: "#/components/schemas/UseCaseResult"}}
+        "400": {description: Invalid use_case or URL refused (SSRF)}
+  /api/usecase/run_bulk:
+    post:
+      tags: [Use Cases]
+      summary: Run a use case against up to 20 URLs from an uploaded file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, use_case]
+              properties:
+                file: {type: string, format: binary}
+                use_case: {type: string}
+                keywords: {type: string}
+      responses:
+        "200": {description: Aggregated + per-URL results}
+
+components:
+  securitySchemes:
+    session_cookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Flask session cookie set by /login.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        ok: {type: boolean, example: false}
+        error: {type: string}
+
+    UsersList:
+      type: object
+      properties:
+        ok: {type: boolean}
+        users:
+          type: array
+          items:
+            type: object
+            properties:
+              username: {type: string}
+              is_admin: {type: boolean}
+              created_at: {type: string, format: date-time}
+        me: {type: string}
+        signup_allowed: {type: boolean}
+
+    ReportSummary:
+      type: object
+      properties:
+        name: {type: string}
+        kind: {type: string, enum: [indexing, audit]}
+        date: {type: string}
+        size: {type: string}
+        html_name: {type: string}
+        xlsx_name: {type: string, nullable: true}
+        json_name: {type: string, nullable: true}
+        score: {type: number, nullable: true}
+
+    CheckResult:
+      type: object
+      properties:
+        tool: {type: string}
+        status: {type: string, enum: [pass, warning, fail, error]}
+        message: {type: string}
+        value: {nullable: true}
+        details: {type: object, additionalProperties: true}
+
+    PhaseResult:
+      type: object
+      properties:
+        ok: {type: boolean}
+        url: {type: string}
+        phase: {type: integer}
+        score: {type: integer}
+        results: {type: array, items: {$ref: "#/components/schemas/CheckResult"}}
+        counts:
+          type: object
+          properties:
+            pass: {type: integer}
+            warning: {type: integer}
+            fail: {type: integer}
+
+    UseCaseResult:
+      type: object
+      properties:
+        ok: {type: boolean}
+        url: {type: string}
+        use_case: {type: string}
+        score: {type: integer}
+        passes: {type: integer}
+        warnings: {type: integer}
+        fails: {type: integer}
+        results: {type: array, items: {$ref: "#/components/schemas/CheckResult"}}
+
+security:
+  - session_cookie: []

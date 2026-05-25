@@ -186,6 +186,9 @@ both `/api/<path>` (current default) and `/api/v1/<path>` (versioned alias).
 Use the versioned form in new integrations so future breaking changes can
 ship as `/api/v2` without disrupting your clients.
 
+**Interactive docs:** open `http://localhost:8080/docs` for Swagger UI.
+Raw OpenAPI 3.1 spec is at `/openapi.yaml`.
+
 Key endpoints:
 
 | Method | Endpoint | Description |

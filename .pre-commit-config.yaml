@@ -1,0 +1,58 @@
+# Pre-commit hooks for SEO Suite
+# Install once:  pip install pre-commit && pre-commit install
+# Run manually:  pre-commit run --all-files
+#
+# CI re-runs the same checks so a manual `pre-commit install` is optional —
+# but installing locally catches issues before they hit a PR.
+
+repos:
+  # ── Built-in checks ────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.(md|html)$'   # markdown trailing space can be meaningful (line break)
+      - id: end-of-file-fixer
+        exclude: '\.(svg|png|jpg|jpeg|gif|ico)$'
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-json
+        exclude: '\.vscode/'      # vscode uses jsonc which isn't strict JSON
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ── Ruff: lint + format ────────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # ── Secrets scan ───────────────────────────────────────────────────────────
+  # Catches accidentally committed credentials. Tunes itself via a baseline
+  # file — run `detect-secrets scan > .secrets.baseline` once to seed it.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: '\.git/|\.venv/|data/|reports/|archive/'
+
+  # ── Local: pytest sanity check on the staged Python files ──────────────────
+  # Runs a quick subset (not the full suite — that's what CI is for) to catch
+  # obvious breakage before commit.
+  - repo: local
+    hooks:
+      - id: pytest-quick
+        name: pytest (smoke subset)
+        entry: pytest tests/test_server.py tests/test_review_fixes.py --no-header -q --tb=line
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-commit]

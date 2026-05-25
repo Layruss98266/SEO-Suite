@@ -23,7 +23,7 @@ Before building new products, harden the existing partially built surfaces and p
 - Schema validation is exposed through a hidden backend route and must not be promoted until redirect/SSRF safety is proven.
 - robots.txt and sitemap fetch logic need to be aligned with the SSRF-safe wrappers in `core/security.py` before adding crawl-heavy tools.
 - runtime path anchoring needs to be consistent for reports, uploads, generated files, and history so new tools do not split data across directories.
-- numeric request parsing must be made robust in `app/server.py`, especially for filter-driven and pagination-driven APIs.
+- numeric request parsing must be made robust in `app/server.py` (and the blueprints under `app/blueprints/`), especially for filter-driven and pagination-driven APIs. The shared `_int(...)` helper lives in `app/state.py`.
 
 ## Recommended new use cases
 These workflows should layer on top of the current dashboard categories and existing backend modules.
@@ -274,4 +274,4 @@ Why now:
   - Generators: markup/content builders.
 - Do not merge Schema Markup generation with schema validation into one ambiguous panel.
 - Do not place IndexNow under Generators; it belongs under Tools.
-- Use the existing dashboard and route patterns in `app/static/js/dashboard.js` and `app/server.py` when adding items.
+- Use the existing dashboard and route patterns in `app/static/js/dashboard.js`, `app/server.py`, and the blueprint modules under `app/blueprints/` when adding items. New route groups should be added as blueprints (see `app/blueprints/site.py` for the minimal pattern, `app/blueprints/auth_views.py` for one with rate-limited endpoints).

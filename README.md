@@ -109,11 +109,18 @@ SEO Suite/
 ├── .env.example         ← template for .env
 │
 ├── app/                 ← Flask application
-│   ├── server.py        ← Flask web server + all API routes
+│   ├── server.py        ← Flask app factory + remaining routes (indexing, audit, reports, settings, tools)
+│   ├── state.py         ← Shared run-state, paths, helpers, constants
+│   ├── middleware.py    ← Security headers, CSRF, error handlers
+│   ├── blueprints/      ← Route groups split out of server.py
+│   │   ├── site.py      ← Public marketing pages (/, /features, /pricing, /blog, /about, /contact)
+│   │   ├── auth_views.py ← /login, /signup, /logout, /api/users, /api/auth_status
+│   │   └── misc.py      ← /app, /health, /api/use_cases, /api/tasks
 │   ├── templates/
-│   │   └── dashboard.html
+│   │   ├── dashboard.html
+│   │   └── site/        ← Marketing site templates (home, features, pricing, blog, about, contact)
 │   └── static/
-│       ├── css/dashboard.css
+│       ├── css/         ← dashboard.css, site.css
 │       └── js/dashboard.js
 │
 ├── core/                ← SEO engine modules

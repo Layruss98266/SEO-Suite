@@ -5,19 +5,27 @@ Run:   python main.py
 Open:  http://localhost:8080
 
 Project layout:
-  main.py            — entry point (this file)
-  app/server.py      — Flask app, all HTTP routes + shared state
-  app/__init__.py    — thin `create_app()` factory (returns app.server.app)
-  app/templates/     — Jinja templates
-  app/static/        — CSS / JS / assets
-  core/checker.py    — indexing checker (Playwright)
-  core/seo_audit.py  — audit orchestrator + report generation
-  core/version.py    — single source of truth for VERSION
-  tools/phase1.py    — free on-page / technical checks
-  tools/phase2.py    — PageSpeed / GSC URL inspection
-  tools/phase3.py    — Search Console (clicks, queries, sitemaps)
-  tools/phase4.py    — third-party APIs (backlinks, DA, rankings)
-  data/              — runtime outputs (reports, history, profiles, uploads)
+  main.py                      — entry point (this file)
+  app/server.py                — Flask app factory + remaining routes
+                                 (indexing, audit, reports, settings, tools)
+  app/state.py                 — Shared run-state, paths, helpers, constants
+  app/middleware.py            — Security headers, CSRF, error handlers
+  app/blueprints/site.py       — Public marketing pages
+  app/blueprints/auth_views.py — Login/signup/logout, user management
+  app/blueprints/misc.py       — /app dashboard, /health, /api/use_cases, /api/tasks
+  app/__init__.py              — Thin `create_app()` factory (returns app.server.app)
+  app/templates/               — Jinja templates (dashboard + marketing site)
+  app/static/                  — CSS / JS / assets
+  core/checker.py              — Indexing checker (Playwright)
+  core/seo_audit.py            — Audit orchestrator + report generation
+  core/auth.py                 — Multi-user session auth + account lockout
+  core/security.py             — SSRF protection, DNS rebinding guard
+  core/version.py              — Single source of truth for VERSION
+  tools/phase1.py              — Free on-page / technical checks
+  tools/phase2.py              — PageSpeed / GSC URL inspection
+  tools/phase3.py              — Search Console (clicks, queries, sitemaps)
+  tools/phase4.py              — Third-party APIs (backlinks, DA, rankings)
+  data/                        — Runtime outputs (reports, history, profiles, uploads)
 """
 import os
 

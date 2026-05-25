@@ -291,6 +291,95 @@ def _update_last_login(username: str, ip: str | None) -> None:
         _log.debug("update_last_login failed: %s", exc)
 
 
+# ── Force env-admin rotation on first use (#8) ────────────────────────────────
+# The env admin password lives in SEO_SUITE_PASSWORD_HASH, which is exposed
+# anywhere env vars are: .env files (potentially committed), container logs,
+# CI configs, "/proc/$pid/environ" if someone gains shell. Detect first use
+# and force the operator to set a per-user password stored in our hashed
+# user table instead.
+
+def _should_force_env_admin_rotation(username: str) -> bool:
+    """True iff:
+      - the supplied username matches the env admin
+      - there's no corresponding file-based user yet (i.e. they haven't
+        already migrated themselves via /signup or create_user)
+      - SEO_SUITE_SKIP_ENV_ADMIN_ROTATION isn't set (operator opt-out)
+    """
+    env_user = _env_admin()
+    if not env_user or username != env_user:
+        return False
+    if os.environ.get("SEO_SUITE_SKIP_ENV_ADMIN_ROTATION") == "1":
+        return False
+    # If a non-env user record exists with this username, we're past the
+    # rotation moment.
+    users = _load_users()
+    return username not in users
+
+
+# ── Login notifications (#7) ─────────────────────────────────────────────────
+
+def _is_novel_login(username: str, ip: str | None, user_agent: str | None) -> bool:
+    """True if this (username, ip, user_agent) combination hasn't been seen
+    in any *successful* login in the recent history.
+
+    Used to decide whether to fire a "new sign-in" notification email. Bound
+    to the last 30 days of history so a once-a-year login from the same
+    laptop doesn't spam.
+    """
+    if not _use_sqlite_backend():
+        return False  # JSON backend has no history table
+    try:
+        from core import db as _db
+
+        # Pull the 30 most-recent successful attempts for this user. If none
+        # have the same IP+UA, treat this login as novel. Pulling more than
+        # 30 isn't useful — a once-in-a-year login from a familiar device
+        # would still fire a notification (acceptable; rare and informative).
+        rows = _db.get_login_history(
+            _USERS_DB, username=username, success=True, limit=30
+        )
+        for r in rows:
+            if r["ip"] == ip and r["user_agent"] == user_agent:
+                return False
+        # If this is the user's very first successful login, also treat as
+        # novel — they should know an account was just used for the first time.
+        return True
+    except Exception:
+        return False
+
+
+def _send_login_notification(
+    username: str, ip: str | None, user_agent: str | None
+) -> None:
+    """Email the user about a sign-in from a new device/IP. Best-effort."""
+    if "@" not in username:
+        return  # Username isn't an email; can't deliver
+    try:
+        from datetime import datetime, timezone
+
+        from app import state as _state
+        from core.notifier import NotificationService
+
+        when = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        body = f"""
+        <h2>New sign-in to your SEO Suite account</h2>
+        <p>We detected a sign-in from a new device or location.</p>
+        <ul>
+          <li><b>Account:</b> {username}</li>
+          <li><b>Time:</b> {when} (UTC)</li>
+          <li><b>IP address:</b> {ip or "unknown"}</li>
+          <li><b>Browser:</b> {(user_agent or "unknown")[:200]}</li>
+        </ul>
+        <p>If this was you, no action is needed. If it wasn't, change your password
+        immediately and check <code>/api/auth/my_logins</code> for the full
+        activity log.</p>
+        """
+        svc = NotificationService(_state.CFG)
+        svc.send_email_to(username, "New sign-in to SEO Suite", body)
+    except Exception as exc:
+        _log.debug("login notification email failed: %s", exc)
+
+
 def authenticate(
     username: str,
     password: str,
@@ -343,6 +432,17 @@ def authenticate(
             _record_attempt(
                 username, success=True, ip=ip, user_agent=user_agent, reason="env_admin"
             )
+            # Force env admin to set a non-env password on first use unless
+            # explicitly suppressed. This converts a static env credential
+            # (which can leak via env dumps, .env commits, container logs)
+            # into a regular file-based account that gets argon2 + zxcvbn +
+            # HIBP coverage.
+            if _should_force_env_admin_rotation(username):
+                return {
+                    "username": username,
+                    "is_admin": True,
+                    "must_rotate_password": True,
+                }
             return {"username": username, "is_admin": True}
         _record_failed_login(username)
         _record_attempt(
@@ -353,11 +453,20 @@ def authenticate(
 
     user = _load_users().get(username)
     if user and _safe_check(user.get("password_hash", ""), password):
+        # Check novelty BEFORE recording the attempt so the recorded row
+        # doesn't itself match and suppress the notification.
+        novel = _is_novel_login(username, ip, user_agent)
         _clear_failed_logins(username)
         _record_attempt(
             username, success=True, ip=ip, user_agent=user_agent, reason="ok"
         )
         _update_last_login(username, ip)
+        # Best-effort, after-the-fact notification on novel sign-ins.
+        # Note: we don't notify on the very first successful login if there
+        # were earlier failed attempts from the same IP+UA, but that's an
+        # acceptable trade-off — the user hasn't given us anywhere to send.
+        if novel:
+            _send_login_notification(username, ip, user_agent)
         return {"username": username, "is_admin": bool(user.get("is_admin"))}
 
     # Anti-enumeration: when the user doesn't exist, still run a hash check

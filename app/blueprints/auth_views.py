@@ -431,12 +431,21 @@ def _use_sqlite_login_history() -> bool:
 @bp.route("/api/auth_status")
 @login_required
 def api_auth_status():
-    """Return current auth configuration state (for Settings → Security card)."""
+    """Return current auth configuration state (for Settings → Security card).
+
+    Also surfaces the ``must_rotate_password`` flag so the dashboard can
+    pop a banner asking the env admin to set a per-user password and move
+    off the env-based credential.
+    """
+    me = session.get("username") or ""
+    from core.auth import _should_force_env_admin_rotation
+
     return jsonify(
         {
             "auth_enabled": auth_enabled(),
             "username": os.getenv("SEO_SUITE_USERNAME", "admin"),
             "secret_set": bool(os.getenv("SEO_SUITE_SECRET")),
+            "must_rotate_password": _should_force_env_admin_rotation(me),
         }
     )
 

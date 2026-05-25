@@ -161,6 +161,41 @@ _audit_bp.register(app, limiter)
 _runners_bp.register(app)
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# API VERSIONING
+# ══════════════════════════════════════════════════════════════════════════════
+# Mirror every existing /api/<path> rule under /api/v1/<path> so future
+# breaking API changes can ship as /api/v2 without forcing existing clients
+# (or the bundled dashboard.js) to switch. This is purely additive — the
+# unversioned /api routes stay as the default for now.
+#
+# We do this *after* all blueprints register so we capture their rules. Skip
+# the SSE stream endpoints (they share view functions across long-lived
+# connections; double-registration causes endpoint name collisions in Flask).
+_API_VERSION_PREFIX = "/api/v1"
+_versioned: list[tuple[str, str]] = []
+for _rule in list(app.url_map.iter_rules()):
+    _path = str(_rule.rule)
+    if not _path.startswith("/api/") or _path.startswith("/api/v"):
+        continue
+    _view = app.view_functions.get(_rule.endpoint)
+    if _view is None:
+        continue
+    _versioned_path = _API_VERSION_PREFIX + _path[len("/api"):]
+    # Add the alias under a distinct endpoint name so Flask routing stays
+    # unambiguous. We don't reuse the view function name to avoid
+    # collisions across blueprints.
+    _alias_endpoint = f"v1.{_rule.endpoint}"
+    app.add_url_rule(
+        _versioned_path,
+        endpoint=_alias_endpoint,
+        view_func=_view,
+        methods=list(_rule.methods - {"HEAD", "OPTIONS"}) if _rule.methods else None,
+    )
+    _versioned.append((_path, _versioned_path))
+logger.info("Registered %d /api/v1 aliases", len(_versioned))
+
+
 # ── Backward-compatibility re-exports ─────────────────────────────────────────
 # Tests and external callers reference these names directly on the server
 # module. The state dicts (``_audit_status``, ``_index_status``, ``CFG``) are

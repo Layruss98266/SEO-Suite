@@ -181,7 +181,12 @@ See [`docs/SETUP_GUIDES.md`](docs/SETUP_GUIDES.md#1-google-search-console-gsc) f
 
 ## REST API
 
-The server exposes a JSON API on port 8080. Key endpoints:
+The server exposes a JSON API on port 8080. Every endpoint is reachable at
+both `/api/<path>` (current default) and `/api/v1/<path>` (versioned alias).
+Use the versioned form in new integrations so future breaking changes can
+ship as `/api/v2` without disrupting your clients.
+
+Key endpoints:
 
 | Method | Endpoint | Description |
 |--------|---------|-------------|

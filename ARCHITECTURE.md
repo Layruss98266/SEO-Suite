@@ -348,6 +348,19 @@ The Dockerfile uses the official Playwright Python image as a base, copies the a
 
 ---
 
+## API Versioning
+
+Every `/api/<path>` route is mirrored under `/api/v1/<path>` by a small loop
+at the bottom of `app/server.py`. The aliasing is purely additive — the
+unversioned routes stay as the default for the bundled dashboard and any
+existing integrations. New clients should target `/api/v1/*` so future
+breaking changes can ship as `/api/v2/*` without forcing migrations.
+
+The aliases share view functions with the original routes (Flask
+`add_url_rule` re-points the same callable under a `v1.<endpoint>` name), so
+there's no code duplication or maintenance burden when the underlying handler
+changes.
+
 ## Open Architecture Questions
 
 These are real trade-offs, not just TODOs. Open for discussion:

@@ -1,252 +1,151 @@
-# SEO Suite v2.0.0
+# SEO Suite
 
-A comprehensive Python-based SEO audit tool with a live web dashboard.
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Flask](https://img.shields.io/badge/flask-3.x-lightgrey)
+![Tests](https://img.shields.io/badge/tests-238%20passing-brightgreen)
 
-This repository also includes planning and reference documents for product roadmap and cleanup work:
-- `NEW_TOOLS_USECASES.md` — new tool and use case recommendations aligned to the current dashboard and backend routes.
-- `REPO_REVIEW_AND_CLEANUP.md` — merged review findings, blockers, and cleanup recommendations for the active codebase.
+Self-hosted technical SEO platform. Audit sites, verify Google indexation, generate structured markup, and surface Search Console insights — all from your own machine.
 
-## Features
+> **No SaaS subscriptions. No data sent to third parties.**
 
-- **Indexing Checker** — verify which URLs are indexed in Google using a real browser (Playwright); supports sitemap, domain crawl, CSV/XLSX upload, and pasted URL lists
-- **SEO Audit** — 4-phase audit: Technical, Performance, Search Console, Authority & Rankings
-- **Use Case Runner** — 7 targeted use cases: Crawl Access, On-Page SEO, Site Health, Performance, Search Console, Authority, Rankings
-- **Live Progress** — real-time streaming dashboard for both indexing checks and audits
-- **Live Reports Panel** — report counts and file list update automatically after each run; auto-refreshes every 10 s while the Reports panel is open
-- **Reports** — HTML, Excel, CSV, and PDF output with charts; bulk delete and delete-all support
-- **Profiles** — save and reload named audit configurations (use cases, keywords, URL limit)
-- **File Upload** — upload a CSV or XLSX file containing URLs for indexing checks or audits
-- **Trend tracking** — indexed vs not-indexed over time (chart)
-- **Compare runs** — diff two audit XLSX reports to track score gains/losses per URL
-- **Tool Suite** — standalone tools: SERP Preview, Redirect Chain, HTTP Headers, Keyword Density, Code:Text Ratio, GZIP & Cache
-- **Generators** — Schema Markup, robots.txt, XML Sitemap, Hreflang Tags, Meta Tags
-- **Cancel / Pause / Resume** — full control over any running indexing check
-- **Retry errors** — re-run only the URLs that errored in the last indexing check
-- **Parallel audit workers** — configurable number of concurrent URL audits (1–8)
-- **Notifications** — Email (SMTP), Slack webhook, and Microsoft Teams webhook on run completion
-- **Scheduling** — automated checks on a daily/hourly schedule via `config.json`
-- **Proxy support** — pass a list of proxy URLs in `config.json`
-- **Dark mode** — full dark theme with persistence
-- **Website Navigation** — seamless glassmorphic shortcut button to return to the public website home page from the live dashboard
-- **Interactive Setup Guides** — step-by-step setup guides for Groq API Key (AI Assistant) and IndexNow Host directly inside the dashboard Help modal
-- **Security hardening** — HTTP security headers (CSP, X-Frame-Options, HSTS), CSRF protection on form endpoints, SSRF guards with DNS rebinding mitigation, account lockout after 10 failed logins, CSV formula injection sanitization on uploads, and rate limiting on auth/audit endpoints
+---
 
-## Setup
-
-### 1. Install dependencies
+## Quick Start
 
 ```bash
 pip install -r requirements.txt
 playwright install chromium
+cp .env.example .env        # add your API keys
+python main.py              # → http://localhost:8080
 ```
 
-### 2. Configure secrets
+Create your admin account at `/signup` on first boot.
 
-Copy `.env.example` to `.env` and fill in your API keys:
+---
 
-```bash
-cp .env.example .env
-```
+## Features
 
-Edit `.env`:
-```
-PAGESPEED_API_KEY=AIza...
-SERPAPI_KEY=...
+**Audit & Indexation**
+- Indexing Checker — verify Google indexation via Search Console API or live Playwright browser; accepts sitemaps, domain crawl, CSV/XLSX, or pasted URLs
+- SEO Audit — 7 targeted use cases: Crawl Access · On-Page SEO · Site Health · Performance · Search Console · Authority · Rankings
+- Live SSE streaming for both indexing and audits; pause / resume / cancel / retry; cross-run diff
 
-# Optional — notifications
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=you@gmail.com
-SMTP_PASSWORD=...
-EMAIL_FROM=you@gmail.com
-EMAIL_TO=recipient@example.com
+**Tools**
 
-SLACK_WEBHOOK_URL=https://hooks.slack.com/...
-TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/...
-```
+SERP Preview · Redirect Chain · HTTP Headers · Keyword Density · Code:Text Ratio · GZIP & Cache · Link Health · robots.txt Tester · Hreflang Validator · Sitemap Audit · Performance Opportunities · Keyword Research
 
-### 3. Configure settings
+**Google Search Console**
 
-Edit `config.json` for non-secret settings. Key sections:
+GSC Opportunities · Position Tracker · CTR Analyzer · Coverage Errors · Sitemaps Status · AI Snippet Optimizer
 
-| Section | Purpose |
-|---------|---------|
-| `parallel_tabs` | Concurrent Playwright tabs for indexing (default 1) |
-| `gsc` | Google Search Console — set `enabled: true` and point to credentials file |
-| `email` / `slack` / `teams` | Notification channels |
-| `schedule` | Automated checks — set `enabled: true`, `interval`, `time`, `sitemap_url`, `limit` |
-| `priority` | High/low value URL patterns for sorting |
-| `track_keywords` | Keywords to watch in GSC data |
-| `timings` | Fine-tune timeouts, delays, and rate-limit breaks |
-| `thresholds` | Pass/warn score cutoffs for PageSpeed, CTR, rankings |
-| `proxies` | List of proxy URLs (e.g. `["http://proxy:8080"]`) |
+**Generators**
 
-### 4. Run
+Schema Markup (15 JSON-LD types) · JSON-LD Validator · robots.txt · XML Sitemap · Hreflang Tags · Meta Tags
 
-```bash
-python main.py
-```
+**Indexing & Submission**
 
-Open [http://localhost:8080](http://localhost:8080) in your browser.
+IndexNow (instant Bing / Yandex submission) · Bing Webmaster API (overview, inspect, submit)
 
-## Documentation
-- **[`docs/OPERATOR_CHECKLIST.md`](docs/OPERATOR_CHECKLIST.md)** ⭐ start here for production: what YOU need to do (env vars, GSC service account, SMTP, HTTPS cookies, /metrics restriction, backups). 21 items tagged 🔴 must-do / 🟠 recommended / 🟢 optional.
-- `docs/SETUP_GUIDES.md`: step-by-step setup guides for all 11 API integrations (GSC, PageSpeed, Groq, SerpAPI, Moz, DataForSEO, Bing, SMTP, Slack, Teams, Sentry).
-- `docs/USECASE_GUIDES.md`: detailed walkthroughs for all 7 audit use cases — what each one checks, what API keys it needs, how to interpret results, and common fixes.
-- `DEPLOYMENT.md`: deployment guides for Render, Fly.io, Docker, and plain VPS.
-- `NEW_TOOLS_USECASES.md`: product and tool roadmap guidance for the current repo surface.
-- `REPO_REVIEW_AND_CLEANUP.md`: current review blockers, cleanup recommendations, and planning notes.
-- `TOOL_ROADMAP.md`: overall project roadmap and implementation gate guidance.
+**AI**
 
-## Folder Structure
+AI Assistant — Groq-powered audit explanation that converts error logs into actionable checklists  
+AI Meta Drafter — generates 3 CTR-optimized title/description variants using live GSC queries as context
 
-```
-SEO Suite/
-├── main.py              ← entry point (run this)
-├── config.json          ← non-secret settings
-├── requirements.txt     ← pinned dependencies
-├── pyproject.toml       ← project metadata & tool config (ruff, mypy, pytest)
-├── .env                 ← secrets (never commit)
-├── .env.example         ← template for .env
-│
-├── app/                 ← Flask application
-│   ├── server.py        ← Slim Flask factory (~165 lines) — app + middleware + blueprint wiring
-│   ├── state.py         ← Shared run-state, paths, helpers, constants
-│   ├── middleware.py    ← Security headers, CSRF, error handlers
-│   ├── blueprints/      ← Every route lives here, grouped by domain
-│   │   ├── site.py      ← Public marketing pages (/, /features, /pricing, /blog, /about, /contact)
-│   │   ├── auth_views.py ← /login, /signup, /logout, /api/users, /api/auth_status
-│   │   ├── misc.py      ← /app, /health, /health/ready, /api/use_cases, /api/tasks
-│   │   ├── reports.py   ← /api/reports/*, /api/open, /api/download, /api/history, PDF export
-│   │   ├── settings.py  ← /api/settings, /api/profiles, /api/upload, /api/compare
-│   │   ├── tools.py     ← /api/tools/* (33 routes: quick tools, GSC, Bing, AI, generators, etc.)
-│   │   ├── indexing.py  ← /api/index/* (run/stream/cancel/pause/resume/retry/partial)
-│   │   ├── audit.py     ← /api/audit/* (run/stream/cancel/pause/resume/partial/phase)
-│   │   └── runners.py   ← /api/usecase/run, /api/usecase/run_bulk
-│   ├── templates/
-│   │   ├── dashboard.html
-│   │   └── site/        ← Marketing site templates (home, features, pricing, blog, about, contact)
-│   └── static/
-│       ├── css/         ← dashboard.css, site.css
-│       └── js/dashboard.js
-│
-├── core/                ← SEO engine modules
-│   ├── checker.py       ← Google indexing checker (Playwright)
-│   ├── seo_audit.py     ← SEO audit orchestrator
-│   ├── auth.py          ← Multi-user session auth + account lockout
-│   ├── security.py      ← SSRF protection, DNS rebinding guard, safe HTTP
-│   ├── db.py            ← SQLite-backed user store (auto-migrates from users.json)
-│   ├── report_generator.py ← HTML / Excel / CSV report builder
-│   ├── sitemap_parser.py   ← Sitemap fetching & parsing
-│   ├── notifier.py         ← Email / Slack / Teams notifications
-│   └── version.py          ← Version string
-│
-├── tools/               ← SEO audit phase modules
-│   ├── phase1.py        ← Technical SEO (no API required)
-│   ├── phase2.py        ← PageSpeed / Core Web Vitals
-│   ├── phase3.py        ← Google Search Console
-│   ├── phase4.py        ← Backlinks / Authority / Rankings
-│   ├── generators.py    ← Schema, robots.txt, sitemap generators
-│   └── quick_tools.py   ← SERP preview, headers, redirect chain, etc.
-│
-├── tests/               ← Test suite (pytest)
-│
-└── data/                ← Runtime data (git-ignored)
-    ├── progress/        ← Resume state for interrupted checks
-    ├── reports/         ← Generated HTML / JSON / Excel reports (audit)
-    ├── uploads/         ← Temporary CSV/XLSX files uploaded via the dashboard
-    ├── seo_suite.db     ← SQLite (users; future: history/profiles)
-    ├── profiles.json    ← Saved audit profiles
-    ├── history.json     ← Indexing run history (trend chart)
-    └── app.log          ← Server error log
-```
+**Platform**
+- Multi-user accounts · admin roles · TOTP 2FA with backup codes · session revocation
+- argon2id password hashing · CSRF protection · SSRF guards · account lockout · rate limiting
+- GDPR self-service data export and account deletion
+- SMTP / Slack / Teams notifications · scheduled automated checks
+- Prometheus metrics at `/metrics` · OpenAPI 3.1 + Swagger UI at `/docs`
+- Reports: HTML · Excel · CSV · PDF with charts and per-URL scoring
+- Dark mode · proxy support
+
+---
 
 ## API Keys
 
-| Key | Where to get | Required for |
-|-----|-------------|--------------|
-| `PAGESPEED_API_KEY` | [Google Cloud Console](https://console.cloud.google.com) → PageSpeed Insights API | Performance phase |
-| `SERPAPI_KEY` | [serpapi.com](https://serpapi.com) | Rankings phase |
-| `MOZ_ACCESS_ID` / `MOZ_SECRET_KEY` | [moz.com](https://moz.com/products/api) | Domain Authority |
-| `DATAFORSEO_LOGIN` / `DATAFORSEO_PASSWORD` | [dataforseo.com](https://dataforseo.com) | Backlinks / SERP |
+All integrations are optional — features degrade gracefully when a key is absent.
 
-All API keys are optional — phases that lack a key are skipped gracefully.
+| Integration | Env Variable | Required For |
+|-------------|-------------|-------------|
+| Google PageSpeed | `PAGESPEED_API_KEY` | Performance audit, Performance Opportunities |
+| Google Search Console | _(JSON credentials file)_ | GSC audit, all GSC tools |
+| Groq AI | `GROQ_API_KEY` | AI Assistant, AI Snippet Optimizer |
+| SerpAPI | `SERPAPI_KEY` | Rankings phase |
+| Moz | `MOZ_ACCESS_ID` + `MOZ_SECRET_KEY` | Domain Authority |
+| DataForSEO | `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | Backlinks, Keyword Research |
+| Bing Webmaster | `BING_WEBMASTER_API_KEY` | Bing tools, IndexNow |
+| SMTP | `SMTP_HOST` · `SMTP_PORT` · `SMTP_USERNAME` · `SMTP_PASSWORD` | Email notifications, password reset |
+| Slack | `SLACK_WEBHOOK_URL` | Slack notifications |
+| Teams | `TEAMS_WEBHOOK_URL` | Teams notifications |
+| Sentry | `SENTRY_DSN` | Error tracking |
 
-## Google Search Console
+Step-by-step setup for every integration: [`docs/SETUP_GUIDES.md`](docs/SETUP_GUIDES.md)
 
-See [`docs/SETUP_GUIDES.md`](docs/SETUP_GUIDES.md#1-google-search-console-gsc) for the full step-by-step guide. Quick version:
+---
 
-1. Create a service account in [Google Cloud Console](https://console.cloud.google.com)
-2. Enable the Search Console API
-3. Download the credentials JSON → save as `gsc_credentials.json` in this folder
-4. **Add the service account email as a user in Search Console** (required — GSC is property-based)
-5. Enable GSC in the Settings tab of the dashboard
+## Deployment
 
-## REST API
+SEO Suite needs a persistent server — long-running jobs, SSE, Playwright, writable disk. **Vercel / Netlify are not supported.**
 
-The server exposes a JSON API on port 8080. Every endpoint is reachable at
-both `/api/<path>` (current default) and `/api/v1/<path>` (versioned alias).
-Use the versioned form in new integrations so future breaking changes can
-ship as `/api/v2` without disrupting your clients.
+| Target | How |
+|--------|-----|
+| **Render** | Push to GitHub → New Blueprint → select repo (auto-deploys via `render.yaml`) |
+| **Fly.io** | `fly launch --copy-config && fly volumes create seo_suite_data --size 1 && fly deploy` |
+| **Docker** | `docker build -t seo-suite . && docker run -p 8080:8080 -v seo_suite_data:/app/data seo-suite` |
+| **VPS** | `gunicorn --workers 1 --threads 8 --worker-class gthread --timeout 300 --bind 0.0.0.0:8080 app.server:app` |
 
-**Interactive docs:** open `http://localhost:8080/docs` for Swagger UI.
-Raw OpenAPI 3.1 spec is at `/openapi.yaml`.
+**Three rules for any host:**
+1. Run as **one process** (`--workers 1`) — SSE queues and run state live in memory
+2. Mount a **persistent volume** at `SEO_SUITE_DATA_DIR` (default `./data`) for reports and the SQLite user store
+3. Set `SEO_SUITE_SECRET` to a stable random hex string so logins survive restarts
 
-Key endpoints:
+Full guide: [`DEPLOYMENT.md`](DEPLOYMENT.md)
 
-| Method | Endpoint | Description |
-|--------|---------|-------------|
-| `POST` | `/api/index/run` | Start an indexing check |
-| `GET` | `/api/index/stream` | SSE stream of indexing progress |
-| `POST` | `/api/index/pause` | Pause a running check |
-| `POST` | `/api/index/resume` | Resume a paused check |
-| `POST` | `/api/index/cancel` | Cancel a running check |
-| `POST` | `/api/index/retry` | Retry errored URLs from last run |
-| `POST` | `/api/audit/run` | Start an SEO audit |
-| `GET` | `/api/audit/stream` | SSE stream of audit progress |
-| `POST` | `/api/audit/cancel` | Cancel a running audit |
-| `GET` | `/api/reports` | List all reports (indexing + audit) |
-| `GET` | `/api/reports/summary` | Summary stats for a report file |
-| `GET` | `/api/reports/preview/<file>` | Rich preview data for the side drawer |
-| `GET` | `/api/open/<file>` | Open HTML report inline |
-| `GET` | `/api/download/<file>` | Download CSV or XLSX |
-| `GET` | `/api/reports/pdf/<file>` | Export HTML report to PDF |
-| `DELETE` | `/api/reports/delete/<file>` | Delete a report (all formats) |
-| `POST` | `/api/reports/delete_bulk` | Delete multiple reports |
-| `POST` | `/api/reports/delete_all` | Delete all reports (`confirm:"YES"` required) |
-| `GET` | `/api/compare` | Diff two audit XLSX reports |
-| `POST` | `/api/upload` | Upload a CSV/XLSX URL list |
-| `GET/POST/DELETE` | `/api/profiles` | Manage saved audit profiles |
-| `GET/POST` | `/api/settings` | Read / update `config.json` |
-| `GET` | `/api/history` | Indexing run history |
-| `GET` | `/api/use_cases` | Available audit use cases |
-| `GET` | `/api/tasks` | Available audit tasks |
-| `GET` | `/health` | Server health + running status |
-| `POST` | `/api/auth/change_password` | Change your own password (argon2id) |
-| `GET` | `/api/auth/my_logins` | Your own recent login attempts (last 50) |
-| `GET` | `/api/auth/login_history` | Admin: all login attempts (filter by username + failures-only) |
+---
+
+## Documentation
+
+| | |
+|-|-|
+| [`docs/OPERATOR_CHECKLIST.md`](docs/OPERATOR_CHECKLIST.md) ⭐ | Production setup checklist — 21 items tagged must-do / recommended / optional. Start here before deploying. |
+| [`docs/SETUP_GUIDES.md`](docs/SETUP_GUIDES.md) | Step-by-step setup for all 11 API integrations |
+| [`docs/USECASE_GUIDES.md`](docs/USECASE_GUIDES.md) | Walkthroughs for all 7 audit use cases |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) | Render, Fly.io, Docker, and VPS deployment guides |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Request flow, security model, threading, data persistence, observability |
+| [Swagger UI](http://localhost:8080/docs) | Interactive REST API docs — available at `/docs` when the app is running |
+
+---
+
+## Project Structure
+
+```
+SEO Suite/
+├── main.py                  ← entry point
+├── app/
+│   ├── server.py            ← Flask factory, blueprint wiring
+│   ├── blueprints/          ← route handlers (audit, indexing, tools, auth, reports, site)
+│   ├── templates/           ← Jinja2 templates (dashboard SPA + marketing site)
+│   └── static/              ← CSS + JS
+├── core/                    ← checker, audit orchestrator, auth, db, TOTP, notifier, reports
+├── tools/                   ← SEO tool modules (phases 1–4, generators, quick tools, AI, Bing, IndexNow)
+├── tests/                   ← pytest suite (238 tests)
+└── data/                    ← runtime data, git-ignored
+    ├── seo_suite.db         ← SQLite: users, sessions, login history, TOTP secrets
+    ├── reports/             ← HTML / XLSX / CSV / JSON output
+    └── app.log
+```
+
+---
 
 ## Development
 
-### Lint & type-check
-
 ```bash
-ruff check .          # fast linting
-ruff format .         # auto-format
-mypy app/ core/       # type checking
+python main.py                          # run locally at http://localhost:8080
+pytest                                  # run all tests
+pytest --cov app/ core/ tools/          # with coverage
+ruff check . && ruff format .           # lint + format
+mypy app/ core/                         # type checking
 ```
 
-### Tests
-
-```bash
-pytest                        # run all tests
-pytest -v                     # verbose
-pytest --tb=short             # compact tracebacks
-pytest tests/test_checker.py  # single file
-```
-
-### Screenshots
-
-| Home Dashboard | Live Progress | Reports |
-|---|---|---|
-| _(screenshot)_ | _(screenshot)_ | _(screenshot)_ |
+Key env vars: `SEO_SUITE_SECRET` (session signing), `SEO_SUITE_DATA_DIR` (default `./data`), `SEO_SUITE_COOKIE_SECURE=1` (HTTPS), `SEO_SUITE_LOG_JSON=1` (structured logs).

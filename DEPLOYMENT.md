@@ -70,7 +70,7 @@ Put nginx (or Caddy) in front for TLS.
   memory, so multiple workers or instances would split the state. Scale up (more
   CPU/RAM), not out.
 - **Persistent volume at `SEO_SUITE_DATA_DIR`** (default `/app/data`) for reports,
-  uploads, and `users.json`.
+  uploads, and `seo_suite.db` (users, sessions, login history).
 - **Set `SEO_SUITE_SECRET`** to a stable random value so logins survive restarts.
 - **Auth:** either set `SEO_SUITE_USERNAME` + `SEO_SUITE_PASSWORD_HASH`, or just
   create the first account at `/signup` (it becomes the admin and turns auth on).

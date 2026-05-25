@@ -354,7 +354,7 @@ the code path:
 
 ## When this doc is out of date
 
-Last updated to match commit `96d9878`. If the codebase has moved on:
+Last updated to match commit `9e7e524`. If the codebase has moved on:
 
 ```bash
 git log --since="last operator checklist update" --oneline

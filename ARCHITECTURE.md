@@ -52,9 +52,10 @@ For setup and usage, see [README.md](README.md). For contributing conventions, s
 └──────────────────────────────────────────────────────────────────────┘
         │                       │                          │
         ▼                       ▼                          ▼
-   data/reports/         data/users.json          data/profiles.json
-   (HTML, XLSX, CSV,     (auth)                   (saved audit configs)
-    JSON sidecars)
+   data/reports/         data/seo_suite.db        data/profiles.json
+   (HTML, XLSX, CSV,     (users, sessions,        (saved audit configs)
+    JSON sidecars)        login history,
+                          TOTP secrets)
 ```
 
 ---
@@ -101,11 +102,14 @@ tools/
 ├── phase4.py              ← Backlinks / Authority / Rankings (Moz, DataForSEO, SerpAPI)
 ├── generators.py          ← Schema, robots.txt, sitemap, hreflang, meta
 ├── quick_tools.py         ← SERP preview, headers, redirect chain, etc.
-├── bing_webmaster.py      ← Bing API wrapper
-├── ai_assist.py           ← Groq LLM integration
-├── schema_validator.py    ← JSON-LD / microdata validation
+├── bing_webmaster.py      ← Bing Webmaster API (overview, inspect, submit)
+├── ai_assist.py           ← Groq LLM (explain audit, draft meta)
+├── schema_validator.py    ← JSON-LD extraction and Schema.org validation
+├── indexnow.py            ← IndexNow URL submission (Bing / Yandex)
+├── sitemap_audit.py       ← Live sitemap structure and health audit
+├── keyword_research.py    ← DataForSEO keyword research
 ├── connection_tests.py    ← "Test connection" handlers for Settings UI
-└── _common.py             ← Shared safe_error() and helpers
+└── _common.py             ← Shared fetch_html, safe_error helpers
 ```
 
 ---

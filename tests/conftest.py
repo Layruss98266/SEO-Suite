@@ -24,3 +24,9 @@ os.environ["SEO_SUITE_SECRET"] = ""
 
 # 3. Disable rate limiting during tests.
 _server.limiter.enabled = False
+
+# 4. Disable password-strength + breach checks during tests. Existing tests
+#    use short/weak passwords for brevity; production calls pass through
+#    zxcvbn + HIBP via core.password_policy.validate_new_password.
+os.environ["SEO_SUITE_DISABLE_ZXCVBN"] = "1"
+os.environ["SEO_SUITE_DISABLE_HIBP"] = "1"

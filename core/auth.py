@@ -404,6 +404,13 @@ def change_password(username: str, current_password: str, new_password: str) -> 
     if current_password == new_password:
         return False, "New password must differ from current password"
 
+    # Strength + breach checks on the NEW password.
+    from core.password_policy import validate_new_password
+
+    pol_ok, pol_err = validate_new_password(new_password, username=username)
+    if not pol_ok:
+        return False, pol_err
+
     with _users_lock:
         users = _load_users()
         user = users.get(username)
@@ -437,6 +444,15 @@ def create_user(username: str, password: str, is_admin: bool = False) -> tuple[b
         return False, f"Password must be at least {_MIN_PASSWORD_LEN} characters"
     if username == _env_admin():
         return False, "That username is reserved by the environment admin"
+
+    # Strength + breach checks. Skipped silently if zxcvbn/HIBP are disabled
+    # or the libs aren't installed — see core.password_policy.
+    from core.password_policy import validate_new_password
+
+    pol_ok, pol_err = validate_new_password(password, username=username)
+    if not pol_ok:
+        return False, pol_err
+
     with _users_lock:
         users = _load_users()
         if username in users:

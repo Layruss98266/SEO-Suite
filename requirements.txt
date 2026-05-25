@@ -43,6 +43,8 @@ prometheus-client>=0.20
 # ── Security ──────────────────────────────────────────────────────────────────
 cryptography>=42.0
 argon2-cffi>=23.1       # argon2id password hashing (werkzeug picks it up automatically)
+zxcvbn>=4.4             # password strength scoring (used at signup + change-password)
+pyotp>=2.9              # TOTP / Google Authenticator support for 2FA
 
 # ── WSGI server ───────────────────────────────────────────────────────────────
 waitress>=3.0

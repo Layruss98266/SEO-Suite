@@ -101,3 +101,24 @@ Put nginx (or Caddy) in front for TLS.
 | `GET /health/ready` | Readiness probe — checks data dir is writable + sub-directories exist. | 200 healthy, 503 degraded (with per-check details in JSON body). |
 
 Configure your load balancer / orchestrator to use `/health/ready` for readiness gating and `/health` for liveness checks. On Render, the default health check path is `/`; you can override to `/health` in `render.yaml`'s `healthCheckPath`.
+
+## Prometheus metrics
+
+`GET /metrics` exposes counters, histograms, and gauges in the standard Prometheus text format.
+
+```
+# example scrape config
+scrape_configs:
+  - job_name: seo-suite
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['seo-suite.example.com:8080']
+```
+
+**Security:** the endpoint is intentionally unauthenticated so Prometheus scrapers don't need credentials. Restrict access at the network layer:
+
+* **Kubernetes:** NetworkPolicy allowing only the Prometheus pod
+* **nginx:** `location /metrics { allow 10.0.0.0/8; deny all; }`
+* **fly.io:** the internal `*.flycast` network is already private
+
+Available metrics include `http_requests_total`, `http_request_duration_seconds`, `audit_runs_total`, `indexing_runs_total`, plus live `audit_running` / `indexing_running` / `sse_subscribers` gauges. See `ARCHITECTURE.md` for the full list.

@@ -24,6 +24,7 @@ from datetime import datetime
 
 from flask import Blueprint, Response, jsonify, request
 
+from app.metrics import record_indexing_event
 from app.state import (
     ERROR_PREFIXES,
     ERROR_STATUSES,
@@ -263,13 +264,16 @@ def api_index_run():
             _index_queue.put(
                 {"type": "done", "report": str(html), "error_count": error_count}
             )
+            record_indexing_event("completed")
         except Exception as e:
             logger.error("Indexing thread error: %s", e, exc_info=True)
             _index_queue.put({"type": "error", "message": str(e)})
+            record_indexing_event("error")
         finally:
             with _lock:
                 _index_status["running"] = False
 
+    record_indexing_event("started")
     threading.Thread(target=run, daemon=True).start()
     return jsonify({"total": estimated_total, "started": True})
 
@@ -326,6 +330,7 @@ def api_index_cancel():
             "done": done,
         }
     )
+    record_indexing_event("cancelled")
     return jsonify({"cancelled": True})
 
 

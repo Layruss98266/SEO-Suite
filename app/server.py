@@ -22,6 +22,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from app import state
+from app.metrics import init_metrics
 from app.middleware import init_middleware
 from app.state import (
     CFG,
@@ -103,6 +104,11 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload cap
 
 # Security headers, CSRF, error handlers, Jinja csrf_token global.
 init_middleware(app)
+
+# Prometheus /metrics endpoint + per-request HTTP counters and histograms.
+# Returns 503 if prometheus-client isn't installed; restrict the route at the
+# network layer in production.
+init_metrics(app)
 
 # ── Sentry error tracking (Stage 1-D) ─────────────────────────────────────────
 # Opt-in: set SENTRY_DSN env var to activate. No-ops silently when absent so

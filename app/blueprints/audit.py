@@ -28,6 +28,7 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, Response, jsonify, request
 
+from app.metrics import record_audit_event
 from app.state import (
     CFG,
     MAX_AUDIT_RESULTS,
@@ -317,13 +318,16 @@ def api_audit_run():
                     "xlsx": str(excel_path) if xlsx_ok else "",
                 }
             )
+            record_audit_event("completed")
         except Exception as e:
             logger.error("Audit thread error: %s", e, exc_info=True)
             _audit_queue.put({"type": "error", "message": str(e)})
+            record_audit_event("error")
         finally:
             with _lock:
                 _audit_status["running"] = False
 
+    record_audit_event("started")
     threading.Thread(target=run, daemon=True).start()
     return jsonify({"total": estimated_total, "started": True, "workers": workers})
 
@@ -372,6 +376,7 @@ def api_audit_cancel():
             "done": done,
         }
     )
+    record_audit_event("cancelled")
     return jsonify({"cancelled": True})
 
 

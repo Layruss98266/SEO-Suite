@@ -311,11 +311,21 @@ A future SQLite migration is on the roadmap for `users.json`, `history.json`, an
   writable and that the `reports/` + `uploads/` sub-directories exist.
   Returns 200 + `{"status":"ok","checks":{...}}` when healthy, 503 +
   per-check failure details when degraded.
+- **Prometheus metrics** — `GET /metrics` (unauthenticated; restrict at the
+  network layer in prod). Exports:
+  - `http_requests_total{method,endpoint,status}` — counter
+  - `http_request_duration_seconds{method,endpoint}` — histogram
+  - `audit_runs_total{status="started|completed|cancelled|error"}` — counter
+  - `indexing_runs_total{status=...}` — counter
+  - `audit_running`, `indexing_running` — 0/1 gauges
+  - `sse_subscribers{stream="audit|indexing"}` — gauge
+  - Default Python process metrics (memory, GC, threads)
+
+  The endpoint refreshes gauges from live state on each scrape. Returns 503
+  if `prometheus-client` isn't installed (`pip install prometheus-client`).
 
 Future:
 
-- Prometheus `/metrics` endpoint (request counts, latencies, audit duration,
-  queue depth)
 - GSC credentials + Sentry DSN reachability in the readiness probe
 
 ---

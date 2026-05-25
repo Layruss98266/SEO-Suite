@@ -38,6 +38,7 @@ pydantic-settings>=2.1
 # ── Monitoring ────────────────────────────────────────────────────────────────
 sentry-sdk>=1.40
 python-json-logger>=2.0
+prometheus-client>=0.20
 
 # ── Security ──────────────────────────────────────────────────────────────────
 cryptography>=42.0

@@ -90,6 +90,7 @@ python main.py
 Open [http://localhost:8080](http://localhost:8080) in your browser.
 
 ## Documentation
+- **[`docs/OPERATOR_CHECKLIST.md`](docs/OPERATOR_CHECKLIST.md)** ⭐ start here for production: what YOU need to do (env vars, GSC service account, SMTP, HTTPS cookies, /metrics restriction, backups). 21 items tagged 🔴 must-do / 🟠 recommended / 🟢 optional.
 - `docs/SETUP_GUIDES.md`: step-by-step setup guides for all 11 API integrations (GSC, PageSpeed, Groq, SerpAPI, Moz, DataForSEO, Bing, SMTP, Slack, Teams, Sentry).
 - `docs/USECASE_GUIDES.md`: detailed walkthroughs for all 7 audit use cases — what each one checks, what API keys it needs, how to interpret results, and common fixes.
 - `DEPLOYMENT.md`: deployment guides for Render, Fly.io, Docker, and plain VPS.

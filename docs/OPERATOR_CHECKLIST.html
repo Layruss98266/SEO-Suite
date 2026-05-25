@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="SEO Suite operator checklist — every manual setup and ops task you need to do before going to production.">
+<title>SEO Suite — Operator Checklist</title>
+<style>
+:root {
+  --bg: #f7f8fa;
+  --bg-card: #ffffff;
+  --bg-code: #1e2430;
+  --bg-codeblock: #0f1419;
+  --text: #1a202c;
+  --text-muted: #64748b;
+  --text-inv: #e2e8f0;
+  --border: #e2e8f0;
+  --link: #6366f1;
+  --link-hover: #4f46e5;
+
+  --tier-critical: #dc2626;
+  --tier-critical-bg: #fef2f2;
+  --tier-critical-border: #fecaca;
+
+  --tier-recommended: #ea580c;
+  --tier-recommended-bg: #fff7ed;
+  --tier-recommended-border: #fed7aa;
+
+  --tier-user: #ca8a04;
+  --tier-user-bg: #fefce8;
+  --tier-user-border: #fde68a;
+
+  --tier-optional: #16a34a;
+  --tier-optional-bg: #f0fdf4;
+  --tier-optional-border: #bbf7d0;
+
+  --tier-auto: #0ea5e9;
+  --tier-auto-bg: #f0f9ff;
+  --tier-auto-border: #bae6fd;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-code: #0a0f1c;
+    --bg-codeblock: #0a0f1c;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --link: #818cf8;
+    --link-hover: #a5b4fc;
+
+    --tier-critical-bg: #1f1212;
+    --tier-critical-border: #5f2020;
+    --tier-recommended-bg: #1f1810;
+    --tier-recommended-border: #5f3d20;
+    --tier-user-bg: #1f1c10;
+    --tier-user-border: #5f5020;
+    --tier-optional-bg: #102017;
+    --tier-optional-border: #205f3a;
+    --tier-auto-bg: #101820;
+    --tier-auto-border: #20405f;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.header {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  padding: 32px 40px;
+  box-shadow: var(--shadow-md);
+}
+.header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+.header p { margin-top: 6px; opacity: 0.92; max-width: 800px; }
+.header .meta {
+  margin-top: 14px;
+  display: flex; gap: 16px; flex-wrap: wrap;
+  font-size: 13px;
+}
+.header .meta span {
+  background: rgba(255,255,255,0.18);
+  padding: 4px 12px; border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+/* ── Sidebar TOC ──────────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.sidebar h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin: 16px 8px 8px;
+}
+.sidebar h3:first-child { margin-top: 0; }
+.sidebar ol { list-style: none; }
+.sidebar a {
+  display: block;
+  padding: 6px 10px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  margin-bottom: 1px;
+  transition: all 0.12s;
+}
+.sidebar a:hover { background: var(--bg); color: var(--text); }
+.sidebar a.active { color: var(--link); border-left-color: var(--link); background: var(--bg); font-weight: 600; }
+.sidebar .badge {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.sidebar .badge.critical { background: var(--tier-critical); }
+.sidebar .badge.recommended { background: var(--tier-recommended); }
+.sidebar .badge.user { background: var(--tier-user); }
+.sidebar .badge.optional { background: var(--tier-optional); }
+.sidebar .badge.auto { background: var(--tier-auto); }
+
+/* ── Main content ─────────────────────────────────────────────────────── */
+.main {
+  padding: 40px;
+  max-width: 1000px;
+}
+.main h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 40px 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+}
+.main h2:first-child { margin-top: 0; }
+
+.task {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+  border-left-width: 5px;
+}
+
+.task.critical    { border-left-color: var(--tier-critical); }
+.task.recommended { border-left-color: var(--tier-recommended); }
+.task.user        { border-left-color: var(--tier-user); }
+.task.optional    { border-left-color: var(--tier-optional); }
+.task.auto        { border-left-color: var(--tier-auto); }
+
+.task-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.task-num {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+  color: #fff;
+}
+.task.critical    .task-num { background: var(--tier-critical); }
+.task.recommended .task-num { background: var(--tier-recommended); }
+.task.user        .task-num { background: var(--tier-user); }
+.task.optional    .task-num { background: var(--tier-optional); }
+
+.task-title {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 700;
+  padding-top: 4px;
+}
+.task-time {
+  flex-shrink: 0;
+  background: var(--bg);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.task-body { padding-left: 48px; }
+.task-body p { margin-bottom: 12px; }
+.task-body p:last-child { margin-bottom: 0; }
+.task-body strong { color: var(--text); font-weight: 700; }
+.task-body ol, .task-body ul { margin: 10px 0 14px 22px; }
+.task-body li { margin-bottom: 6px; }
+
+.label-why, .label-how {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.label-why { background: #fef3c7; color: #92400e; }
+.label-how { background: #dbeafe; color: #1e40af; }
+@media (prefers-color-scheme: dark) {
+  .label-why { background: #3a2812; color: #fbbf24; }
+  .label-how { background: #1a2d4a; color: #93c5fd; }
+}
+
+/* ── Code blocks ──────────────────────────────────────────────────────── */
+code {
+  font-family: "SF Mono", Consolas, Monaco, "Liberation Mono", monospace;
+  font-size: 13.5px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--bg-codeblock);
+  color: var(--text-inv);
+  padding: 16px 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  position: relative;
+}
+pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border: 0;
+  font-size: inherit;
+}
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+pre:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { background: rgba(255,255,255,0.2); }
+.copy-btn.copied { background: #16a34a; border-color: #16a34a; }
+
+/* ── Tables ───────────────────────────────────────────────────────────── */
+.task-body table, .main table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.task-body th, .main th {
+  background: var(--bg);
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.task-body td, .main td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.task-body tr:last-child td, .main tr:last-child td { border-bottom: 0; }
+.task-body td code, .main td code { font-size: 12.5px; }
+
+/* ── Auto features panel ──────────────────────────────────────────────── */
+.auto-panel {
+  background: var(--tier-auto-bg);
+  border: 1px solid var(--tier-auto-border);
+  border-left: 5px solid var(--tier-auto);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-top: 20px;
+}
+.auto-panel h2 {
+  border: 0;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--tier-auto);
+}
+.auto-panel .subtitle {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  font-size: 14.5px;
+}
+.auto-panel ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+}
+.auto-panel li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.auto-panel li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--tier-auto);
+  font-weight: 700;
+}
+
+/* ── Progress tracker ─────────────────────────────────────────────────── */
+.progress-bar {
+  position: sticky; top: 0;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  margin: -40px -40px 24px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.progress-bar .progress-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.progress-bar .progress-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  width: 0%;
+  transition: width 0.3s;
+}
+.progress-bar .progress-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 50px;
+  text-align: right;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+.footer {
+  margin-top: 60px;
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.footer a { color: var(--link); text-decoration: none; }
+.footer a:hover { color: var(--link-hover); text-decoration: underline; }
+
+/* ── Print styles ─────────────────────────────────────────────────────── */
+@media print {
+  .sidebar, .progress-bar, .copy-btn { display: none !important; }
+  .layout { display: block; max-width: none; }
+  .main { padding: 0; max-width: none; }
+  .task { box-shadow: none; page-break-inside: avoid; }
+  .header { background: #6366f1 !important; -webkit-print-color-adjust: exact; }
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main { padding: 24px; }
+  .header { padding: 24px; }
+  .header h1 { font-size: 22px; }
+  .task { padding: 18px; }
+  .task-body { padding-left: 0; }
+  .task-header { flex-wrap: wrap; }
+  .auto-panel ul { grid-template-columns: 1fr; }
+}
+
+a.anchor-link {
+  color: inherit;
+  text-decoration: none;
+}
+a.anchor-link:hover { color: var(--link); }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<header class="header">
+  <h1>SEO Suite — Operator Checklist</h1>
+  <p>
+    Every manual setup and operations task that SEO Suite can't do for itself. Codebase changes have
+    shipped a lot of new capabilities — several need out-of-band action by <strong>you</strong>
+    before they're useful in production.
+  </p>
+  <div class="meta">
+    <span>📋 21 tasks</span>
+    <span>🔄 Synced with commit <code>96d9878</code></span>
+    <span>🖨️ Print-friendly</span>
+  </div>
+</header>
+
+<!-- ── Sidebar TOC ──────────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <h3>🔴 Must-do</h3>
+  <ol>
+    <li><a href="#task-1"><span class="badge critical"></span>1. SEO_SUITE_SECRET</a></li>
+    <li><a href="#task-2"><span class="badge critical"></span>2. Stop using env admin</a></li>
+    <li><a href="#task-3"><span class="badge critical"></span>3. Persistent volume</a></li>
+    <li><a href="#task-4"><span class="badge critical"></span>4. GSC service account</a></li>
+    <li><a href="#task-5"><span class="badge critical"></span>5. SMTP configuration</a></li>
+  </ol>
+
+  <h3>🟠 Recommended</h3>
+  <ol start="6">
+    <li><a href="#task-6"><span class="badge recommended"></span>6. HTTPS cookies + HSTS</a></li>
+    <li><a href="#task-7"><span class="badge recommended"></span>7. Restrict /metrics</a></li>
+    <li><a href="#task-8"><span class="badge recommended"></span>8. Prometheus scrape</a></li>
+    <li><a href="#task-9"><span class="badge recommended"></span>9. Sentry</a></li>
+    <li><a href="#task-10"><span class="badge recommended"></span>10. JSON logs</a></li>
+  </ol>
+
+  <h3>🟡 Per-user</h3>
+  <ol start="11">
+    <li><a href="#task-11"><span class="badge user"></span>11. Enable 2FA</a></li>
+    <li><a href="#task-12"><span class="badge user"></span>12. Verify email</a></li>
+    <li><a href="#task-13"><span class="badge user"></span>13. Change password</a></li>
+  </ol>
+
+  <h3>🟢 Optional</h3>
+  <ol start="14">
+    <li><a href="#task-14"><span class="badge optional"></span>14. CI release signing</a></li>
+    <li><a href="#task-15"><span class="badge optional"></span>15. Log retention</a></li>
+    <li><a href="#task-16"><span class="badge optional"></span>16. SQLite backups</a></li>
+    <li><a href="#task-17"><span class="badge optional"></span>17. Narrow exceptions</a></li>
+    <li><a href="#task-18"><span class="badge optional"></span>18. Frontend modernization</a></li>
+    <li><a href="#task-19"><span class="badge optional"></span>19. Job queue</a></li>
+    <li><a href="#task-20"><span class="badge optional"></span>20. WebAuthn / passkeys</a></li>
+    <li><a href="#task-21"><span class="badge optional"></span>21. OAuth / SSO</a></li>
+  </ol>
+
+  <h3>📚 Reference</h3>
+  <ol>
+    <li><a href="#env-vars"><span class="badge auto"></span>Env var reference</a></li>
+    <li><a href="#automatic"><span class="badge auto"></span>What's automatic</a></li>
+    <li><a href="#staleness"><span class="badge auto"></span>Doc freshness</a></li>
+  </ol>
+</nav>
+
+<!-- ── Main content ─────────────────────────────────────────────────── -->
+<main class="main">
+
+<div class="progress-bar">
+  <span class="progress-label">📊 Your progress:</span>
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  <span class="progress-count" id="progress-count">0 / 13</span>
+</div>
+
+<!-- ─────────── TIER 1: CRITICAL ─────────── -->
+<h2 id="tier-critical">🔴 Before going to production (must-do)</h2>
+
+<section class="task critical" id="task-1">
+  <div class="task-header">
+    <div class="task-num">1</div>
+    <div class="task-title"><a class="anchor-link" href="#task-1">Set <code>SEO_SUITE_SECRET</code> to a stable value</a></div>
+    <div class="task-time">⏱ 1 min</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> Session cookies are signed with this. If missing, the app generates an ephemeral key on each restart and every login is invalidated.</p>
+    <p><span class="label-how">How</span></p>
+<pre><code>python -c "import secrets; print(secrets.token_hex(32))"
+# Copy the 64-char hex string into your hosting dashboard's env vars
+# Render: Dashboard → service → Environment → Add Variable
+# Fly:    fly secrets set SEO_SUITE_SECRET=&lt;value&gt;</code></pre>
+  </div>
+</section>
+
+<section class="task critical" id="task-2">
+  <div class="task-header">
+    <div class="task-num">2</div>
+    <div class="task-title"><a class="anchor-link" href="#task-2">Stop using the env admin (<code>SEO_SUITE_PASSWORD_HASH</code>)</a></div>
+    <div class="task-time">⏱ 5 min</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> That hash sits in environment variables — accessible via <code>ps aux</code>, <code>/proc/$pid/environ</code>, container logs, and any <code>.env</code> file accidentally committed to git. Every new release forces this user to set a per-user password on next login (the <code>must_rotate_password</code> flag in <code>/api/auth_status</code>).</p>
+    <p><span class="label-how">How</span></p>
+    <ol>
+      <li>Log in as the env admin one last time.</li>
+      <li>Create a real user account via <code>POST /api/users</code> (admin endpoint) or <code>/signup</code> if signups are enabled. Use a <strong>strong</strong> password — zxcvbn will reject weak ones automatically.</li>
+      <li>Verify the new user can log in and is admin.</li>
+      <li><strong>Remove <code>SEO_SUITE_PASSWORD_HASH</code></strong> from your env vars on the host.</li>
+      <li>Restart the app.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="task critical" id="task-3">
+  <div class="task-header">
+    <div class="task-num">3</div>
+    <div class="task-title"><a class="anchor-link" href="#task-3">Run the data directory on a persistent volume</a></div>
+    <div class="task-time">⏱ 10 min</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> Free Render and similar tiers have ephemeral disk. Reports, SQLite, uploads, and login history all disappear on each redeploy.</p>
+    <p><span class="label-how">How</span></p>
+    <ul>
+      <li><strong>Render:</strong> uncomment the <code>disk:</code> block in <code>render.yaml</code>, upgrade to <code>plan: starter</code>.</li>
+      <li><strong>Fly.io:</strong> <code>fly volumes create seo_suite_data --size 1</code> then ensure <code>fly.toml</code> has the mount mapping (it already does in the shipped config).</li>
+      <li><strong>Docker on a VPS:</strong> <code>-v seo_suite_data:/app/data</code></li>
+    </ul>
+  </div>
+</section>
+
+<section class="task critical" id="task-4">
+  <div class="task-header">
+    <div class="task-num">4</div>
+    <div class="task-title"><a class="anchor-link" href="#task-4">Generate a GSC service account</a></div>
+    <div class="task-time">⏱ ~15 min</div>
+  </div>
+  <div class="task-body">
+    <p>Only if you actually want Search Console data in audits. See full guide: <a href="SETUP_GUIDES.md">docs/SETUP_GUIDES.md</a> → "Google Search Console".</p>
+    <p><strong>Steps 1–6 are all on Google's side</strong> — no code changes here.</p>
+    <p>Step 5 (granting the service account access to your Search Console property) is the step <strong>nobody can skip</strong>. A service account without the property added gets <code>403 Forbidden</code> on every URL.</p>
+  </div>
+</section>
+
+<section class="task critical" id="task-5">
+  <div class="task-header">
+    <div class="task-num">5</div>
+    <div class="task-title"><a class="anchor-link" href="#task-5">Configure SMTP so auth emails work</a></div>
+    <div class="task-time">⏱ 10 min</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> The following features <strong>silently no-op without SMTP</strong>:</p>
+    <ul>
+      <li>Password reset (<code>POST /api/auth/request_password_reset</code>)</li>
+      <li>Email verification (<code>POST /api/auth/send_verification</code>)</li>
+      <li>New-device login notifications (sent on novel IP + UA combinations)</li>
+    </ul>
+    <p><span class="label-how">How</span> Set these in <code>config.json</code> (via Settings UI) or <code>.env</code>:</p>
+<pre><code>SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=you@gmail.com
+SMTP_PASSWORD=&lt;app-specific password — Gmail requires this&gt;
+EMAIL_FROM=you@gmail.com</code></pre>
+    <p>For Gmail you need an "App password" from your Google account security settings. SendGrid, Postmark, AWS SES all work too.</p>
+  </div>
+</section>
+
+<!-- ─────────── TIER 2: RECOMMENDED ─────────── -->
+<h2 id="tier-recommended">🟠 Recommended (production-ready)</h2>
+
+<section class="task recommended" id="task-6">
+  <div class="task-header">
+    <div class="task-num">6</div>
+    <div class="task-title"><a class="anchor-link" href="#task-6">Configure HTTPS-only cookies + HSTS</a></div>
+    <div class="task-time">⏱ 30 sec</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> On a real domain over HTTPS the session cookie should never flow over plain HTTP.</p>
+    <p><span class="label-how">How</span></p>
+<pre><code>SEO_SUITE_COOKIE_SECURE=1</code></pre>
+    <p>This also activates the HSTS response header. Render serves HTTPS by default, so set this there. Fly likewise.</p>
+  </div>
+</section>
+
+<section class="task recommended" id="task-7">
+  <div class="task-header">
+    <div class="task-num">7</div>
+    <div class="task-title"><a class="anchor-link" href="#task-7">Restrict <code>/metrics</code> and <code>/openapi.yaml</code></a></div>
+    <div class="task-time">⏱ 15 min</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> They're intentionally unauthenticated — Prometheus scrapers can't send a session cookie. Network-layer access control is required in production.</p>
+    <p><span class="label-how">How (nginx)</span></p>
+<pre><code>location /metrics {
+    allow 10.0.0.0/8;       # only internal scrapers
+    deny all;
+    proxy_pass http://seo-suite:8080;
+}</code></pre>
+    <p><span class="label-how">How (Kubernetes)</span> NetworkPolicy that allows only the Prometheus pod to hit port 8080's <code>/metrics</code> path.</p>
+    <p><span class="label-how">How (Fly.io)</span> The internal <code>*.flycast</code> network is private by default — point Prometheus at the <code>.flycast</code> address rather than the public one. Done.</p>
+  </div>
+</section>
+
+<section class="task recommended" id="task-8">
+  <div class="task-header">
+    <div class="task-num">8</div>
+    <div class="task-title"><a class="anchor-link" href="#task-8">Set up a Prometheus scrape job</a></div>
+    <div class="task-time">⏱ 30 min</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-how">How</span> Once <code>/metrics</code> is reachable, configure your monitoring stack:</p>
+<pre><code>scrape_configs:
+  - job_name: seo-suite
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['seo-suite.internal:8080']</code></pre>
+    <p>Then alert on:</p>
+    <ul>
+      <li><code>audit_runs_total{status="error"}</code> rate &gt; 0.1/min</li>
+      <li><code>indexing_running == 1 for 1h</code> (stuck run)</li>
+      <li><code>http_requests_total{status=~"5.."}</code> rate &gt; 0</li>
+      <li><code>sse_subscribers{stream="audit"}</code> consistently &gt; 0 with no audit running</li>
+    </ul>
+  </div>
+</section>
+
+<section class="task recommended" id="task-9">
+  <div class="task-header">
+    <div class="task-num">9</div>
+    <div class="task-title"><a class="anchor-link" href="#task-9">Set up Sentry for error tracking</a></div>
+    <div class="task-time">⏱ 10 min</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> Tracebacks in stdout are useless without aggregation.</p>
+    <p><span class="label-how">How</span></p>
+    <ol>
+      <li>Sign up at <a href="https://sentry.io" target="_blank" rel="noopener">sentry.io</a> (free tier covers small teams).</li>
+      <li>Create a Python project, copy the DSN.</li>
+      <li>Set <code>SENTRY_DSN=&lt;your-dsn&gt;</code> in env.</li>
+      <li>Optionally set <code>SEO_SUITE_ENV=production</code> so events are tagged.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="task recommended" id="task-10">
+  <div class="task-header">
+    <div class="task-num">10</div>
+    <div class="task-title"><a class="anchor-link" href="#task-10">Enable structured JSON logs</a></div>
+    <div class="task-time">⏱ 30 sec</div>
+  </div>
+  <div class="task-body">
+    <p><span class="label-why">Why</span> Lets your log pipeline (ELK / Datadog / Loki) query by field rather than regex.</p>
+    <p><span class="label-how">How</span></p>
+<pre><code>SEO_SUITE_LOG_JSON=1</code></pre>
+    <p>The library <code>python-json-logger</code> is already in <code>requirements.txt</code>.</p>
+  </div>
+</section>
+
+<!-- ─────────── TIER 3: PER-USER ─────────── -->
+<h2 id="tier-user">🟡 Per-user setup (each end-user does this themselves)</h2>
+
+<p style="color: var(--text-muted); font-size: 14.5px; margin-bottom: 8px;">
+  These are NOT operator tasks — users do them via the dashboard. Listed here so you can document them in your onboarding flow.
+</p>
+
+<section class="task user" id="task-11">
+  <div class="task-header">
+    <div class="task-num">11</div>
+    <div class="task-title"><a class="anchor-link" href="#task-11">Enable 2FA</a></div>
+    <div class="task-time">⏱ User flow</div>
+  </div>
+  <div class="task-body">
+    <ol>
+      <li>Settings → Security → "Enable two-factor authentication"</li>
+      <li>Scan QR (rendered client-side from the <code>provisioning_uri</code> returned by <code>POST /api/auth/totp/enroll</code>)</li>
+      <li>Enter the 6-digit code from their authenticator app</li>
+      <li><strong>Save the 10 backup codes</strong> — shown once, never again</li>
+    </ol>
+    <p>After this every login asks for a TOTP code on a second screen (<code>/login/totp</code>) after the password.</p>
+  </div>
+</section>
+
+<section class="task user" id="task-12">
+  <div class="task-header">
+    <div class="task-num">12</div>
+    <div class="task-title"><a class="anchor-link" href="#task-12">Verify email</a></div>
+    <div class="task-time">⏱ User flow</div>
+  </div>
+  <div class="task-body">
+    <ol>
+      <li>After signup, click the link in the verification email (or hit <code>POST /api/auth/send_verification</code> to re-send)</li>
+      <li>Visit <code>/verify_email?token=&lt;token&gt;</code> (or the dashboard handles this)</li>
+    </ol>
+    <p><code>POST /api/auth/verify_email</code> consumes the token and flips <code>users.email_verified = 1</code>.</p>
+  </div>
+</section>
+
+<section class="task user" id="task-13">
+  <div class="task-header">
+    <div class="task-num">13</div>
+    <div class="task-title"><a class="anchor-link" href="#task-13">Change password / use forgot-password</a></div>
+    <div class="task-time">⏱ User flow</div>
+  </div>
+  <div class="task-body">
+    <ul>
+      <li><strong>Logged in:</strong> Settings → Change password (<code>POST /api/auth/change_password</code>)</li>
+      <li><strong>Locked out:</strong> <code>/login</code> → "Forgot password?" link → <code>POST /api/auth/request_password_reset</code> → click email link → submit new password</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ─────────── TIER 4: OPTIONAL ─────────── -->
+<h2 id="tier-optional">🟢 Optional / future improvements</h2>
+
+<section class="task optional" id="task-14">
+  <div class="task-header">
+    <div class="task-num">14</div>
+    <div class="task-title"><a class="anchor-link" href="#task-14">Set up CI signing for releases</a></div>
+    <div class="task-time">⏱ 1-2 hr</div>
+  </div>
+  <div class="task-body">
+    <p>GitHub Actions already runs tests + lint + security scan. Add:</p>
+    <ul>
+      <li>Release tag triggers a Docker image build + push to ghcr.io</li>
+      <li>Image scanning via Trivy</li>
+      <li>SBOM generation via Syft</li>
+    </ul>
+  </div>
+</section>
+
+<section class="task optional" id="task-15">
+  <div class="task-header">
+    <div class="task-num">15</div>
+    <div class="task-title"><a class="anchor-link" href="#task-15">Configure log retention</a></div>
+    <div class="task-time">⏱ 15 min</div>
+  </div>
+  <div class="task-body">
+    <p>The <code>data/app.log</code> file grows without bound. Either:</p>
+    <ul>
+      <li>Use <code>logrotate</code> (Linux): drop a config in <code>/etc/logrotate.d/seo-suite</code></li>
+      <li>Use Docker's <code>--log-opt max-size=10m --log-opt max-file=3</code></li>
+      <li>Pipe to your central log system and don't write the file at all</li>
+    </ul>
+  </div>
+</section>
+
+<section class="task optional" id="task-16">
+  <div class="task-header">
+    <div class="task-num">16</div>
+    <div class="task-title"><a class="anchor-link" href="#task-16">Schedule SQLite backups</a></div>
+    <div class="task-time">⏱ 30 min</div>
+  </div>
+  <div class="task-body">
+    <p>The <code>data/seo_suite.db</code> is the new source of truth for users, sessions, login history, TOTP secrets, and auth tokens. A backup strategy:</p>
+<pre><code># Cron entry — runs nightly at 3am
+0 3 * * * sqlite3 /app/data/seo_suite.db \
+    ".backup /app/data/backups/seo_suite_$(date +\%Y\%m\%d).db" \
+  && find /app/data/backups -name 'seo_suite_*.db' -mtime +14 -delete</code></pre>
+    <p><code>.backup</code> is online — doesn't lock the DB or interrupt the app.</p>
+  </div>
+</section>
+
+<section class="task optional" id="task-17">
+  <div class="task-header">
+    <div class="task-num">17</div>
+    <div class="task-title"><a class="anchor-link" href="#task-17">Audit broad <code>except Exception</code> in <code>tools/</code></a></div>
+    <div class="task-time">⏱ 2 hr</div>
+  </div>
+  <div class="task-body">
+    <p>The recent sprints added <code>logger.exception()</code> to most silent ones, but the next pass should narrow them to specific exception types (<code>requests.Timeout</code>, <code>ValueError</code>, etc.). See <a href="../ARCHITECTURE.md">ARCHITECTURE.md</a> → "Open Architecture Questions".</p>
+  </div>
+</section>
+
+<section class="task optional" id="task-18">
+  <div class="task-header">
+    <div class="task-num">18</div>
+    <div class="task-title"><a class="anchor-link" href="#task-18">Frontend modernization</a></div>
+    <div class="task-time">⏱ 1-2 days</div>
+  </div>
+  <div class="task-body">
+    <p><code>app/static/js/dashboard.js</code> is ~3,000 lines of vanilla JS. Consider:</p>
+    <ul>
+      <li>Adding TypeScript (works alongside vanilla JS via JSDoc or full rewrite)</li>
+      <li>Splitting per-tab files</li>
+      <li>Building with Vite for tree-shaking and minification</li>
+    </ul>
+  </div>
+</section>
+
+<section class="task optional" id="task-19">
+  <div class="task-header">
+    <div class="task-num">19</div>
+    <div class="task-title"><a class="anchor-link" href="#task-19">Job queue (Celery / RQ)</a></div>
+    <div class="task-time">⏱ 1-2 days</div>
+  </div>
+  <div class="task-body">
+    <p>Currently audits run in in-process threads. If the server restarts mid-audit, work is lost. A job queue with Redis would give you:</p>
+    <ul>
+      <li>Survive restarts</li>
+      <li>Multi-instance deployments</li>
+      <li>Retry semantics for free</li>
+    </ul>
+    <p><em>Adds Redis as a deployment dependency.</em></p>
+  </div>
+</section>
+
+<section class="task optional" id="task-20">
+  <div class="task-header">
+    <div class="task-num">20</div>
+    <div class="task-title"><a class="anchor-link" href="#task-20">WebAuthn / passkeys</a></div>
+    <div class="task-time">⏱ 2 days</div>
+  </div>
+  <div class="task-body">
+    <p>Standard browser API, no password to lose. Library: <code>webauthn</code> on PyPI.</p>
+    <p>Best done after #11 (TOTP) is widely adopted by your users.</p>
+  </div>
+</section>
+
+<section class="task optional" id="task-21">
+  <div class="task-header">
+    <div class="task-num">21</div>
+    <div class="task-title"><a class="anchor-link" href="#task-21">OAuth / SSO (Google / GitHub / Microsoft)</a></div>
+    <div class="task-time">⏱ 1 day / provider</div>
+  </div>
+  <div class="task-body">
+    <p>Table stakes for SaaS. Library: <code>authlib</code> on PyPI.</p>
+  </div>
+</section>
+
+<!-- ─────────── REFERENCE: ENV VARS ─────────── -->
+<h2 id="env-vars">📚 Quick reference: critical env vars</h2>
+<p style="color: var(--text-muted); margin-bottom: 16px;">
+  These must be set in production for the corresponding feature to work.
+</p>
+<table>
+  <thead>
+    <tr><th>Env var</th><th>Required for</th><th>Default</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>SEO_SUITE_SECRET</code></td><td>Session cookies surviving restart</td><td>random ephemeral (warns loudly)</td></tr>
+    <tr><td><code>SEO_SUITE_DATA_DIR</code></td><td>Where SQLite + reports + uploads live</td><td><code>./data</code> (relative to project)</td></tr>
+    <tr><td><code>SEO_SUITE_COOKIE_SECURE</code></td><td>HTTPS-only cookies + HSTS</td><td>off</td></tr>
+    <tr><td><code>SENTRY_DSN</code></td><td>Error aggregation</td><td>off</td></tr>
+    <tr><td><code>SEO_SUITE_LOG_JSON</code></td><td>JSON-formatted logs</td><td>text format</td></tr>
+    <tr><td><code>SEO_SUITE_USERS_BACKEND</code></td><td><code>sqlite</code> (default) or <code>json</code> (rollback)</td><td><code>sqlite</code></td></tr>
+    <tr><td><code>SEO_SUITE_SKIP_ENV_ADMIN_ROTATION</code></td><td>Suppress the "rotate me!" banner</td><td>off</td></tr>
+    <tr><td><code>SEO_SUITE_DISABLE_ZXCVBN</code></td><td>Skip password-strength check</td><td>off (zxcvbn active)</td></tr>
+    <tr><td><code>SEO_SUITE_DISABLE_HIBP</code></td><td>Skip breach lookup at signup</td><td>off (HIBP active)</td></tr>
+    <tr><td><code>SEO_SUITE_FORCE_AUTH</code></td><td>Require auth even with zero users</td><td>auto-on for Render</td></tr>
+  </tbody>
+</table>
+<p style="margin-top: 12px; color: var(--text-muted); font-size: 14px;">
+  Everything else (API keys for PageSpeed, SerpAPI, Moz, DataForSEO, Bing, Groq) is optional — the features degrade gracefully when absent.
+</p>
+
+<!-- ─────────── AUTOMATIC PANEL ─────────── -->
+<div class="auto-panel" id="automatic">
+  <h2>✨ What the codebase does for you automatically</h2>
+  <p class="subtitle">You <strong>do not</strong> need to do any of these manually — they're hooked into the code path.</p>
+  <ul>
+    <li>argon2id hashing of new passwords (legacy scrypt still verifies)</li>
+    <li>zxcvbn + HIBP rejection of weak/breached passwords</li>
+    <li>Account lockout after 10 failed logins in 15 minutes</li>
+    <li>SQLite auto-migration from <code>users.json</code> on first read</li>
+    <li>Login history pruning (90-day retention, sweeps on each write)</li>
+    <li>Expired session cleanup (sweeps on list)</li>
+    <li><code>/health/ready</code> probes the writable data dir</li>
+    <li>Prometheus metric refresh on each scrape</li>
+    <li>argon2 opportunistic upgrade for legacy scrypt users</li>
+    <li>Session creation on login + revocation on logout / pw change</li>
+    <li>New-device login notification email (when SMTP configured)</li>
+    <li>Env admin "must rotate" banner on first login</li>
+  </ul>
+</div>
+
+<!-- ─────────── STALENESS ─────────── -->
+<h2 id="staleness">🕒 When this doc is out of date</h2>
+<p>Last updated to match commit <code>96d9878</code>. If the codebase has moved on:</p>
+<pre><code>git log --since="last operator checklist update" --oneline</code></pre>
+<p>…and update the relevant sections. CI never enforces this doc, so it relies on human attention to stay accurate.</p>
+
+<footer class="footer">
+  <p>SEO Suite Operator Checklist · <a href="https://github.com/Surya8991/SEO-Suite">github.com/Surya8991/SEO-Suite</a> · Print-friendly via your browser's Print dialog</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+// ── Copy-to-clipboard buttons on every <pre>.
+document.querySelectorAll('pre').forEach(pre => {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(pre.querySelector('code').textContent);
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1500);
+    } catch (e) {
+      btn.textContent = 'Failed';
+    }
+  });
+  pre.appendChild(btn);
+});
+
+// ── Active-section highlight in the sidebar TOC.
+const links = document.querySelectorAll('.sidebar a[href^="#"]');
+const sections = Array.from(links).map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const linkByHref = Object.fromEntries(Array.from(links).map(a => [a.getAttribute('href').slice(1), a]));
+function setActive() {
+  let current = null;
+  const scrollY = window.scrollY + 100;
+  for (const sec of sections) {
+    if (sec.offsetTop <= scrollY) current = sec.id;
+  }
+  links.forEach(a => a.classList.remove('active'));
+  if (current && linkByHref[current]) linkByHref[current].classList.add('active');
+}
+window.addEventListener('scroll', setActive, { passive: true });
+setActive();
+
+// ── Progress tracker: click a task to mark it done (stored in localStorage).
+const TRACKABLE_TASKS = [
+  'task-1','task-2','task-3','task-4','task-5',
+  'task-6','task-7','task-8','task-9','task-10',
+  'task-14','task-15','task-16'
+]; // 13 trackable items (skips per-user + frontend / queue / passkey / oauth)
+
+const STORAGE_KEY = 'seo-suite-operator-progress';
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); } catch(e) {}
+
+function renderProgress() {
+  const total = TRACKABLE_TASKS.length;
+  const completed = TRACKABLE_TASKS.filter(id => done.has(id)).length;
+  document.getElementById('progress-fill').style.width = `${(completed / total) * 100}%`;
+  document.getElementById('progress-count').textContent = `${completed} / ${total}`;
+}
+
+TRACKABLE_TASKS.forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const header = el.querySelector('.task-header');
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = done.has(id);
+  checkbox.title = 'Mark this task as done (saved in your browser)';
+  checkbox.style.cssText = 'width:20px;height:20px;cursor:pointer;margin-right:4px;accent-color:var(--link);';
+  checkbox.addEventListener('change', e => {
+    if (e.target.checked) {
+      done.add(id);
+      el.style.opacity = '0.55';
+    } else {
+      done.delete(id);
+      el.style.opacity = '';
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(done)));
+    renderProgress();
+  });
+  header.insertBefore(checkbox, header.firstChild);
+  if (done.has(id)) el.style.opacity = '0.55';
+});
+
+renderProgress();
+</script>
+</body>
+</html>

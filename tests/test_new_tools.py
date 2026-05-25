@@ -48,7 +48,7 @@ class TestGscPositionTracker:
 
     def test_gsc_disabled_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG, "gsc": {"enabled": False}})
+        monkeypatch.setitem(srv.CFG, "gsc", {"enabled": False})
         r = client.post("/api/tools/gsc_position_tracker",
                         json={"url": "https://example.com/page",
                               "site_url": "https://example.com/"})
@@ -69,7 +69,7 @@ class TestGscCtrAnalyzer:
 
     def test_gsc_disabled_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG, "gsc": {"enabled": False}})
+        monkeypatch.setitem(srv.CFG, "gsc", {"enabled": False})
         r = client.post("/api/tools/gsc_ctr_analyzer",
                         json={"site_url": "https://example.com/"})
         assert r.status_code == 400
@@ -87,7 +87,7 @@ class TestGscCoverageErrors:
 
     def test_gsc_disabled_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG, "gsc": {"enabled": False}})
+        monkeypatch.setitem(srv.CFG, "gsc", {"enabled": False})
         r = client.post("/api/tools/gsc_coverage_errors",
                         json={"site_url": "https://example.com/"})
         assert r.status_code == 400
@@ -105,18 +105,20 @@ class TestGscSitemapsStatus:
 
     def test_gsc_disabled_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG, "gsc": {"enabled": False}})
+        monkeypatch.setitem(srv.CFG, "gsc", {"enabled": False})
         r = client.post("/api/tools/gsc_sitemaps_status",
                         json={"site_url": "https://example.com/"})
         assert r.status_code == 400
 
     def test_gsc_enabled_but_bad_creds_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG, "gsc": {"enabled": True,
-                                                              "credentials_file": "/nonexistent.json"}})
+        from app.blueprints import tools as tools_bp
+        monkeypatch.setitem(srv.CFG, "gsc",
+                            {"enabled": True, "credentials_file": "/nonexistent.json"})
         def _bad_build():
             raise FileNotFoundError("no creds")
-        monkeypatch.setattr(srv, "build_gsc_service", _bad_build)
+        # Patch the blueprint's bound name, not server's, since the route lives there.
+        monkeypatch.setattr(tools_bp, "build_gsc_service", _bad_build)
         r = client.post("/api/tools/gsc_sitemaps_status",
                         json={"site_url": "https://example.com/"})
         assert r.status_code == 400
@@ -177,7 +179,7 @@ class TestAuditPhase:
 
     def test_phase2_without_api_key_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG, "pagespeed_api_key": ""})
+        monkeypatch.setitem(srv.CFG, "pagespeed_api_key", "")
         r = client.post("/api/audit/phase/2",
                         json={"url": "https://example.com/"})
         assert r.status_code == 400
@@ -185,7 +187,7 @@ class TestAuditPhase:
 
     def test_phase3_without_gsc_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG, "gsc": {"enabled": False}})
+        monkeypatch.setitem(srv.CFG, "gsc", {"enabled": False})
         r = client.post("/api/audit/phase/3",
                         json={"url": "https://example.com/"})
         assert r.status_code == 400
@@ -193,12 +195,9 @@ class TestAuditPhase:
 
     def test_phase4_without_credentials_returns_400(self, client, monkeypatch):
         import app.server as srv
-        monkeypatch.setattr(srv, "CFG", {**srv.CFG,
-                                          "dataforseo_login": "",
-                                          "dataforseo_password": "",
-                                          "moz_access_id": "",
-                                          "moz_secret_key": "",
-                                          "serpapi_key": ""})
+        for k in ("dataforseo_login", "dataforseo_password",
+                  "moz_access_id", "moz_secret_key", "serpapi_key"):
+            monkeypatch.setitem(srv.CFG, k, "")
         r = client.post("/api/audit/phase/4",
                         json={"url": "https://example.com/"})
         assert r.status_code == 400

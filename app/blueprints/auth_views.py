@@ -44,6 +44,33 @@ logger = logging.getLogger(__name__)
 bp = Blueprint("auth_views", __name__)
 
 
+@bp.before_app_request
+def _enforce_server_side_session():
+    """Drop the cookie session if its server-side row no longer exists.
+
+    Triggered on every request (across all blueprints). If the user has an
+    ``authed=True`` cookie but the DB row was deleted (logout from another
+    device, password change, admin revoke), we clear the cookie so the next
+    auth check returns 401.
+
+    No-op when ``sid`` is missing (e.g. user logged in before the
+    server-side session feature shipped, or the SQLite backend is disabled).
+    """
+    sid = session.get("sid")
+    if not sid or not session.get("authed"):
+        return
+    if not _use_sqlite_login_history():
+        return
+    try:
+        from core import db as _db
+        from core.auth import _USERS_DB
+
+        if _db.validate_session(_USERS_DB, sid) is None:
+            session.clear()
+    except Exception as exc:
+        logger.debug("session validation failed: %s", exc)
+
+
 # ── Login ─────────────────────────────────────────────────────────────────────
 @bp.route("/login", methods=["GET", "POST"])
 def login():
@@ -72,6 +99,28 @@ def login():
             session["username"] = identity["username"]
             session["is_admin"] = identity["is_admin"]
             session.permanent = True
+            if identity.get("must_rotate_password"):
+                session["must_rotate_password"] = True
+
+            # Server-side session row. The cookie is a signed pointer; the
+            # row controls revocation. If creation fails (e.g. SQLite
+            # backend disabled or unavailable), fall through with cookie-only
+            # auth so we don't lock the user out — they just can't use the
+            # "sign out everywhere" UI.
+            try:
+                if _use_sqlite_login_history():
+                    from core import db as _db
+                    from core.auth import _USERS_DB
+
+                    sid = _db.create_session(
+                        _USERS_DB,
+                        identity["username"],
+                        request.remote_addr,
+                        request.user_agent.string if request.user_agent else None,
+                    )
+                    session["sid"] = sid
+            except Exception as exc:
+                logger.warning("Could not create server-side session row: %s", exc)
             # Honour ?next= so login_required can bounce users back to their
             # original destination (e.g. /app). Validate strictly: must be a
             # relative path starting with / and must not start with // (which
@@ -129,8 +178,106 @@ def signup():
 # ── Logout ────────────────────────────────────────────────────────────────────
 @bp.route("/logout", methods=["POST", "GET"])
 def logout():
+    """Clear the Flask session cookie AND delete the server-side session row.
+
+    The row deletion is the key part: even if a stolen cookie is replayed
+    after logout, the session lookup will return None and the request fails.
+    """
+    sid = session.get("sid")
+    if sid and _use_sqlite_login_history():
+        try:
+            from core import db as _db
+            from core.auth import _USERS_DB
+
+            _db.delete_session(_USERS_DB, sid)
+        except Exception as exc:
+            logger.debug("delete_session on logout failed: %s", exc)
     session.clear()
     return ("", 302, {"Location": "/login"})
+
+
+# ── Server-side session management ───────────────────────────────────────────
+@bp.route("/api/auth/sessions", methods=["GET"])
+@login_required
+def api_list_sessions():
+    """List the current user's active sessions across all devices."""
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+
+    from core import db as _db
+    from core.auth import _USERS_DB
+
+    me = session.get("username") or ""
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+
+    rows = _db.list_sessions(_USERS_DB, me)
+    current_sid = session.get("sid")
+    # Annotate which row is the requesting session so the UI can mark it.
+    for r in rows:
+        r["is_current"] = r["sid"] == current_sid
+        # Drop the sid from rows that aren't current so it can't be replayed
+        # against /api/auth/sessions/<sid>/revoke from a JS leak. Current
+        # row keeps its sid because the user needs it for "sign out".
+        if not r["is_current"]:
+            r.pop("sid", None)
+    return jsonify({"ok": True, "rows": rows, "count": len(rows)})
+
+
+@bp.route("/api/auth/sessions/revoke", methods=["POST"])
+@login_required
+def api_revoke_session():
+    """Revoke a specific session by SID. Body: {sid: "..."}.
+
+    Users can only revoke their own sessions. Admins can revoke anyone's
+    session by passing the SID directly (we still verify the target row
+    belongs to the requested user-id).
+    """
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+
+    from core import db as _db
+    from core.auth import _USERS_DB
+
+    me = session.get("username") or ""
+    am_admin = bool(session.get("is_admin"))
+    data = request.get_json(force=True) or {}
+    target_sid = (data.get("sid") or "").strip()
+    if not target_sid:
+        return jsonify({"ok": False, "error": "sid required"}), 400
+
+    # Verify ownership unless caller is admin.
+    if not am_admin:
+        rows = _db.list_sessions(_USERS_DB, me)
+        if not any(r["sid"] == target_sid for r in rows):
+            return jsonify({"ok": False, "error": "Session not found"}), 404
+
+    deleted = _db.delete_session(_USERS_DB, target_sid)
+    if not deleted:
+        return jsonify({"ok": False, "error": "Session not found"}), 404
+    return jsonify({"ok": True, "revoked": target_sid})
+
+
+@bp.route("/api/auth/sessions/revoke_others", methods=["POST"])
+@login_required
+def api_revoke_other_sessions():
+    """Sign out everywhere EXCEPT the current device.
+
+    Useful after a "did someone else log in?" alert — flushes every session
+    you can't see in front of you.
+    """
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Requires SQLite backend"}), 503
+
+    from core import db as _db
+    from core.auth import _USERS_DB
+
+    me = session.get("username") or ""
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+    current_sid = session.get("sid")
+    deleted = _db.delete_sessions_for_user(_USERS_DB, me, except_sid=current_sid)
+    return jsonify({"ok": True, "revoked": deleted})
 
 
 # ── User management (admin only) ──────────────────────────────────────────────
@@ -362,6 +509,29 @@ def api_change_password():
         # because those are clearly NOT a credential-validation result.
         status = 400 if err and "password" not in err.lower() or "differ" in (err or "").lower() else 401
         return jsonify({"ok": False, "error": err}), status
+
+    # Security best practice: invalidate every OTHER session on password
+    # change. If the password change is happening because the user noticed
+    # a suspicious sign-in, the attacker's cookie stops working immediately.
+    # The current device keeps its session so the UI doesn't have to log
+    # them out.
+    if _use_sqlite_login_history():
+        try:
+            from core import db as _db
+            from core.auth import _USERS_DB
+
+            current_sid = session.get("sid")
+            revoked = _db.delete_sessions_for_user(_USERS_DB, me, except_sid=current_sid)
+            return jsonify(
+                {
+                    "ok": True,
+                    "message": "Password updated",
+                    "other_sessions_revoked": revoked,
+                }
+            )
+        except Exception as exc:
+            logger.debug("failed to revoke other sessions: %s", exc)
+
     return jsonify({"ok": True, "message": "Password updated"})
 
 

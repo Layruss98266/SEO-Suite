@@ -39,7 +39,7 @@ from typing import Iterator
 logger = logging.getLogger(__name__)
 
 # Bumped when the schema changes — guides automatic ALTER TABLE migrations.
-_SCHEMA_VERSION = 3
+_SCHEMA_VERSION = 4
 
 # Login history retention — attempts older than this are pruned at write time.
 # 90 days is a sensible default: long enough for audit / forensics, short
@@ -142,6 +142,28 @@ def _ensure_schema(db_path: Path) -> None:
                     ON auth_tokens(token_hash);
                 CREATE INDEX IF NOT EXISTS idx_auth_tokens_username_kind
                     ON auth_tokens(username, kind);
+
+                -- Server-side sessions. The session_id Flask puts in the
+                -- cookie is just an opaque pointer into this table; logout
+                -- here deletes the row, making the cookie immediately
+                -- useless even though the cookie itself stays valid in the
+                -- browser. Lets admins (and the user themselves) revoke a
+                -- specific device's access without invalidating every
+                -- session globally.
+                CREATE TABLE IF NOT EXISTS sessions (
+                    sid          TEXT PRIMARY KEY,
+                    username     TEXT NOT NULL,
+                    created_at   TEXT NOT NULL,
+                    last_seen_at TEXT NOT NULL,
+                    expires_at   TEXT NOT NULL,
+                    ip           TEXT,
+                    user_agent   TEXT
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_sessions_username
+                    ON sessions(username);
+                CREATE INDEX IF NOT EXISTS idx_sessions_expires
+                    ON sessions(expires_at);
                 """
             )
             # Migrate existing v1 databases that don't have the new user
@@ -622,6 +644,160 @@ def get_email_verified(db_path: Path, username: str) -> bool:
             return bool(row and row["email_verified"])
     except sqlite3.Error:
         return False
+
+
+# ── Sessions (server-side, revocable) ───────────────────────────────────────
+# We let Flask manage the signed cookie + secret rotation but pin every
+# request to a database row keyed by a server-issued opaque session_id.
+# Logging out (or an admin revoking a session) deletes the row, making the
+# cookie immediately useless. The session is *also* expired by the cookie's
+# own lifetime — both must be valid for a request to succeed.
+
+_SESSION_TTL_DAYS = 30
+
+
+def create_session(
+    db_path: Path,
+    username: str,
+    ip: str | None,
+    user_agent: str | None,
+    ttl_days: int = _SESSION_TTL_DAYS,
+) -> str:
+    """Mint a new session row. Returns the opaque session ID.
+
+    The session ID is base64url, ~32 bytes of entropy. Caller is responsible
+    for putting it in the Flask session cookie under the agreed key.
+    """
+    import secrets
+    from datetime import datetime, timedelta, timezone
+
+    _ensure_schema(db_path)
+    sid = secrets.token_urlsafe(24)
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=ttl_days)
+    try:
+        with _connect(db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO sessions
+                    (sid, username, created_at, last_seen_at, expires_at, ip, user_agent)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    sid,
+                    username,
+                    now.isoformat(),
+                    now.isoformat(),
+                    expires.isoformat(),
+                    ip,
+                    (user_agent or "")[:512] or None,
+                ),
+            )
+    except sqlite3.Error as e:
+        logger.error("create_session failed: %s", e)
+        raise
+    return sid
+
+
+def validate_session(db_path: Path, sid: str) -> str | None:
+    """Return the username for *sid* if the session is live and not expired.
+
+    Also touches ``last_seen_at`` for activity tracking. Returns None for
+    unknown / expired sessions.
+    """
+    from datetime import datetime, timezone
+
+    if not sid:
+        return None
+    _ensure_schema(db_path)
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        with _connect(db_path) as conn:
+            row = conn.execute(
+                "SELECT username, expires_at FROM sessions WHERE sid = ?",
+                (sid,),
+            ).fetchone()
+            if row is None:
+                return None
+            if row["expires_at"] < now:
+                # Best-effort cleanup of the expired row so it doesn't
+                # accumulate indefinitely.
+                conn.execute("DELETE FROM sessions WHERE sid = ?", (sid,))
+                return None
+            conn.execute(
+                "UPDATE sessions SET last_seen_at = ? WHERE sid = ?", (now, sid)
+            )
+            return row["username"]
+    except sqlite3.Error as e:
+        logger.error("validate_session failed: %s", e)
+        return None
+
+
+def delete_session(db_path: Path, sid: str) -> bool:
+    """Revoke a single session. Returns True if a row was deleted."""
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            cur = conn.execute("DELETE FROM sessions WHERE sid = ?", (sid,))
+            return cur.rowcount > 0
+    except sqlite3.Error:
+        return False
+
+
+def delete_sessions_for_user(db_path: Path, username: str, except_sid: str | None = None) -> int:
+    """Revoke every active session for *username* (optionally keeping one).
+
+    Used by "sign out everywhere" and by the password-change flow (a stolen
+    cookie should stop working as soon as the password is rotated).
+    """
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            if except_sid:
+                cur = conn.execute(
+                    "DELETE FROM sessions WHERE username = ? AND sid != ?",
+                    (username, except_sid),
+                )
+            else:
+                cur = conn.execute("DELETE FROM sessions WHERE username = ?", (username,))
+            return cur.rowcount
+    except sqlite3.Error:
+        return 0
+
+
+def list_sessions(db_path: Path, username: str) -> list[dict]:
+    """Return all live sessions for a user, newest first."""
+    from datetime import datetime, timezone
+
+    _ensure_schema(db_path)
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        with _connect(db_path) as conn:
+            # Drop expired rows on read so the list stays clean.
+            conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now,))
+            rows = conn.execute(
+                """
+                SELECT sid, username, created_at, last_seen_at, expires_at, ip, user_agent
+                  FROM sessions
+                 WHERE username = ?
+                 ORDER BY last_seen_at DESC
+                """,
+                (username,),
+            ).fetchall()
+    except sqlite3.Error:
+        return []
+    return [
+        {
+            "sid": r["sid"],
+            "username": r["username"],
+            "created_at": r["created_at"],
+            "last_seen_at": r["last_seen_at"],
+            "expires_at": r["expires_at"],
+            "ip": r["ip"],
+            "user_agent": r["user_agent"],
+        }
+        for r in rows
+    ]
 
 
 # Test helpers — clear the initialised cache so a fresh tmp_path is picked up.

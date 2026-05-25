@@ -1,14 +1,18 @@
 """
-SEO Suite — Flask app, all HTTP routes, and shared run-state (monolith).
+SEO Suite — Flask app construction and all HTTP routes.
 
 This module owns the Flask ``app`` instance, every ``@app.route`` handler, and
-the in-process shared state (SSE subscriber queues, run status dicts, locks).
-``main.py`` imports ``app`` from here directly; ``app/__init__.create_app`` is a
-thin factory that returns this same configured app for WSGI deployment.
+the rate limiter. Shared in-process state (SSE queues, run status, locks) and
+the path/helper utilities live in :mod:`app.state`. Cross-cutting middleware
+(security headers, CSRF, error handlers) lives in :mod:`app.middleware`.
 
-A future split into Flask blueprints would extract route groups from here, but
-that migration has not been started — there is intentionally no separate state
-module, so all shared mutable state lives in this file under ``_lock``/``_sub_lock``.
+``main.py`` imports ``app`` from here directly; ``app/__init__.create_app`` is
+a thin factory that returns this same configured app for WSGI deployment.
+
+A future incremental refactor will extract route groups into Flask blueprints
+under ``app/blueprints/``. The state/middleware split here is the prerequisite
+that makes that mechanical — every helper a route needs is already importable
+from a small module instead of being tangled in this file.
 """
 
 import json
@@ -16,17 +20,70 @@ import logging
 import os
 import queue
 import re
-import secrets
 import threading
-import time
 from datetime import datetime
-from pathlib import Path
 from urllib.parse import urlparse
 
 from flask import Flask, Response, jsonify, render_template, request, session
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
+from app import state
+from app.middleware import generate_csrf_token, init_middleware
+from app.state import (
+    _broadcast_audit,
+    _broadcast_index,
+    CFG,
+    CONFIG_PATH,
+    DATA_DIR,
+    ERROR_PREFIXES,
+    ERROR_STATUSES,
+    MAX_AUDIT_RESULTS,
+    PROFILES_PATH,
+    PROJECT_ROOT,
+    REPORTS_DIR,
+    STATIC_DIR,
+    TEMPLATE_DIR,
+    UPLOAD_DIR,
+    _REPORT_STEM_RE,
+    _audit_cancel,
+    _audit_full_results,
+    _audit_partial,
+    _audit_paused,
+    _audit_queue,
+    _audit_status,
+    _audit_subscribers,
+    _cleanup_subscribers,
+    _index_cancel,
+    _index_paused,
+    _index_queue,
+    _index_status,
+    _index_subscribers,
+    _int,
+    _last_index_run,
+    _lock,
+    _norm_url,
+    _pdf_semaphore,
+    _reject_unsafe,
+    _replace_last_index_run,
+    _require_public_url,
+    _reset_last_index_run,
+    _safe_public_url_list,
+    _safe_report_path,
+    _safe_upload_path,
+    _sanitize_csv,
+    _snapshot_last_index_run,
+    _sub_lock,
+    _subscribe,
+    _unsubscribe,
+    _update_last_index_run,
+)
+
+# Note: ``_audit_status``, ``_index_status``, and ``CFG`` are imported directly
+# (not via ``state.X``) because routes only ever MUTATE them in place
+# (``.update(...)``, ``.clear()``+``.update(...)``). Mutation preserves the
+# dict identity, so all importers — including tests that monkey-patch
+# ``server._audit_status`` — see the same object.
 from core.auth import (
     LOGIN_PAGE,
     SIGNUP_PAGE,
@@ -57,87 +114,14 @@ from core.security import esc, is_safe_url, validate_public_url
 from core.version import VERSION
 from core.seo_audit import audit_single_url, generate_excel_report, generate_html_report
 
-# Cap on per-run audit result lists so a huge sitemap can't blow up memory.
-# Past this point new results are dropped from the live progress feed; the
-# completed report still gets every URL written to disk.
-MAX_AUDIT_RESULTS = 5000
-
-
-def _require_public_url(value: str, field_name: str = "url"):
-    """Validate `value` as a public URL. Returns (url, None) on success or
-    (None, (response, status)) on failure — ready to be `return`ed from a route.
-    """
-    try:
-        return validate_public_url(value), None
-    except ValueError as exc:
-        return None, (jsonify({"error": f"Invalid {field_name}: {exc}"}), 400)
-
-
-def _safe_public_url_list(raw: str) -> list[str]:
-    """Split a comma-separated URL list and drop any URL that fails SSRF check."""
-    urls = []
-    for part in raw.split(","):
-        candidate = part.strip()
-        if not candidate:
-            continue
-        try:
-            urls.append(validate_public_url(candidate))
-        except ValueError as exc:
-            logger.warning("Blocked URL in list %s: %s", candidate, exc)
-    return urls
-
-
-def _norm_url(url: str) -> str:
-    """Prepend https:// if the user omitted a scheme (e.g. 'example.com')."""
-    if url and not url.startswith(("http://", "https://")):
-        return f"https://{url}"
-    return url
-
-
-def _reject_unsafe(url: str):
-    """Return a 400 JSON response if *url* fails the SSRF safety check, else None.
-
-    The tool endpoints all accept a URL from the request body and fetch it
-    server-side. Without this guard, anyone reaching the server can pivot
-    requests to internal services (cloud metadata, the dashboard's own
-    delete_all endpoint, etc.). See core.security.is_safe_url for the policy.
-    """
-    ok, reason = is_safe_url(url)
-    if ok:
-        return None
-    return jsonify({"ok": False, "error": f"URL refused: {reason}"}), 400
-
-
-def _int(data: dict, key: str, default: int, lo: int, hi: int) -> int:
-    """Safely parse an integer from a request-data dict, clamped to [lo, hi].
-
-    Returns *default* (clamped) when the key is absent, None, or not
-    convertible to int — preventing bare ``int()`` calls from raising
-    ValueError / TypeError and producing HTTP 500 responses.
-    """
-    try:
-        return max(lo, min(hi, int(data.get(key, default))))
-    except (TypeError, ValueError):
-        return max(lo, min(hi, default))
-
-
-TEMPLATE_DIR = Path(__file__).parent / "templates"
-STATIC_DIR   = Path(__file__).parent / "static"
-
-# Anchor every filesystem path to the project root so the server behaves the
-# same regardless of cwd. SEO_SUITE_DATA_DIR lets a host point data at a writable
-# mount (e.g. a Render/Fly volume) without code changes.
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-_DATA_BASE = Path(os.environ.get("SEO_SUITE_DATA_DIR", PROJECT_ROOT / "data"))
-
 # ── Logging ───────────────────────────────────────────────────────────────────
 # File logging is best-effort: on a read-only filesystem (e.g. a serverless
 # host) the FileHandler is skipped so import never crashes. Stream logging
 # always works and is what container/PaaS log collectors read anyway.
 _log_handlers: list[logging.Handler] = [logging.StreamHandler()]
 try:
-    _DATA_BASE.mkdir(parents=True, exist_ok=True)
-    _log_handlers.insert(0, logging.FileHandler(_DATA_BASE / "app.log", encoding="utf-8"))
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _log_handlers.insert(0, logging.FileHandler(DATA_DIR / "app.log", encoding="utf-8"))
 except OSError:
     pass  # read-only FS — stream logging only
 logging.basicConfig(
@@ -147,8 +131,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ── App construction ──────────────────────────────────────────────────────────
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR), static_folder=str(STATIC_DIR))
 init_auth(app)
+
 # CORS origins are env-configurable so production deployments don't need a code
 # change. Default is 8080 (the canonical port) — set CORS_ALLOWED_ORIGINS if
 # you front the app on a different port.
@@ -162,6 +148,9 @@ _cors_origins = [
 ]
 CORS(app, origins=_cors_origins, supports_credentials=True)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload cap
+
+# Security headers, CSRF, error handlers, Jinja csrf_token global.
+init_middleware(app)
 
 # ── Sentry error tracking (Stage 1-D) ────────────────────────────────────────
 # Opt-in: set SENTRY_DSN env var to activate. No-ops silently when absent so
@@ -191,231 +180,8 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# PROJECT_ROOT is defined near the top of this file, before logging.
-CONFIG_PATH  = PROJECT_ROOT / "config.json"
-CFG = load_config()
-
-DATA_DIR    = _DATA_BASE
-REPORTS_DIR = DATA_DIR / "reports"
-# Best-effort dir creation — never crash import on a read-only filesystem.
-for _d in (DATA_DIR, REPORTS_DIR):
-    try:
-        _d.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        pass
-
-# PDF generation spawns Playwright per request — cap concurrency so a burst of
-# /api/reports/pdf calls can't OOM the host with parallel chromium processes.
-_PDF_CONCURRENCY = max(1, int(os.environ.get("SEO_SUITE_PDF_WORKERS", "2")))
-_pdf_semaphore   = threading.Semaphore(_PDF_CONCURRENCY)
-
-
-_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
-
-def _sanitize_csv(content: str) -> str:
-    """Strip leading formula characters from CSV cell values to prevent injection."""
-    lines = []
-    for line in content.splitlines(keepends=True):
-        cells = []
-        for cell in line.rstrip("\n\r").split(","):
-            stripped = cell.lstrip()
-            if stripped and stripped[0] in _CSV_FORMULA_PREFIXES:
-                cell = "'" + cell
-            cells.append(cell)
-        lines.append(",".join(cells) + ("\n" if line.endswith("\n") else ""))
-    return "".join(lines)
-
-
-def _safe_report_path(filename: str, allowed_exts: tuple[str, ...]) -> Path | None:
-    """Validate that *filename* resolves inside REPORTS_DIR and has an allowed extension.
-    Returns the resolved Path or None. Used to block path traversal in /api/open,
-    /api/download, /api/reports/pdf."""
-    if not isinstance(filename, str) or not filename:
-        return None
-    # Reject anything that looks like a separator or traversal segment up front.
-    if "/" in filename or "\\" in filename or ".." in filename or filename.startswith("."):
-        return None
-    if not re.match(r"^[\w\-]+(?:\.[\w\-]+)*$", filename):
-        return None
-    if allowed_exts and not filename.lower().endswith(allowed_exts):
-        return None
-    try:
-        candidate = (REPORTS_DIR / filename).resolve()
-        candidate.relative_to(REPORTS_DIR.resolve())
-    except (ValueError, OSError):
-        return None
-    return candidate
-
-
-def _safe_upload_path(raw: str) -> Path | None:
-    """Validate that *raw* points to a file inside data/uploads/.
-    Returns the resolved Path if safe, else None. Used to prevent a client from
-    making the audit/index handlers read arbitrary filesystem paths via the
-    csv/xlsx input mode."""
-    try:
-        uploads = (DATA_DIR / "uploads").resolve()
-        target  = Path(raw).resolve()
-        target.relative_to(uploads)
-        return target if target.is_file() else None
-    except (ValueError, OSError):
-        return None
-
-# ── Security headers ─────────────────────────────────────────────────────────
-@app.after_request
-def _set_security_headers(response):
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("X-XSS-Protection", "1; mode=block")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    if os.environ.get("SEO_SUITE_COOKIE_SECURE") == "1":
-        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-    response.headers.setdefault(
-        "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data:; connect-src 'self'",
-    )
-    return response
-
-
-# ── CSRF protection ──────────────────────────────────────────────────────────
-def _generate_csrf_token() -> str:
-    if "_csrf_token" not in session:
-        session["_csrf_token"] = secrets.token_hex(32)
-    return session["_csrf_token"]
-
-
-def _validate_csrf(resp_on_fail=True):
-    if request.method in ("GET", "HEAD", "OPTIONS"):
-        return None
-    if request.path.startswith("/api/") and request.is_json:
-        return None
-    token = request.form.get("_csrf_token") or request.headers.get("X-CSRF-Token", "")
-    if not token or not secrets.compare_digest(token, session.get("_csrf_token", "")):
-        if resp_on_fail:
-            return jsonify({"error": "CSRF validation failed"}), 403
-        return None
-    return None
-
-
-app.jinja_env.globals["csrf_token"] = _generate_csrf_token
-
-@app.before_request
-def _csrf_protect():
-    if request.method == "POST" and request.path in ("/login", "/signup", "/contact"):
-        if "_csrf_token" in session:
-            result = _validate_csrf()
-            if result:
-                return result
-
-
-@app.errorhandler(413)
-def too_large(e):
-    return jsonify({"error": "File too large — 10 MB maximum"}), 413
-
-# ── Shared state ──────────────────────────────────────────────────────────────
-# SSE subscribers — each connected client gets its own bounded queue so multiple
-# browser tabs (or a tab that reloads mid-run) all see every progress event.
-# The previous single-Queue design let the first subscriber drain the queue,
-# leaving later/reconnected clients stuck on the last seen state.
-_index_subscribers: list[queue.Queue] = []
-_audit_subscribers: list[queue.Queue] = []
-_sub_lock = threading.Lock()
-
-# Legacy aliases — internal cancel/error paths still call `_index_queue.put(...)`.
-# We keep them as thin adapters that broadcast to all subscribers instead.
-class _BroadcastQueue:
-    def __init__(self, subs: list[queue.Queue]):
-        self._subs = subs
-    def put(self, msg):
-        with _sub_lock:
-            dead = []
-            for q in self._subs:
-                try:
-                    q.put_nowait(msg)
-                except queue.Full:
-                    dead.append(q)
-            for q in dead:
-                try: self._subs.remove(q)
-                except ValueError: pass
-
-_index_queue      = _BroadcastQueue(_index_subscribers)
-_audit_queue      = _BroadcastQueue(_audit_subscribers)
-
-
-def _broadcast_index(msg): _index_queue.put(msg)
-def _broadcast_audit(msg): _audit_queue.put(msg)
-
-
-def _subscribe(subs: list[queue.Queue]) -> queue.Queue:
-    q = queue.Queue(maxsize=1000)
-    with _sub_lock:
-        subs.append(q)
-    return q
-
-def _unsubscribe(subs: list[queue.Queue], q: queue.Queue) -> None:
-    with _sub_lock:
-        try: subs.remove(q)
-        except ValueError: pass
-
-
-def _cleanup_subscribers() -> None:
-    """Background thread: periodically drop fully-queued (stale) SSE queues.
-
-    A subscriber that has disconnected without calling /api/index/stream
-    cleanup leaves a full queue behind.  Without this sweep those queues
-    accumulate indefinitely, slowly leaking memory.  We remove any queue
-    whose buffer is already at capacity — a live consumer would have drained
-    it.  Runs every 5 minutes; daemon so it doesn't block process exit.
-    """
-    while True:
-        time.sleep(300)
-        with _sub_lock:
-            for subs in (_index_subscribers, _audit_subscribers):
-                subs[:] = [q for q in subs if not q.full()]
-
-
+# Start the SSE subscriber-cleanup thread now that state has been initialised.
 threading.Thread(target=_cleanup_subscribers, daemon=True, name="sse-cleanup").start()
-
-_index_status     = {"running": False, "total": 0, "done": 0}
-_audit_status     = {"running": False, "total": 0, "done": 0}
-_audit_cancel     = threading.Event()
-_index_cancel     = threading.Event()
-_lock             = threading.Lock()
-_last_index_run   = {}   # {url: status_string} — updated live during a run
-_index_paused     = threading.Event()   # set = running, clear = paused
-_index_paused.set()                     # start in "running" (not paused) state
-_audit_paused     = threading.Event()   # mirrors _index_paused for audit
-_audit_paused.set()
-_audit_partial    = []                  # slim per-URL dicts for mid-run CSV export
-_audit_full_results = []               # full audit dicts for cancel partial report
-
-ERROR_STATUSES = {"Error", "Timeout", "Other"}
-ERROR_PREFIXES = ("GSC Error", "Error:", "Error ", "Browser Error", "Playwright Error")
-
-
-def _snapshot_last_index_run() -> dict[str, str]:
-    with _lock:
-        return dict(_last_index_run)
-
-
-def _reset_last_index_run() -> None:
-    with _lock:
-        _last_index_run.clear()
-
-
-def _update_last_index_run(url: str, status: str) -> None:
-    with _lock:
-        _last_index_run[url] = status
-
-
-def _replace_last_index_run(results: dict[str, str]) -> None:
-    with _lock:
-        _last_index_run.clear()
-        _last_index_run.update(results)
-
-
 
 
 
@@ -517,7 +283,7 @@ def login():
     # GET — embed ?next= and CSRF token into the form as hidden fields
     _next = request.args.get("next", "")
     _next = _next.strip() if (_next.startswith("/") and not _next.startswith("//")) else ""
-    hidden = f'<input type="hidden" name="_csrf_token" value="{_generate_csrf_token()}">'
+    hidden = f'<input type="hidden" name="_csrf_token" value="{generate_csrf_token()}">'
     if _next:
         hidden += f'\n      <input type="hidden" name="next" value="{esc(_next)}">'
     page = LOGIN_PAGE.replace("__NEXT__", hidden).replace("__ERROR__", "")
@@ -549,7 +315,7 @@ def signup():
         session["is_admin"] = identity["is_admin"]
         session.permanent = True
         return ("", 302, {"Location": "/app"})
-    csrf_field = f'<input type="hidden" name="_csrf_token" value="{_generate_csrf_token()}">'
+    csrf_field = f'<input type="hidden" name="_csrf_token" value="{generate_csrf_token()}">'
     page = SIGNUP_PAGE.replace("__ERROR__", csrf_field)
     return page, 200, {"Content-Type": "text/html"}
 
@@ -597,7 +363,6 @@ def api_users_delete(username):
 @login_required
 @limiter.limit("10 per hour")
 def api_index_run():
-    global _index_status
     # Quick reject without holding the lock — final atomic check happens below.
     if _index_status["running"]:
         return jsonify({"error": "Already running"}), 400
@@ -633,10 +398,9 @@ def api_index_run():
     with _lock:
         if _index_status["running"]:
             return jsonify({"error": "Already running"}), 400
-        _index_status = {"running": True, "total": estimated_total, "done": 0}
+        _index_status.update({"running": True, "total": estimated_total, "done": 0})
 
     def run():
-        global _last_index_run
         try:
             # Fetch URLs inside the thread — keeps the HTTP response fast
             if input_type == "sitemap":
@@ -746,7 +510,6 @@ def api_index_stream():
 @login_required
 @limiter.limit("10 per hour")
 def api_audit_run():
-    global _audit_status
     if _audit_status["running"]:
         return jsonify({"error":"Already running"}), 400
 
@@ -784,7 +547,7 @@ def api_audit_run():
         _audit_partial.clear()
         _audit_full_results.clear()
         _audit_cancel.clear()
-        _audit_status = {"running": True, "total": estimated_total, "done": 0}
+        _audit_status.update({"running": True, "total": estimated_total, "done": 0})
     _audit_paused.set()   # ensure not paused at start of new run
 
     current_cfg = load_config()
@@ -1378,12 +1141,13 @@ def api_settings():
         # don't overwrite stored credentials with the sentinel.
         merged = _merge_settings(filtered, existing)
         cfg_path.write_text(json.dumps(merged, indent=2))
-        # Refresh in-process globals so the next run uses the saved values
+        # Refresh in-process globals so the next run uses the saved values.
+        # Mutate in place (clear+update) so existing imports keep their reference.
         refreshed = load_config()
-        global CFG
-        CFG = refreshed
-        _checker_mod.CFG  = refreshed
-        _audit_mod.CFG    = refreshed
+        state.CFG.clear()
+        state.CFG.update(refreshed)
+        _checker_mod.CFG = state.CFG
+        _audit_mod.CFG = state.CFG
         resp = {"message":"Settings saved ✓"}
         if rejected:
             resp["rejected_keys"] = rejected
@@ -1401,13 +1165,6 @@ def api_settings_test(provider):
     data = request.get_json(silent=True) or {}
     from tools.connection_tests import run_test
     return jsonify(run_test(provider, data, CFG))
-
-UPLOAD_DIR    = DATA_DIR / "uploads"
-try:
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-except OSError:
-    pass  # read-only FS — uploads will fail at runtime but import won't crash
-PROFILES_PATH = DATA_DIR / "profiles.json"
 
 def _load_profiles():
     if PROFILES_PATH.exists():
@@ -2572,7 +2329,6 @@ def api_index_errors():
 @app.route("/api/index/retry", methods=["POST"])
 @login_required
 def api_index_retry():
-    global _index_status
     if _index_status["running"]:
         return jsonify({"error": "Already running"}), 400
 
@@ -2591,7 +2347,7 @@ def api_index_retry():
     with _lock:
         if _index_status["running"]:
             return jsonify({"error": "Already running"}), 400
-        _index_status = {"running": True, "total": len(error_urls), "done": 0}
+        _index_status.update({"running": True, "total": len(error_urls), "done": 0})
 
     def run():
         try:

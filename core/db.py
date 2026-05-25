@@ -39,7 +39,16 @@ from typing import Iterator
 logger = logging.getLogger(__name__)
 
 # Bumped when the schema changes — guides automatic ALTER TABLE migrations.
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
+
+# Login history retention — attempts older than this are pruned at write time.
+# 90 days is a sensible default: long enough for audit / forensics, short
+# enough to limit PII exposure (IPs + user-agents are quasi-identifying).
+_LOGIN_HISTORY_RETENTION_DAYS = 90
+
+# Cap per-user login-history list responses so the dashboard never has to
+# render an unbounded table. The full history stays in SQLite either way.
+_LOGIN_HISTORY_MAX_ROWS = 500
 
 _init_lock = threading.Lock()
 _initialised: dict[Path, bool] = {}
@@ -92,17 +101,52 @@ def _ensure_schema(db_path: Path) -> None:
                 );
 
                 CREATE TABLE IF NOT EXISTS users (
-                    username      TEXT PRIMARY KEY,
-                    password_hash TEXT NOT NULL,
-                    is_admin      INTEGER NOT NULL DEFAULT 0,
-                    created_at    TEXT NOT NULL
+                    username        TEXT PRIMARY KEY,
+                    password_hash   TEXT NOT NULL,
+                    is_admin        INTEGER NOT NULL DEFAULT 0,
+                    created_at      TEXT NOT NULL,
+                    last_login_at   TEXT,
+                    last_login_ip   TEXT
                 );
+
+                CREATE TABLE IF NOT EXISTS login_attempts (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username    TEXT NOT NULL,
+                    ts          TEXT NOT NULL,
+                    ip          TEXT,
+                    user_agent  TEXT,
+                    success     INTEGER NOT NULL,
+                    reason      TEXT
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_login_attempts_username_ts
+                    ON login_attempts(username, ts DESC);
+                CREATE INDEX IF NOT EXISTS idx_login_attempts_ts
+                    ON login_attempts(ts DESC);
                 """
             )
-            # Seed version row if empty.
+            # Migrate existing v1 databases that don't have the new user
+            # columns. ALTER TABLE ADD COLUMN is cheap and idempotent here
+            # because we wrap in try/except — sqlite3 raises if the column
+            # already exists.
+            for col_sql in (
+                "ALTER TABLE users ADD COLUMN last_login_at TEXT",
+                "ALTER TABLE users ADD COLUMN last_login_ip TEXT",
+            ):
+                try:
+                    conn.execute(col_sql)
+                except sqlite3.OperationalError:
+                    pass  # column already exists
+
+            # Seed or update version row.
             row = conn.execute("SELECT version FROM schema_version").fetchone()
             if row is None:
-                conn.execute("INSERT INTO schema_version (version) VALUES (?)", (_SCHEMA_VERSION,))
+                conn.execute(
+                    "INSERT INTO schema_version (version) VALUES (?)",
+                    (_SCHEMA_VERSION,),
+                )
+            else:
+                conn.execute("UPDATE schema_version SET version = ?", (_SCHEMA_VERSION,))
         _initialised[db_path] = True
 
 
@@ -195,6 +239,45 @@ def load_users(db_path: Path, json_path: Path | None = None) -> dict:
     return out
 
 
+def get_user(db_path: Path, username: str) -> dict | None:
+    """Return a single user dict (with last_login_at/ip) or None if absent."""
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            row = conn.execute(
+                "SELECT username, password_hash, is_admin, created_at, "
+                "last_login_at, last_login_ip FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()
+    except sqlite3.Error as e:
+        logger.error("get_user failed: %s", e)
+        return None
+    if row is None:
+        return None
+    return {
+        "username": row["username"],
+        "password_hash": row["password_hash"],
+        "is_admin": bool(row["is_admin"]),
+        "created_at": row["created_at"],
+        "last_login_at": row["last_login_at"],
+        "last_login_ip": row["last_login_ip"],
+    }
+
+
+def update_last_login(db_path: Path, username: str, ts: str, ip: str | None) -> None:
+    """Record successful login on the users row. Cheap UPDATE, no transaction
+    needed (atomicity-of-one-row is implicit)."""
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            conn.execute(
+                "UPDATE users SET last_login_at = ?, last_login_ip = ? WHERE username = ?",
+                (ts, ip, username),
+            )
+    except sqlite3.Error as e:
+        logger.warning("update_last_login failed for %s: %s", username, e)
+
+
 def save_users(db_path: Path, users: dict) -> None:
     """Replace the entire users table with the supplied dict.
 
@@ -230,6 +313,139 @@ def save_users(db_path: Path, users: dict) -> None:
         except Exception:
             conn.execute("ROLLBACK")
             raise
+
+
+# ── Login attempt history ────────────────────────────────────────────────────
+# Every authenticate() call lands a row here — successes and failures alike.
+# Useful for: account-takeover detection, audit trail, "last login" display,
+# and revealing brute-force patterns at a finer grain than the per-process
+# lockout map.
+#
+# Records are pruned to _LOGIN_HISTORY_RETENTION_DAYS on each write so the
+# table stays bounded without a separate cron job.
+
+def record_login_attempt(
+    db_path: Path,
+    username: str,
+    success: bool,
+    ip: str | None = None,
+    user_agent: str | None = None,
+    reason: str | None = None,
+) -> None:
+    """Append a single login-attempt row + prune anything older than retention.
+
+    All fields are optional except username and success. ``reason`` is a short
+    code like ``"locked_out"`` / ``"bad_password"`` / ``"ok"`` — keep it
+    machine-readable so admins can filter the history view.
+    """
+    _ensure_schema(db_path)
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    ts = now.isoformat()
+    cutoff = (now - timedelta(days=_LOGIN_HISTORY_RETENTION_DAYS)).isoformat()
+
+    try:
+        with _connect(db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO login_attempts
+                    (username, ts, ip, user_agent, success, reason)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    username,
+                    ts,
+                    ip,
+                    user_agent[:512] if user_agent else None,  # cap UA length
+                    1 if success else 0,
+                    reason,
+                ),
+            )
+            # Best-effort retention sweep on every write. Cheap on indexed ts.
+            conn.execute("DELETE FROM login_attempts WHERE ts < ?", (cutoff,))
+    except sqlite3.Error as e:
+        # Logging a failed login should never raise back into the auth path.
+        logger.warning("record_login_attempt failed: %s", e)
+
+
+def get_login_history(
+    db_path: Path,
+    username: str | None = None,
+    success: bool | None = None,
+    limit: int = 100,
+) -> list[dict]:
+    """Return recent login attempts, newest first.
+
+    Filter by ``username`` to view one account's history; leave None for
+    admin-wide view. ``success=False`` filters to failures only (useful for
+    spotting brute force).
+    """
+    _ensure_schema(db_path)
+    limit = max(1, min(limit, _LOGIN_HISTORY_MAX_ROWS))
+
+    clauses = []
+    params: list = []
+    if username is not None:
+        clauses.append("username = ?")
+        params.append(username)
+    if success is not None:
+        clauses.append("success = ?")
+        params.append(1 if success else 0)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    params.append(limit)
+
+    try:
+        with _connect(db_path) as conn:
+            rows = conn.execute(
+                f"SELECT id, username, ts, ip, user_agent, success, reason "
+                f"FROM login_attempts {where} ORDER BY ts DESC LIMIT ?",
+                params,
+            ).fetchall()
+    except sqlite3.Error as e:
+        logger.error("get_login_history failed: %s", e)
+        return []
+
+    return [
+        {
+            "id": r["id"],
+            "username": r["username"],
+            "ts": r["ts"],
+            "ip": r["ip"],
+            "user_agent": r["user_agent"],
+            "success": bool(r["success"]),
+            "reason": r["reason"],
+        }
+        for r in rows
+    ]
+
+
+def count_recent_failures(
+    db_path: Path, username: str, window_seconds: int = 900
+) -> int:
+    """Count failed attempts for *username* in the last *window_seconds*.
+
+    Lets the auth layer cross-check its in-memory lockout state against
+    persistent records — important after a process restart, when the
+    in-memory ``_failed_attempts`` dict is empty but the SQLite history isn't.
+    """
+    _ensure_schema(db_path)
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+    ).isoformat()
+    try:
+        with _connect(db_path) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM login_attempts "
+                "WHERE username = ? AND success = 0 AND ts >= ?",
+                (username, cutoff),
+            ).fetchone()
+    except sqlite3.Error as e:
+        logger.error("count_recent_failures failed: %s", e)
+        return 0
+    return int(row["n"] or 0)
 
 
 # Test helpers — clear the initialised cache so a fresh tmp_path is picked up.

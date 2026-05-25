@@ -209,6 +209,14 @@ None of this is done yet.
 2. **Password hashing** — werkzeug `scrypt`, 32768 cost factor
 3. **Account lockout** — 10 failed attempts in 15 min → 15 min lock (`core/auth._is_locked_out`)
 4. **Rate limiting** — `/login` 5/min, `/signup` 10/min, `/api/audit/run` 10/hour, others 240/min default
+5. **Login activity log** — every authentication attempt (success + failure) is recorded in
+   the SQLite `login_attempts` table with timestamp, IP, user-agent, and outcome code
+   (`ok` / `bad_password` / `unknown_user` / `locked_out` / `env_admin`). Retention: **90 days**,
+   pruned automatically at each write. Exposed via:
+   - `GET /api/auth/my_logins` — current user's own last 50 attempts (any logged-in user)
+   - `GET /api/auth/login_history` — admin view with `?username=`, `?failures_only=1`, `?limit=` filters
+6. **Last-login stamp** — successful logins also update `users.last_login_at` + `last_login_ip` so the
+   UI can show "Welcome back, last seen X" and admins can spot dormant accounts.
 
 ### SSRF Protection
 

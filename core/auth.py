@@ -184,31 +184,106 @@ def auth_enabled() -> bool:
     return bool(os.environ.get("SEO_SUITE_PASSWORD_HASH")) or bool(_load_users())
 
 
-def authenticate(username: str, password: str) -> dict | None:
-    """Return {username, is_admin} on success, else None.
+def _record_attempt(
+    username: str,
+    success: bool,
+    *,
+    ip: str | None,
+    user_agent: str | None,
+    reason: str | None,
+) -> None:
+    """Persist the attempt to SQLite. Best-effort — never raises into auth."""
+    if not _use_sqlite_backend():
+        return  # JSON backend has no history table; skip silently.
+    try:
+        from core import db as _db
+
+        _db.record_login_attempt(
+            _USERS_DB, username, success, ip=ip, user_agent=user_agent, reason=reason
+        )
+    except Exception as exc:
+        # _log.warning would be enough but keep at debug — auth path noise.
+        _log.debug("record_login_attempt failed: %s", exc)
+
+
+def _update_last_login(username: str, ip: str | None) -> None:
+    """Stamp users.last_login_at on success. JSON backend: no-op."""
+    if not _use_sqlite_backend():
+        return
+    try:
+        from datetime import datetime, timezone
+
+        from core import db as _db
+
+        _db.update_last_login(
+            _USERS_DB, username, datetime.now(timezone.utc).isoformat(), ip
+        )
+    except Exception as exc:
+        _log.debug("update_last_login failed: %s", exc)
+
+
+def authenticate(
+    username: str,
+    password: str,
+    *,
+    ip: str | None = None,
+    user_agent: str | None = None,
+) -> dict | None:
+    """Return ``{username, is_admin}`` on success, else None.
 
     Checks the env superadmin first, then the file-based user store.
     Enforces account lockout after repeated failures.
+
+    Records every attempt — successful and failed — to the SQLite
+    ``login_attempts`` table via ``_record_attempt`` so admins have an audit
+    trail and the lockout check can survive a process restart.
+
+    The ``ip`` / ``user_agent`` kwargs are optional so direct callers (e.g.
+    tests) don't have to plumb a Flask request through. Routes should pass
+    ``request.remote_addr`` and ``request.user_agent.string``.
     """
     username = (username or "").strip()
     if not username:
         return None
     if _is_locked_out(username):
         _log.warning("Login blocked (account locked out): %s", username)
+        _record_attempt(
+            username, success=False, ip=ip, user_agent=user_agent, reason="locked_out"
+        )
         return None
+
     env_user = _env_admin()
     if env_user and username == env_user:
         if _safe_check(os.environ.get("SEO_SUITE_PASSWORD_HASH", ""), password):
             _clear_failed_logins(username)
+            _record_attempt(
+                username, success=True, ip=ip, user_agent=user_agent, reason="env_admin"
+            )
             return {"username": username, "is_admin": True}
         _record_failed_login(username)
+        _record_attempt(
+            username, success=False, ip=ip, user_agent=user_agent, reason="bad_password"
+        )
         _log.warning("Failed login attempt for username: %s", username)
         return None
+
     user = _load_users().get(username)
     if user and _safe_check(user.get("password_hash", ""), password):
         _clear_failed_logins(username)
+        _record_attempt(
+            username, success=True, ip=ip, user_agent=user_agent, reason="ok"
+        )
+        _update_last_login(username, ip)
         return {"username": username, "is_admin": bool(user.get("is_admin"))}
+
     _record_failed_login(username)
+    _record_attempt(
+        username,
+        success=False,
+        ip=ip,
+        user_agent=user_agent,
+        reason="bad_password" if user else "unknown_user",
+    )
     _log.warning("Failed login attempt for username: %s", username)
     return None
 

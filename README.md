@@ -221,6 +221,8 @@ Key endpoints:
 | `GET` | `/api/use_cases` | Available audit use cases |
 | `GET` | `/api/tasks` | Available audit tasks |
 | `GET` | `/health` | Server health + running status |
+| `GET` | `/api/auth/my_logins` | Your own recent login attempts (last 50) |
+| `GET` | `/api/auth/login_history` | Admin: all login attempts (filter by username + failures-only) |
 
 ## Development
 

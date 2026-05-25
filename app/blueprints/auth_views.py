@@ -58,7 +58,13 @@ def login():
                 "<div class='err'>Account temporarily locked — try again in 15 minutes</div>",
             )
             return page, 429, {"Content-Type": "text/html"}
-        identity = authenticate(username, password)
+        # Pass IP + UA so authenticate() can record them in login_attempts.
+        identity = authenticate(
+            username,
+            password,
+            ip=request.remote_addr,
+            user_agent=(request.user_agent.string if request.user_agent else None),
+        )
         if identity:
             session.clear()
             session["authed"] = True
@@ -162,6 +168,68 @@ def api_users_delete(username):
     if not ok:
         return jsonify({"ok": False, "error": err}), 400
     return jsonify({"ok": True, "users": list_users()})
+
+
+# ── Login history (audit trail) ───────────────────────────────────────────────
+@bp.route("/api/auth/login_history")
+@admin_required
+def api_login_history():
+    """Admin-only: list recent login attempts across all users.
+
+    Query params:
+      * ``username`` — filter to one account
+      * ``failures_only=1`` — return only failed attempts (brute-force scan)
+      * ``limit`` — cap rows (default 100, max 500)
+    """
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Login history requires the SQLite backend"}), 503
+
+    from core import db as _db
+    from core.auth import _USERS_DB
+
+    username = (request.args.get("username") or "").strip() or None
+    failures_only = request.args.get("failures_only") in ("1", "true", "yes")
+    try:
+        limit = max(1, min(int(request.args.get("limit", "100")), 500))
+    except (TypeError, ValueError):
+        limit = 100
+
+    rows = _db.get_login_history(
+        _USERS_DB,
+        username=username,
+        success=(False if failures_only else None),
+        limit=limit,
+    )
+    return jsonify({"ok": True, "rows": rows, "count": len(rows)})
+
+
+@bp.route("/api/auth/my_logins")
+@login_required
+def api_my_logins():
+    """Return the current user's own login history (last 50 attempts).
+
+    No admin requirement — every user can see when their own account was
+    accessed. Useful for spotting unauthorized access.
+    """
+    if not _use_sqlite_login_history():
+        return jsonify({"ok": False, "error": "Login history requires the SQLite backend"}), 503
+
+    from core import db as _db
+    from core.auth import _USERS_DB
+
+    me = session.get("username")
+    if not me:
+        return jsonify({"ok": False, "error": "Not logged in"}), 401
+
+    rows = _db.get_login_history(_USERS_DB, username=me, limit=50)
+    return jsonify({"ok": True, "rows": rows, "count": len(rows)})
+
+
+def _use_sqlite_login_history() -> bool:
+    """Login history only works when the SQLite backend is active."""
+    import os as _os
+
+    return _os.environ.get("SEO_SUITE_USERS_BACKEND", "sqlite").lower() != "json"
 
 
 # ── Auth status / credential helper ───────────────────────────────────────────

@@ -206,6 +206,58 @@ paths:
       responses:
         "200": {description: Deleted}
         "400": {description: Cannot delete env admin or self}
+  /api/auth/login_history:
+    get:
+      tags: [Auth]
+      summary: Recent login attempts (admin only)
+      description: |
+        Returns the most recent login attempts (successes and failures) from
+        the SQLite `login_attempts` table. Records are retained for 90 days,
+        then pruned at the next write.
+      parameters:
+        - in: query
+          name: username
+          schema: {type: string}
+          description: Filter to one account
+        - in: query
+          name: failures_only
+          schema: {type: string, enum: ["1", "true", "yes"]}
+          description: Only failed attempts (for brute-force investigation)
+        - in: query
+          name: limit
+          schema: {type: integer, minimum: 1, maximum: 500, default: 100}
+      responses:
+        "200":
+          description: Login attempt rows, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: {type: boolean}
+                  count: {type: integer}
+                  rows: {type: array, items: {$ref: "#/components/schemas/LoginAttempt"}}
+        "503": {description: SQLite backend disabled}
+  /api/auth/my_logins:
+    get:
+      tags: [Auth]
+      summary: Current user's own login history
+      description: |
+        Returns the last 50 login attempts for the authenticated user. Lets
+        users spot unauthorized access without admin help.
+      responses:
+        "200":
+          description: Login attempt rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: {type: boolean}
+                  count: {type: integer}
+                  rows: {type: array, items: {$ref: "#/components/schemas/LoginAttempt"}}
+        "401": {description: Not logged in}
+        "503": {description: SQLite backend disabled}
 
   # ── Audit ─────────────────────────────────────────────────────────────────
   /api/audit/run:
@@ -680,6 +732,21 @@ components:
       properties:
         ok: {type: boolean, example: false}
         error: {type: string}
+
+    LoginAttempt:
+      type: object
+      properties:
+        id: {type: integer}
+        username: {type: string}
+        ts: {type: string, format: date-time, description: "ISO-8601 UTC"}
+        ip: {type: string, nullable: true}
+        user_agent: {type: string, nullable: true, maxLength: 512}
+        success: {type: boolean}
+        reason:
+          type: string
+          nullable: true
+          enum: [ok, env_admin, bad_password, unknown_user, locked_out]
+          description: Machine-readable outcome code
 
     UsersList:
       type: object

@@ -5,14 +5,16 @@ Run:   python main.py
 Open:  http://localhost:8080
 
 Project layout:
-  main.py                      — entry point (this file)
-  app/server.py                — Flask app factory + remaining routes
-                                 (indexing, audit, reports, settings, tools)
-  app/state.py                 — Shared run-state, paths, helpers, constants
-  app/middleware.py            — Security headers, CSRF, error handlers
-  app/blueprints/site.py       — Public marketing pages
-  app/blueprints/auth_views.py — Login/signup/logout, user management
-  app/blueprints/misc.py       — /app dashboard, /health, /api/use_cases, /api/tasks
+  main.py                       — entry point (this file)
+  app/server.py                 — Flask app factory + indexing/audit/use-case routes
+  app/state.py                  — Shared run-state, paths, helpers, constants
+  app/middleware.py             — Security headers, CSRF, error handlers
+  app/blueprints/site.py        — Public marketing pages
+  app/blueprints/auth_views.py  — Login/signup/logout, user management
+  app/blueprints/misc.py        — /app dashboard, /health, /api/use_cases, /api/tasks
+  app/blueprints/reports.py     — Reports list/open/download/delete/preview/PDF
+  app/blueprints/settings.py    — Settings, profiles, upload, compare
+  app/blueprints/tools.py       — 33 /api/tools/* routes (quick, GSC, Bing, AI, generators)
   app/__init__.py              — Thin `create_app()` factory (returns app.server.app)
   app/templates/               — Jinja templates (dashboard + marketing site)
   app/static/                  — CSS / JS / assets

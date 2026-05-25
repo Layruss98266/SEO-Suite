@@ -63,14 +63,17 @@ For setup and usage, see [README.md](README.md). For contributing conventions, s
 
 ```
 app/
-├── server.py              ← Flask factory + remaining inline routes
+├── server.py              ← Flask factory + indexing/audit/use-case routes (~940 lines)
 ├── state.py               ← Shared state, paths, helpers, constants
 ├── middleware.py          ← Security headers, CSRF, error handlers
 ├── __init__.py            ← create_app() factory wrapper
-├── blueprints/
+├── blueprints/            ← Route groups split out of server.py
 │   ├── site.py            ← /, /features, /pricing, /blog, /about, /contact
 │   ├── auth_views.py      ← /login, /signup, /logout, /api/users, /api/auth_status
-│   └── misc.py            ← /app, /health, /api/use_cases, /api/tasks
+│   ├── misc.py            ← /app, /health, /api/use_cases, /api/tasks
+│   ├── reports.py         ← /api/reports/*, /api/open, /api/download, /api/history, PDF
+│   ├── settings.py        ← /api/settings, /api/profiles, /api/upload, /api/compare
+│   └── tools.py           ← /api/tools/* (33 routes)
 ├── templates/
 │   ├── dashboard.html     ← Single-page app shell for /app
 │   └── site/              ← Marketing site templates

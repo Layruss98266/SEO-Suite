@@ -18,6 +18,7 @@ Phase 1 SEO Tools — No API required
 """
 
 import json
+import logging
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -27,6 +28,8 @@ from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 from core.security import (
     public_hostname,
@@ -1045,13 +1048,13 @@ def favicon_check(url: str) -> dict:
                 found["favicon"] = full
 
     if not found.get("favicon"):
-        # Fallback check on /favicon.ico
+        # Fallback check on /favicon.ico — best-effort, ignore network errors.
         try:
             r = safe_requests_head(base + "/favicon.ico", timeout=5)
             if r.status_code == 200:
                 found["favicon"] = base + "/favicon.ico"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("favicon fallback check failed for %s: %s", base, e)
 
     issues = []
     if not found.get("favicon"):

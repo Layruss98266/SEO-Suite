@@ -436,8 +436,8 @@ def rank_change(url: str, keywords: list, serpapi_key: str = "",
     if _RANK_FILE.exists():
         try:
             history = json.loads(_RANK_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("rank_history.json unreadable, starting fresh: %s", e)
 
     domain   = urlparse(url).netloc
     prev_run = history.get(domain, {})
@@ -463,8 +463,8 @@ def rank_change(url: str, keywords: list, serpapi_key: str = "",
     try:
         _RANK_FILE.parent.mkdir(parents=True, exist_ok=True)
         _RANK_FILE.write_text(json.dumps(history, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("rank_history.json write failed: %s", e)
 
     if not changes:
         return result(url, "rank_change", "warning", [],

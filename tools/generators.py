@@ -4,7 +4,10 @@ Phase B: Schema Markup, robots.txt, XML Sitemap, Hreflang Tags, Meta Tags
 """
 
 import json
+import logging
 from html import escape as _esc
+
+logger = logging.getLogger(__name__)
 
 # ─── Tool 7: Schema Markup Generator ─────────────────────────────────────────
 
@@ -673,6 +676,7 @@ def generate_schema(schema_type: str, data: dict) -> dict:
                 warnings.append(f"Missing required field: {field['label']}")
         return {"ok": True, "schema_type": schema_type, "markup": markup, "json": obj, "warnings": warnings}
     except Exception as e:
+        logger.exception("generate_schema failed for %s", schema_type)
         return {"ok": False, "error": str(e)}
 
 
@@ -729,6 +733,7 @@ def generate_robots_txt(data: dict) -> dict:
         return {"ok": True, "content": "\n".join(lines).strip(), "warnings": warnings}
     except Exception as e:
         from tools._common import safe_error
+        logger.exception("generator failed")
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -791,6 +796,7 @@ def generate_sitemap(data: dict) -> dict:
         return {"ok": True, "content": "\n".join(lines), "url_count": count, "warnings": warnings}
     except Exception as e:
         from tools._common import safe_error
+        logger.exception("generator failed")
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -852,6 +858,7 @@ def generate_hreflang(data: dict) -> dict:
         }
     except Exception as e:
         from tools._common import safe_error
+        logger.exception("generator failed")
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -937,4 +944,5 @@ def generate_meta_tags(data: dict) -> dict:
 
         return {"ok": True, "content": content, "warnings": warnings}
     except Exception as e:
+        logger.exception("meta tags generation failed")
         return {"ok": False, "error": str(e)}

@@ -90,6 +90,8 @@ python main.py
 Open [http://localhost:8080](http://localhost:8080) in your browser.
 
 ## Documentation
+- `docs/SETUP_GUIDES.md`: step-by-step setup guides for all 11 API integrations (GSC, PageSpeed, Groq, SerpAPI, Moz, DataForSEO, Bing, SMTP, Slack, Teams, Sentry).
+- `DEPLOYMENT.md`: deployment guides for Render, Fly.io, Docker, and plain VPS.
 - `NEW_TOOLS_USECASES.md`: product and tool roadmap guidance for the current repo surface.
 - `REPO_REVIEW_AND_CLEANUP.md`: current review blockers, cleanup recommendations, and planning notes.
 - `TOOL_ROADMAP.md`: overall project roadmap and implementation gate guidance.
@@ -155,10 +157,12 @@ All API keys are optional — phases that lack a key are skipped gracefully.
 
 ## Google Search Console
 
+See [`docs/SETUP_GUIDES.md`](docs/SETUP_GUIDES.md#1-google-search-console-gsc) for the full step-by-step guide. Quick version:
+
 1. Create a service account in [Google Cloud Console](https://console.cloud.google.com)
 2. Enable the Search Console API
 3. Download the credentials JSON → save as `gsc_credentials.json` in this folder
-4. Add the service account email as a user in Search Console
+4. **Add the service account email as a user in Search Console** (required — GSC is property-based)
 5. Enable GSC in the Settings tab of the dashboard
 
 ## REST API

@@ -119,7 +119,7 @@ def api_usecase_run():
         return jsonify(_run_usecase_for_url(target, use_case, CFG, keywords))
     except Exception as e:
         logger.error("usecase/run error: %s", e, exc_info=True)
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/usecase/run_bulk", methods=["POST"])
@@ -188,7 +188,7 @@ def api_usecase_run_bulk():
         )
     except Exception as e:
         logger.error("usecase/run_bulk error: %s", e, exc_info=True)
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 def register(app) -> None:

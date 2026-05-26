@@ -26,6 +26,7 @@ import time
 from typing import Any
 
 from flask import Flask, Response, request
+from core.auth import login_required
 
 from app.state import _audit_status, _audit_subscribers, _index_status, _index_subscribers
 
@@ -112,6 +113,7 @@ def init_metrics(app: Flask) -> None:
     if not _PROMETHEUS_AVAILABLE:
         # Still register an endpoint so the route exists; just return 503.
         @app.route("/metrics", endpoint="metrics_unavailable")
+        @login_required
         def _metrics_unavailable() -> Any:
             return (
                 "prometheus_client not installed\n",
@@ -150,6 +152,7 @@ def init_metrics(app: Flask) -> None:
         return response
 
     @app.route("/metrics")
+    @login_required
     def metrics() -> Any:
         """Prometheus scrape endpoint. Refreshes gauges then renders text format."""
         _refresh_gauges()

@@ -47,11 +47,12 @@ try:
     from argon2 import PasswordHasher as _Argon2Hasher
     from argon2 import exceptions as _argon2_exc
 
-    _argon2 = _Argon2Hasher()  # defaults: argon2id, t=2, m=65536KiB, p=1
+    _argon2: "_Argon2Hasher | None" = _Argon2Hasher()  # defaults: argon2id, t=2, m=65536KiB, p=1
     _ARGON2_AVAILABLE = True
 except ImportError:
-    _argon2 = None
+    _Argon2Hasher = None  # type: ignore[assignment,misc]
     _argon2_exc = None
+    _argon2 = None
     _ARGON2_AVAILABLE = False
 
 
@@ -61,7 +62,7 @@ def _hash_password(plaintext: str) -> str:
     Doesn't validate length / strength — callers do that up front (see
     ``create_user``). Lets us swap algorithms without touching every caller.
     """
-    if _ARGON2_AVAILABLE:
+    if _argon2 is not None:
         return _argon2.hash(plaintext)
     return generate_password_hash(plaintext)  # scrypt fallback
 
@@ -77,7 +78,9 @@ def _verify_password(stored_hash: str, plaintext: str) -> bool:
     if not stored_hash:
         return False
     try:
-        if stored_hash.startswith("$argon2") and _ARGON2_AVAILABLE:
+        # Use `is not None` guards so the type-checker can narrow both
+        # _argon2 and _argon2_exc away from NoneType before use.
+        if stored_hash.startswith("$argon2") and _argon2 is not None and _argon2_exc is not None:
             try:
                 _argon2.verify(stored_hash, plaintext)
                 return True
@@ -334,27 +337,23 @@ def init_auth(app: Flask) -> None:
     from datetime import timedelta
     _secret = os.environ.get("SEO_SUITE_SECRET")
     if not _secret:
-        # No secret configured — generate an ephemeral key and warn loudly.
-        # Every server restart (including Render cold-starts and re-deploys) will
-        # produce a new key, invalidating all existing session cookies and forcing
-        # every user to sign in again.
-        #
-        # FIX: copy the key printed below and set SEO_SUITE_SECRET to that value
-        # in your hosting dashboard (Render → Environment) so it stays stable.
+        # Ephemeral key logic
         _secret = secrets.token_hex(32)
         _log.warning(
             "SEO_SUITE_SECRET is not set — sessions will be lost on every restart.\n"
-            "  To fix: add the following to your environment variables:\n"
-            "    SEO_SUITE_SECRET=%s\n"
-            "  On Render: Dashboard → your service → Environment → Add Variable.",
-            _secret,
+            "  To fix: set SEO_SUITE_SECRET=<random 64-char hex> in your environment."
         )
     app.secret_key = _secret
+    _is_https = (
+        os.environ.get("SEO_SUITE_COOKIE_SECURE") == "1"
+        or os.environ.get("RENDER") is not None
+        or os.environ.get("FLY_APP_NAME") is not None
+    )
     # Harden the session cookie. HTTPS is opt-in via env so local dev still works.
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.environ.get("SEO_SUITE_COOKIE_SECURE", "") == "1",
+        SESSION_COOKIE_SECURE=_is_https,
         # permanent sessions last 30 days; login sets session.permanent=True
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
     )

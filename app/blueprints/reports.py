@@ -138,7 +138,12 @@ def api_open(filename):
     safe = _safe_report_path(base, (".html",))
     if safe is None or not safe.is_file():
         return "Report not found", 404
-    return safe.read_text(encoding="utf-8"), 200, {"Content-Type": "text/html"}
+    from flask import make_response
+    response = make_response(safe.read_text(encoding="utf-8"), 200)
+    response.headers["Content-Type"] = "text/html"
+    response.headers["Content-Security-Policy"] = "sandbox allow-same-origin"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @bp.route("/api/download/<filename>")
@@ -262,7 +267,8 @@ def api_reports_summary():
             }
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("Summary error: %s", e, exc_info=True)
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/reports/preview/<filename>")
@@ -311,7 +317,8 @@ def api_reports_preview(filename):
                 }
             )
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            logger.error("Preview indexing error: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred"}), 500
 
     # ── Audit report (JSON sidecar preferred, xlsx fallback) ─────────────
     json_path = REPORTS_DIR / (base + ".json")
@@ -360,7 +367,8 @@ def api_reports_preview(filename):
                 }
             )
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            logger.error("Preview audit JSON error: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred"}), 500
 
     if xlsx_path.exists():
         try:
@@ -392,7 +400,8 @@ def api_reports_preview(filename):
                 }
             )
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            logger.error("Preview audit XLSX error: %s", e, exc_info=True)
+            return jsonify({"error": "An internal error occurred"}), 500
 
     return jsonify({"error": "Report data not found"}), 404
 
@@ -426,7 +435,7 @@ def api_reports_pdf(filename):
 
         abs_uri = html_path.resolve().as_uri()
         with sync_playwright() as pw:
-            browser = pw.chromium.launch()
+            browser = pw.chromium.launch(args=["--disable-javascript", "--no-sandbox"])
             page = browser.new_page()
             page.goto(abs_uri, wait_until="networkidle", timeout=30000)
             pdf_bytes = page.pdf(format="A4", print_background=True)
@@ -437,7 +446,7 @@ def api_reports_pdf(filename):
         }
     except Exception as e:
         logger.error("PDF generation failed: %s", e, exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
     finally:
         _pdf_semaphore.release()
 

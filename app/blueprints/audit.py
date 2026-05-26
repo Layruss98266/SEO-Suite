@@ -581,7 +581,7 @@ def api_audit_single_phase(phase_num: int):
 
     except Exception as exc:
         logger.error("audit_phase_%d error: %s", phase_num, exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 __all__ = ["bp", "register", "_save_partial_audit_report"]

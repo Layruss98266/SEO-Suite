@@ -77,13 +77,14 @@ Put nginx (or Caddy) in front for TLS.
   On public cloud/PaaS hosting (like Render), authentication is strictly forced
   from first boot to prevent unauthorized public access before signup.
 - **API keys** (PageSpeed, GSC, Moz, DataForSEO, SerpAPI, Groq) are entered in
-  Settings and stored in `config.json` under the data directory.
+  Settings and stored in `config.json` in the application root directory. You can initialize this on setup by copying `config.json.example` to `config.json`.
 
 ## Environment variables
 
 | Variable | Purpose |
 |----------|---------|
 | `SEO_SUITE_SECRET` | Signs session cookies. Set a stable random value. |
+| `SEO_SUITE_BASE_URL` | Fully-qualified URL (e.g. `https://seosuite.example.com`) used to construct password reset and email verification links. |
 | `SEO_SUITE_DATA_DIR` | Writable dir for data/reports/uploads (default `/app/data`). |
 | `SEO_SUITE_USERNAME` / `SEO_SUITE_PASSWORD_HASH` | Optional env superadmin. |
 | `SEO_SUITE_FORCE_AUTH` | Force authentication strictly (automatically true on Render). |

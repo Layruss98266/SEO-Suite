@@ -341,7 +341,7 @@ def api_gsc_opportunities():
         return jsonify(gsc_opportunities(svc, site_url))
     except Exception as exc:
         logger.error("gsc_opportunities error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/tools/gsc_opp_ai_draft", methods=["POST"])
@@ -446,7 +446,7 @@ def api_gsc_opp_ai_draft():
         )
     except Exception as exc:
         logger.error("gsc_opp_ai_draft error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/tools/gsc_position_tracker", methods=["POST"])
@@ -471,7 +471,7 @@ def api_gsc_position_tracker():
         return jsonify(position_tracker(url, svc, site_url))
     except Exception as exc:
         logger.error("gsc_position_tracker error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/tools/gsc_ctr_analyzer", methods=["POST"])
@@ -494,7 +494,7 @@ def api_gsc_ctr_analyzer():
         return jsonify(ctr_analyzer(svc, site_url, min_impressions=min_impressions))
     except Exception as exc:
         logger.error("gsc_ctr_analyzer error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/tools/gsc_coverage_errors", methods=["POST"])
@@ -516,7 +516,7 @@ def api_gsc_coverage_errors():
         return jsonify(coverage_errors(svc, site_url))
     except Exception as exc:
         logger.error("gsc_coverage_errors error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/tools/gsc_sitemaps_status", methods=["POST"])
@@ -538,7 +538,7 @@ def api_gsc_sitemaps_status():
         return jsonify(sitemaps_status(svc, site_url))
     except Exception as exc:
         logger.error("gsc_sitemaps_status error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 # ─── Notifications ───────────────────────────────────────────────────────────
@@ -566,7 +566,7 @@ def api_notify_test():
         return jsonify({"ok": True, "message": f"Test {channel} sent successfully"})
     except Exception as exc:
         logger.error("notify_test error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 # ─── Performance opportunities ───────────────────────────────────────────────
@@ -594,7 +594,7 @@ def api_perf_opportunities():
         return jsonify(performance_opportunities(url, api_key))
     except Exception as exc:
         logger.error("perf_opportunities error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 # ─── Groq AI assistance ──────────────────────────────────────────────────────
@@ -623,7 +623,7 @@ def api_ai_explain():
         return jsonify(explain_audit(results, api_key, url=url))
     except Exception as exc:
         logger.error("ai_explain error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 @bp.route("/api/tools/ai_draft_meta", methods=["POST"])
@@ -652,7 +652,7 @@ def api_ai_draft_meta():
         return jsonify(draft_meta(url, current_title, current_desc, top_queries, api_key))
     except Exception as exc:
         logger.error("ai_draft_meta error: %s", exc, exc_info=True)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
 
 # ─── Generators ──────────────────────────────────────────────────────────────

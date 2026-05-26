@@ -201,7 +201,7 @@ def signup():
 
 
 # ── Logout ────────────────────────────────────────────────────────────────────
-@bp.route("/logout", methods=["POST", "GET"])
+@bp.route("/logout", methods=["POST"])
 def logout():
     """Clear the Flask session cookie AND delete the server-side session row.
 
@@ -500,8 +500,8 @@ def api_totp_enroll():
     try:
         secret, uri = _totp.enroll(_USERS_DB, me)
     except Exception as exc:
-        logger.error("totp enroll failed: %s", exc)
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        logger.error("totp enroll failed: %s", exc, exc_info=True)
+        return jsonify({"ok": False, "error": "An internal error occurred"}), 500
 
     return jsonify(
         {
@@ -1034,6 +1034,7 @@ def api_auth_status():
 
 @bp.route("/api/auth/change_credentials", methods=["POST"])
 @login_required
+@admin_required
 def api_auth_change_credentials():
     """Generate a new password hash and return it for the user to paste into .env.
 
@@ -1042,7 +1043,8 @@ def api_auth_change_credentials():
     user can update ``SEO_SUITE_USERNAME`` / ``SEO_SUITE_PASSWORD_HASH``
     themselves and restart the server.
     """
-    from werkzeug.security import generate_password_hash
+    from core.auth import _hash_password
+    from core.password_policy import validate_new_password
 
     data = request.get_json(force=True) or {}
     username = (data.get("username") or "").strip()
@@ -1054,7 +1056,12 @@ def api_auth_change_credentials():
             jsonify({"ok": False, "error": "password must be at least 12 characters"}),
             400,
         )
-    pw_hash = generate_password_hash(password)
+    
+    pol_ok, pol_err = validate_new_password(password, username=username)
+    if not pol_ok:
+        return jsonify({"ok": False, "error": pol_err}), 400
+
+    pw_hash = _hash_password(password)
     logger.info("Credential change requested for username: %s", username)
     return jsonify(
         {
@@ -1077,6 +1084,3 @@ def register(app, limiter) -> None:
     app.register_blueprint(bp)
     limiter.limit("5 per minute")(app.view_functions["auth_views.login"])
     limiter.limit("10 per minute")(app.view_functions["auth_views.signup"])
-    # C-4: TOTP endpoint — 5 attempts/minute prevents 6-digit brute force.
-    # Covers both regular TOTP codes and backup codes (same route).
-    limiter.limit("5 per minute")(app.view_functions["auth_views.login_totp"])

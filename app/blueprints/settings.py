@@ -136,8 +136,14 @@ def _validate_settings(cfg: dict) -> str | None:
         block = cfg.get(parent)
         if isinstance(block, dict):
             wh = block.get("webhook_url")
-            if wh and wh != _SECRET_SENTINEL and not str(wh).startswith("https://"):
-                return f"{parent.title()} webhook URL must start with https://"
+            if wh and wh != _SECRET_SENTINEL:
+                if not str(wh).startswith("https://"):
+                    return f"{parent.title()} webhook URL must start with https://"
+                from core.security import validate_public_url
+                try:
+                    validate_public_url(str(wh))
+                except ValueError as exc:
+                    return f"{parent.title()} webhook URL: {exc}"
     creds = cfg.get("gsc", {})
     if isinstance(creds, dict):
         cf = creds.get("credentials_file", "")
@@ -316,7 +322,8 @@ def api_compare():
         a = _scores(pa)
         b = _scores(pb)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error("Compare error: %s", e, exc_info=True)
+        return jsonify({"error": "An internal error occurred"}), 500
     all_urls = sorted(set(a) | set(b))
     rows = []
     for u in all_urls:

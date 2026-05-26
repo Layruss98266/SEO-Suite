@@ -149,14 +149,17 @@ def api_docs():
     bundle. This only affects this route; every other response keeps the
     default CSP from app/middleware.py.
     """
+    import secrets
+    nonce = secrets.token_hex(16)
+    html = _SWAGGER_UI_HTML.replace("<script>", f'<script nonce="{nonce}">')
     return (
-        _SWAGGER_UI_HTML,
+        html,
         200,
         {
             "Content-Type": "text/html",
             "Content-Security-Policy": (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+                f"script-src 'self' 'nonce-{nonce}' https://unpkg.com; "
                 "style-src 'self' 'unsafe-inline' https://unpkg.com; "
                 "img-src 'self' data: https://unpkg.com; "
                 "connect-src 'self'"

@@ -82,7 +82,7 @@ The following features **silently no-op without SMTP**:
 - New-device login notifications (sent on novel IP + UA combinations)
 
 **How:**
-Set these in `config.json` (via the Settings UI) or `.env`:
+Set these in `config.json` (via the Settings UI, which is initialized from `config.json.example` on setup) or `.env`:
 
 ```
 SMTP_HOST=smtp.gmail.com

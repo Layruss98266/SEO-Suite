@@ -202,7 +202,10 @@ def safe_requests_get(url: str, *, max_redirects: int = 5, **kwargs) -> requests
         location = resp.headers.get("Location")
         if not location:
             return resp
-        current = validate_public_url(urljoin(current, location))
+        try:
+            current = validate_public_url(urljoin(current, location))
+        except ValueError as exc:
+            raise ValueError(f"Redirect target blocked: {exc}") from exc
     raise ValueError("Too many redirects")
 
 
@@ -217,7 +220,10 @@ def safe_requests_head(url: str, *, max_redirects: int = 5, **kwargs) -> request
         location = resp.headers.get("Location")
         if not location:
             return resp
-        current = validate_public_url(urljoin(current, location))
+        try:
+            current = validate_public_url(urljoin(current, location))
+        except ValueError as exc:
+            raise ValueError(f"Redirect target blocked: {exc}") from exc
     raise ValueError("Too many redirects")
 
 
@@ -237,7 +243,10 @@ def safe_requests_post(url: str, *, max_redirects: int = 5, **kwargs) -> request
         if not location:
             return resp
         # Redirected POSTs become GETs (HTTP 303 / real-world behaviour)
-        current = validate_public_url(urljoin(current, location))
+        try:
+            current = validate_public_url(urljoin(current, location))
+        except ValueError as exc:
+            raise ValueError(f"Redirect target blocked: {exc}") from exc
         kwargs.pop("data", None)
         kwargs.pop("json", None)
     raise ValueError("Too many redirects")

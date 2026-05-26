@@ -475,7 +475,7 @@ function cmdSearch(q){
     : all;
   _cmdResults=filtered; _cmdIdx=-1;
   if(!filtered.length){
-    box.innerHTML='<div class="cmd-empty">No results for "'+q+'"</div>';
+    box.innerHTML='<div class="cmd-empty">No results for "'+_esc(q)+'"</div>';
     return;
   }
   // Group by section

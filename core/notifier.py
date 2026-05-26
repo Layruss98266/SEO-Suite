@@ -98,9 +98,11 @@ class NotificationService:
 
     def send_slack(self, message: str) -> None:
         cfg = self._cfg.get("slack", {})
-        if not cfg.get("enabled"):
+        if not cfg.get("enabled") or not cfg.get("webhook_url"):
             return
         try:
+            from core.security import validate_public_url
+            validate_public_url(cfg["webhook_url"])
             import requests
             requests.post(cfg["webhook_url"], json={"text": message},
                           timeout=self._webhook_timeout)
@@ -110,9 +112,11 @@ class NotificationService:
 
     def send_teams(self, message: str) -> None:
         cfg = self._cfg.get("teams", {})
-        if not cfg.get("enabled"):
+        if not cfg.get("enabled") or not cfg.get("webhook_url"):
             return
         try:
+            from core.security import validate_public_url
+            validate_public_url(cfg["webhook_url"])
             import requests
             requests.post(cfg["webhook_url"], json={"text": message},
                           timeout=self._webhook_timeout)

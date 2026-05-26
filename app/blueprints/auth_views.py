@@ -1084,3 +1084,6 @@ def register(app, limiter) -> None:
     app.register_blueprint(bp)
     limiter.limit("5 per minute")(app.view_functions["auth_views.login"])
     limiter.limit("10 per minute")(app.view_functions["auth_views.signup"])
+    limiter.limit("5 per 10 minute")(app.view_functions["auth_views.api_request_password_reset"])
+    limiter.limit("10 per minute")(app.view_functions["auth_views.api_reset_password"])
+    limiter.limit("10 per minute")(app.view_functions["auth_views.api_verify_email"])

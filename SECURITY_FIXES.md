@@ -901,7 +901,7 @@ browser = pw.chromium.launch(args=["--disable-javascript", "--no-sandbox"])
 |----------|-------|--------|
 | Original review (38 issues) | 38 | All resolved |
 | Deferred sub-tasks | 6 | All resolved |
-| New High (N-1 to N-5) | 5 | All resolved |
-| New Medium (N-6 to N-9) | 4 | All resolved |
-| New Low (N-10 to N-12) | 3 | All resolved |
-| **Total open items** | **18** | **All 18 resolved** ✅ |
+| New High (N-1 to N-5) | 5 | All resolved ✅ |
+| New Medium (N-6 to N-9) | 4 | All resolved ✅ |
+| New Low (N-10 to N-12) | 3 | All resolved ✅ |
+| **Total open items** | **0** | **All resolved** ✅ |

@@ -92,7 +92,17 @@
       "Bash(mkdir -p .agentmaster)",
       "Bash(repomix --style xml -o .agentmaster/codebase.xml --ignore \"**/node_modules/**,**/dist/**,**/build/**,**/.next/**,**/coverage/**,**/*.lock,**/*.log,**/.agentmaster/**,**/.git/**,**/reports/**,**/__pycache__/**,**/*.pyc\")",
       "Bash(grep -qxF '.agentmaster/' .gitignore)",
-      "Bash(echo '.agentmaster/')"
+      "Bash(echo '.agentmaster/')",
+      "mcp__Claude_Preview__preview_start",
+      "WebSearch",
+      "Bash(ls -la \"D:\\\\Coding\\\\SEO Suite\\\\\" | grep -E '\\(dashboard\\\\.py|README\\\\.html|CODE_REVIEW\\\\.md|FREE_TOOLS_RESEARCH\\\\.md|PROJECT_ANALYSIS\\\\.md|GITHUB_REFERENCE\\\\.md|INSTALL_PACKAGES\\\\.md|RECOMMENDED_PACKAGES\\\\.md|agents\\\\.md\\)')",
+      "Bash(xargs -I {} basename {})",
+      "Bash(dir /b \"D:\\\\Coding\\\\SEO Suite\\\\dashboard.py\" \"D:\\\\Coding\\\\SEO Suite\\\\README.html\")",
+      "Bash(grep -n \"^.*_api\\\\s*=\\\\|const {_show\\\\|_show,\\\\|,_show\" \"D:/Coding/SEO Suite/app/static/js/dashboard.js\")",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(python -c \"import tools.quick_tools; print\\('quick_tools OK'\\)\")",
+      "Bash(python -c \"import app.server; print\\('server OK'\\)\")",
+      "Bash(grep -n 'href=\"${escTool\\(e.url\\)}\\\\|href=\"${escTool\\(r.url\\)}\\\\|href=\"${escTool\\(' app/static/js/dashboard.js)"
     ]
   }
 }

@@ -555,7 +555,14 @@ def authenticate(
         return None
 
     user = _load_users().get(username)
-    if user and _safe_check(user.get("password_hash", ""), password):
+    # Always verify against *some* hash to keep wall-clock cost identical
+    # whether the user exists or not. Using the real hash for known users and
+    # _DUMMY_HASH for unknown users means both paths go through the same
+    # expensive KDF, defeating timing-based user enumeration.
+    pw_hash = user["password_hash"] if user else _DUMMY_HASH
+    pw_ok = _safe_check(pw_hash, password)
+
+    if user and pw_ok:
         # Check novelty BEFORE recording the attempt so the recorded row
         # doesn't itself match and suppress the notification.
         novel = _is_novel_login(username, ip, user_agent)
@@ -584,13 +591,6 @@ def authenticate(
             except Exception as exc:
                 _log.debug("totp check failed: %s", exc)
         return identity
-
-    # Anti-enumeration: when the user doesn't exist, still run a hash check
-    # against the dummy so the wall-clock cost matches a real
-    # "wrong password" path. Without this, an attacker measures latency to
-    # distinguish "unknown user" (fast) from "wrong password" (slow scrypt).
-    if user is None:
-        _safe_check(_DUMMY_HASH, password)
 
     _record_failed_login(username)
     _record_attempt(

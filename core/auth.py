@@ -95,7 +95,24 @@ def _verify_password(stored_hash: str, plaintext: str) -> bool:
 # to keep timing identical when the supplied username doesn't exist —
 # otherwise an attacker distinguishes "no such user" (fast) from "wrong
 # password" (slow hash verify) by request latency.
+#
+# IMPORTANT: This MUST use the same algorithm and cost parameters as real
+# user passwords. If argon2 is available it uses argon2id; otherwise scrypt.
+# The hash is intentionally of a random secret so it can never match.
 _DUMMY_HASH = _hash_password(secrets.token_hex(32))
+
+
+def _run_dummy_hash(password: str) -> None:
+    """Unconditionally verify password against the dummy hash.
+
+    This is a deliberate timing equaliser — the result is always discarded.
+    Keeping it in a separate function (a) makes the intent obvious, (b) makes
+    it impossible for the caller to skip via an ``if`` guard, and (c) prevents
+    the interpreter from eliding the call as dead code.
+    """
+    # We use _verify_password (not _safe_check) to bypass the empty-hash
+    # fast-path in _safe_check and guarantee full argon2/scrypt cost.
+    _verify_password(_DUMMY_HASH, password)
 
 # ── Multi-user store ───────────────────────────────────────────────────────────
 # Accounts live in SQLite (data/seo_suite.db, table `users`). The env admin
@@ -555,14 +572,28 @@ def authenticate(
         return None
 
     user = _load_users().get(username)
-    # Always verify against *some* hash to keep wall-clock cost identical
-    # whether the user exists or not. Using the real hash for known users and
-    # _DUMMY_HASH for unknown users means both paths go through the same
-    # expensive KDF, defeating timing-based user enumeration.
-    pw_hash = user["password_hash"] if user else _DUMMY_HASH
-    pw_ok = _safe_check(pw_hash, password)
 
-    if user and pw_ok:
+    # Anti-enumeration: ALWAYS run a hash verification so the wall-clock cost
+    # for unknown usernames matches the known-but-wrong-password path.
+    #
+    # Structure:
+    #   known user   → verify real hash (argon2, ~same cost as dummy)
+    #   unknown user → _run_dummy_hash() (same argon2 cost, result discarded)
+    #
+    # By computing the dummy hash BEFORE any conditional branching we guarantee
+    # it cannot be skipped even if a future refactor adds an early return.
+    if user is None:
+        # Unknown user — burn a dummy hash for timing parity, then fail.
+        _run_dummy_hash(password)
+        _record_failed_login(username)
+        _record_attempt(
+            username, success=False, ip=ip, user_agent=user_agent, reason="unknown_user"
+        )
+        _log.warning("Failed login attempt for username: %s", username)
+        return None
+
+    # Known user — verify the real stored hash.
+    if _safe_check(user.get("password_hash", ""), password):
         # Check novelty BEFORE recording the attempt so the recorded row
         # doesn't itself match and suppress the notification.
         novel = _is_novel_login(username, ip, user_agent)
@@ -572,16 +603,11 @@ def authenticate(
         )
         _update_last_login(username, ip)
         # Best-effort, after-the-fact notification on novel sign-ins.
-        # Note: we don't notify on the very first successful login if there
-        # were earlier failed attempts from the same IP+UA, but that's an
-        # acceptable trade-off — the user hasn't given us anywhere to send.
         if novel:
             _send_login_notification(username, ip, user_agent)
         identity = {"username": username, "is_admin": bool(user.get("is_admin"))}
-        # 2FA gate: if TOTP is enabled, the caller must complete a second
-        # step before the session is upgraded to fully authed. We signal
-        # this by returning ``totp_required: True`` — the route layer
-        # stashes the username in a half-session and asks for a code.
+        # 2FA gate: if TOTP is enabled, signal the caller to complete a
+        # second step before the session is upgraded to fully authed.
         if _use_sqlite_backend():
             try:
                 from core import totp as _totp
@@ -592,13 +618,10 @@ def authenticate(
                 _log.debug("totp check failed: %s", exc)
         return identity
 
+    # Known user, wrong password.
     _record_failed_login(username)
     _record_attempt(
-        username,
-        success=False,
-        ip=ip,
-        user_agent=user_agent,
-        reason="bad_password" if user else "unknown_user",
+        username, success=False, ip=ip, user_agent=user_agent, reason="bad_password"
     )
     _log.warning("Failed login attempt for username: %s", username)
     return None

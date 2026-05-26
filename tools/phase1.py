@@ -748,8 +748,8 @@ def readability_check(url: str) -> dict:
     text = soup.get_text(separator=" ", strip=True)
     if len(text.split()) < 50:
         return result(url, "readability", "warning", None, "Too little text to score")
-    fk = round(textstat.flesch_kincaid_grade(text), 1)
-    ease = round(textstat.flesch_reading_ease(text), 1)
+    fk = round(textstat.textstat.flesch_kincaid_grade(text), 1)
+    ease = round(textstat.textstat.flesch_reading_ease(text), 1)
     s = "pass" if fk <= 10 else "warning" if fk <= 14 else "fail"
     msg = f"Flesch-Kincaid grade {fk} | Reading ease {ease}/100"
     return result(url, "readability", s, {"fk_grade": fk, "ease": ease}, msg)
@@ -774,14 +774,14 @@ def domain_age_check(url: str) -> dict:
     domain = public_hostname(url)
     try:
         w = _whois.whois(domain)
-        created = w.creation_date
+        created = w.get("creation_date")
         if isinstance(created, list):
             created = created[0]
         if not created:
             return result(url, "domain_age", "warning", None, "Creation date unavailable")
         age_days = (_dt.now() - created).days
         age_yrs = round(age_days / 365, 1)
-        expiry = w.expiration_date
+        expiry = w.get("expiration_date")
         if isinstance(expiry, list):
             expiry = expiry[0]
         s = "pass" if age_yrs >= 2 else "warning" if age_yrs >= 1 else "fail"
@@ -793,7 +793,7 @@ def domain_age_check(url: str) -> dict:
             s,
             {"age_years": age_yrs, "age_days": age_days},
             msg,
-            {"expiry": str(expiry), "registrar": str(w.registrar or "")},
+            {"expiry": str(expiry), "registrar": str(w.get("registrar") or "")},
         )
     except Exception as e:
         return result(url, "domain_age", "error", None, f"WHOIS lookup failed: {e}")
@@ -805,7 +805,7 @@ def domain_age_check(url: str) -> dict:
 def ssl_check(url: str) -> dict:
     import socket as _sock
     import ssl as _ssl
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
 
     if not url.startswith("https"):
         return result(url, "ssl", "fail", None, "Page not served over HTTPS — switch to HTTPS")
@@ -819,7 +819,7 @@ def ssl_check(url: str) -> dict:
         expiry_raw = cert.get("notAfter", "")
         expiry_str = str(expiry_raw) if expiry_raw else ""
         expiry = _dt.strptime(expiry_str, "%b %d %H:%M:%S %Y %Z") if expiry_str else None
-        days_left = (expiry - _dt.utcnow()).days if expiry else None
+        days_left = (expiry - _dt.now(_tz.utc).replace(tzinfo=None)).days if expiry else None
         if days_left is not None and days_left < 14:
             return result(
                 url,

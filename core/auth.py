@@ -154,7 +154,7 @@ def _is_locked_out(username: str) -> bool:
     if _use_sqlite_backend():
         try:
             from core import db as _db
-            db_count = _db.count_recent_failures(_USERS_DB, username, window=_LOCKOUT_WINDOW)
+            db_count = _db.count_recent_failures(_USERS_DB, username, window_seconds=_LOCKOUT_WINDOW)
             return db_count >= _LOCKOUT_THRESHOLD
         except Exception as exc:
             _log.debug("_is_locked_out DB check failed: %s", exc)

@@ -82,10 +82,18 @@ def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
+        # Build the CSRF hidden field now — needed for any error re-render so the
+        # next submission passes the CSRF check (the field must be present even on
+        # error pages; omitting it causes a 403 on the second attempt).
+        _csrf_hidden = f'<input type="hidden" name="_csrf_token" value="{generate_csrf_token()}">'
+        _next_val = (request.form.get("next") or "").strip()
+        if _next_val and _next_val.startswith("/") and not _next_val.startswith("//"):
+            _csrf_hidden += f'\n      <input type="hidden" name="next" value="{esc(_next_val)}">'
         if _is_locked_out(username):
-            page = LOGIN_PAGE.replace(
-                "__ERROR__",
-                "<div class='err'>Account temporarily locked — try again in 15 minutes</div>",
+            page = (
+                LOGIN_PAGE
+                .replace("__NEXT__", _csrf_hidden)
+                .replace("__ERROR__", "<div class='err'>Account temporarily locked — try again in 15 minutes</div>")
             )
             return page, 429, {"Content-Type": "text/html"}
         # Pass IP + UA so authenticate() can record them in login_attempts.
@@ -145,7 +153,11 @@ def login():
             else:
                 dest = "/app"
             return ("", 302, {"Location": dest})
-        page = LOGIN_PAGE.replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
+        page = (
+            LOGIN_PAGE
+            .replace("__NEXT__", _csrf_hidden)
+            .replace("__ERROR__", "<div class='err'>Invalid credentials</div>")
+        )
         return page, 401, {"Content-Type": "text/html"}
     # GET — embed ?next= and CSRF token into the form as hidden fields.
     _next = request.args.get("next", "")
@@ -412,7 +424,9 @@ def _totp_challenge_html(error_html: str) -> str:
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SEO Suite — Two-factor authentication</title>
+<style>
 {LOGIN_PAGE.split('<style>')[1].split('</style>')[0]}
+</style>
 </head>
 <body>
 <div class="grid"></div>

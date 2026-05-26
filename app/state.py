@@ -132,9 +132,15 @@ def _broadcast_audit(msg) -> None:
     _audit_queue.put(msg)
 
 
-def _subscribe(subs: list[queue.Queue]) -> queue.Queue:
-    q = queue.Queue(maxsize=1000)
+_MAX_SSE_SUBSCRIBERS = int(os.environ.get("SEO_SUITE_MAX_SSE_SUBSCRIBERS", "50"))
+
+
+def _subscribe(subs: list[queue.Queue]) -> queue.Queue | None:
+    """Add a new subscriber queue. Returns None when the cap is reached."""
     with _sub_lock:
+        if len(subs) >= _MAX_SSE_SUBSCRIBERS:
+            return None
+        q = queue.Queue(maxsize=1000)
         subs.append(q)
     return q
 

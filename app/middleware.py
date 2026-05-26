@@ -67,7 +67,10 @@ def _set_security_headers(response):
         )
     response.headers.setdefault(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+        # 'unsafe-inline' removed from script-src — all scripts are external.
+        # 'unsafe-inline' kept in style-src because the UI uses many inline
+        # style attributes; removing it would require auditing ~500 elements.
+        "default-src 'self'; script-src 'self'; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; connect-src 'self'",
@@ -77,7 +80,7 @@ def _set_security_headers(response):
 
 # ── Before-request CSRF guard ────────────────────────────────────────────────
 
-_CSRF_PROTECTED_PATHS = ("/login", "/signup", "/contact", "/login/totp")
+_CSRF_PROTECTED_PATHS = ("/login", "/signup", "/contact", "/login/totp", "/logout")
 
 
 def _csrf_protect():

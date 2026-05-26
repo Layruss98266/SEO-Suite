@@ -563,6 +563,40 @@ def issue_auth_token(
     return raw
 
 
+def peek_auth_token(db_path: Path, token: str, kind: str) -> str | None:
+    """Validate a token and return the associated username WITHOUT consuming it.
+
+    Used to run policy checks (password strength, etc.) before the token is
+    burned so a failed policy check doesn't invalidate the user's reset link.
+    Call consume_auth_token() immediately after the policy check passes.
+    """
+    from datetime import datetime, timezone
+
+    _ensure_schema(db_path)
+    if not token:
+        return None
+    h = _hash_token(token)
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        with _connect(db_path) as conn:
+            row = conn.execute(
+                """
+                SELECT username, expires_at, consumed_at
+                  FROM auth_tokens
+                 WHERE token_hash = ? AND kind = ?
+                """,
+                (h, kind),
+            ).fetchone()
+            if row is None or row["consumed_at"] is not None:
+                return None
+            if row["expires_at"] < now:
+                return None
+            return row["username"]
+    except sqlite3.Error as e:
+        logger.error("peek_auth_token failed: %s", e)
+        return None
+
+
 def consume_auth_token(db_path: Path, token: str, kind: str) -> str | None:
     """Verify, consume, and return the associated username if valid; else None.
 

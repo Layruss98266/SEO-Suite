@@ -79,19 +79,10 @@ def validate_public_url(url: str, *, allow_empty_path: bool = True) -> str:
 
     try:
         ip = ipaddress.ip_address(host)
+        # Host is a valid IP literal — reject if private/loopback/etc.
         _reject_private_ip(ip)
-    except ValueError as exc:
-        # If host wasn't an IP literal, resolve and validate each result.
-        msg = str(exc)
-        if ("does not appear to be" not in msg
-                and "Expected 4 octets" not in msg
-                and "At least 3 parts" not in msg
-                and "Private" not in msg
-                and "Metadata" not in msg
-                and "Localhost" not in msg):
-            raise
-        if "Private" in msg or "Metadata" in msg or "Localhost" in msg:
-            raise
+    except ipaddress.AddressValueError:
+        # Host is not an IP literal — resolve and validate every returned address.
         try:
             infos = socket.getaddrinfo(
                 host,
@@ -103,6 +94,7 @@ def validate_public_url(url: str, *, allow_empty_path: bool = True) -> str:
         for info in infos:
             resolved = info[4][0]
             _reject_private_ip(ipaddress.ip_address(resolved))
+    # ValueError from _reject_private_ip propagates as-is
     return url
 
 

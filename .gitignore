@@ -1,5 +1,6 @@
 # Secrets — never commit
 .env
+config.json
 
 # Runtime data
 data/

@@ -338,6 +338,8 @@ def api_audit_run():
 def api_audit_stream():
     """Long-lived SSE stream of audit progress (rate-limit-exempt via register)."""
     sub = _subscribe(_audit_subscribers)
+    if sub is None:
+        return jsonify({"error": "Too many concurrent SSE connections"}), 503
 
     def gen():
         try:

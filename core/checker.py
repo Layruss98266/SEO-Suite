@@ -11,15 +11,12 @@ import logging
 import os
 import random
 import re
-import smtplib
 import sys
 import threading
 import time
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from datetime import datetime
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -735,64 +732,6 @@ def check_parallel(urls: list[str], n: int, proxy_list: list, headless: bool, de
         t.join()
 
     return results
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# NOTIFICATIONS
-# ══════════════════════════════════════════════════════════════════════════════
-
-def send_email(subject: str, html_body: str, report_path: Path | None = None) -> None:
-    cfg = CFG.get("email", {})
-    if not cfg.get("enabled"): return
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"]    = cfg["from"]
-        msg["To"]      = ", ".join(cfg["to"])
-        msg.attach(MIMEText(html_body, "html"))
-
-        with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"]) as s:
-            s.starttls()
-            s.login(cfg["username"], cfg["password"])
-            s.sendmail(cfg["from"], cfg["to"], msg.as_string())
-        logger.info("Email sent ✓")
-    except Exception as e:
-        logger.warning("Email failed: %s", e)
-
-def send_slack(message: str) -> None:
-    cfg = CFG.get("slack", {})
-    if not cfg.get("enabled") or not HAS_REQUESTS: return
-    try:
-        req_lib.post(cfg["webhook_url"], json={"text": message}, timeout=_t("webhook_timeout_secs", 10))
-        logger.info("Slack notification sent ✓")
-    except Exception as e:
-        logger.warning("Slack failed: %s", e)
-
-def send_teams(message: str) -> None:
-    cfg = CFG.get("teams", {})
-    if not cfg.get("enabled") or not HAS_REQUESTS: return
-    try:
-        req_lib.post(cfg["webhook_url"], json={"text": message}, timeout=_t("webhook_timeout_secs", 10))
-        logger.info("Teams notification sent ✓")
-    except Exception as e:
-        logger.warning("Teams failed: %s", e)
-
-def notify_all(counts: dict, total: int, html_path: Path):
-    indexed     = counts.get("Indexed", 0)
-    not_indexed = counts.get("Not Indexed", 0)
-    pct         = round(indexed / total * 100, 1) if total else 0
-    subject     = f"Indexing Report — {indexed}/{total} indexed ({pct}%)"
-    body        = f"""
-    <h2>Indexing Report</h2>
-    <p><b>Total checked:</b> {total}</p>
-    <p style="color:green"><b>Indexed:</b> {indexed} ({pct}%)</p>
-    <p style="color:red"><b>Not Indexed:</b> {not_indexed}</p>
-    <p>Full report: {html_path}</p>
-    """
-    msg = f"*Indexing Report* — ✅ {indexed} indexed | ❌ {not_indexed} not indexed | Total: {total} ({pct}%)"
-    send_email(subject, body, html_path)
-    send_slack(msg)
-    send_teams(msg)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

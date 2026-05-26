@@ -358,6 +358,14 @@ def login_totp():
             ok = _totp.verify_code(_USERS_DB, pending_username, code)
 
         if not ok:
+            # Record failure in the audit log so brute-force attempts are visible.
+            from core.auth import _record_attempt
+            _record_attempt(
+                pending_username, success=False,
+                ip=request.remote_addr,
+                user_agent=(request.user_agent.string if request.user_agent else None),
+                reason="bad_totp",
+            )
             return _totp_challenge_html("<div class='err'>Invalid code — try again</div>"), 401, {
                 "Content-Type": "text/html"
             }
@@ -604,12 +612,13 @@ def api_request_password_reset():
         logger.error("Failed to issue password reset token for %s: %s", username, exc)
         return generic_response
 
-    reset_path = f"/reset_password?token={raw_token}"
+    base_url = os.getenv("SEO_SUITE_BASE_URL", request.host_url).rstrip("/")
+    reset_url = f"{base_url}/reset_password?token={raw_token}"
     body = f"""
     <h2>Password reset for SEO Suite</h2>
     <p>We received a request to reset your password. Click the link below to set a new one.
     This link expires in 1 hour and can only be used once.</p>
-    <p><a href="{reset_path}">{reset_path}</a></p>
+    <p><a href="{reset_url}">{reset_url}</a></p>
     <p>If you didn't request this, ignore the email — your password hasn't changed.</p>
     """
     svc = NotificationService(state.CFG)
@@ -640,16 +649,19 @@ def api_reset_password():
             {"ok": False, "error": f"Password must be at least {_MIN_PASSWORD_LEN} characters"}
         ), 400
 
-    username = _db.consume_auth_token(_USERS_DB, token, "password_reset")
+    # Peek first — validate the token exists without burning it so a failed
+    # policy check doesn't invalidate the user's reset link (C-3).
+    username = _db.peek_auth_token(_USERS_DB, token, "password_reset")
     if not username:
         return jsonify({"ok": False, "error": "Invalid or expired reset token"}), 400
 
     pol_ok, pol_err = validate_new_password(new_password, username=username)
     if not pol_ok:
-        # Token was already consumed by this point. That's fine — user just
-        # has to request a fresh one. Prevents bypassing the policy by
-        # rapid-fire submissions until a weak one slips through.
         return jsonify({"ok": False, "error": pol_err}), 400
+
+    # Policy passed — now consume the token (single-use enforcement).
+    if not _db.consume_auth_token(_USERS_DB, token, "password_reset"):
+        return jsonify({"ok": False, "error": "Invalid or expired reset token"}), 400
 
     if not _db.reset_password_hash(_USERS_DB, username, _hash_password(new_password)):
         return jsonify({"ok": False, "error": "Password reset failed"}), 500
@@ -681,11 +693,12 @@ def api_send_verification():
         logger.error("Failed to issue verification token for %s: %s", me, exc)
         return jsonify({"ok": False, "error": "Could not issue verification token"}), 500
 
-    verify_path = f"/verify_email?token={raw_token}"
+    base_url = os.getenv("SEO_SUITE_BASE_URL", request.host_url).rstrip("/")
+    verify_url = f"{base_url}/verify_email?token={raw_token}"
     body = f"""
     <h2>Verify your SEO Suite email</h2>
     <p>Click the link below to confirm your email address. The link expires in 24 hours.</p>
-    <p><a href="{verify_path}">{verify_path}</a></p>
+    <p><a href="{verify_url}">{verify_url}</a></p>
     <p>If you didn't sign up for SEO Suite, ignore this email.</p>
     """
     svc = NotificationService(state.CFG)
@@ -981,21 +994,24 @@ def _use_sqlite_login_history() -> bool:
 
 # ── Auth status / credential helper ───────────────────────────────────────────
 @bp.route("/api/auth_status")
-@login_required
 def api_auth_status():
     """Return current auth configuration state (for Settings → Security card).
 
-    Also surfaces the ``must_rotate_password`` flag so the dashboard can
-    pop a banner asking the env admin to set a per-user password and move
-    off the env-based credential.
+    Returns a minimal payload when not authenticated so the endpoint can
+    still be called on page load without exposing admin details (M-10).
+    Never returns the env admin username — callers get a boolean flag only (C-7).
     """
+    if auth_enabled() and not session.get("authed"):
+        return jsonify({"auth_enabled": True, "authenticated": False})
+
     me = session.get("username") or ""
     from core.auth import _should_force_env_admin_rotation
 
     return jsonify(
         {
             "auth_enabled": auth_enabled(),
-            "username": os.getenv("SEO_SUITE_USERNAME", "admin"),
+            "authenticated": True,
+            "is_env_admin": bool(os.getenv("SEO_SUITE_PASSWORD_HASH")),
             "secret_set": bool(os.getenv("SEO_SUITE_SECRET")),
             "must_rotate_password": _should_force_env_admin_rotation(me),
         }
@@ -1039,7 +1055,7 @@ def api_auth_change_credentials():
 
 
 def register(app, limiter) -> None:
-    """Register the blueprint and wire login/signup rate limits.
+    """Register the blueprint and wire login/signup/totp rate limits.
 
     Rate limits target the bound view functions, which only exist after
     blueprint registration — hence the factory-style wiring.
@@ -1047,3 +1063,6 @@ def register(app, limiter) -> None:
     app.register_blueprint(bp)
     limiter.limit("5 per minute")(app.view_functions["auth_views.login"])
     limiter.limit("10 per minute")(app.view_functions["auth_views.signup"])
+    # C-4: TOTP endpoint — 5 attempts/minute prevents 6-digit brute force.
+    # Covers both regular TOTP codes and backup codes (same route).
+    limiter.limit("5 per minute")(app.view_functions["auth_views.login_totp"])

@@ -1030,7 +1030,7 @@ function appendIdxRow(num,url,status,priority){
     <span class="lr-num">${String(num).padStart(3,'0')}</span>
     <span class="lr-badge ${badgeCls}">${status}</span>
     ${priHtml}
-    <span class="lr-url" title="${url}"><a href="${url}" target="_blank">${shortUrl}</a></span>
+    <span class="lr-url" title="${_esc(url)}"><a href="${_safeHref(url)}" target="_blank">${_esc(shortUrl)}</a></span>
     <span class="lr-time">${nowTime()}</span>`;
   box.appendChild(row);
   // Update filter counts
@@ -1351,7 +1351,7 @@ function appendAudRow(num,url,score,issues,warns){
   row.innerHTML=`
     <span class="lr-num">${String(num).padStart(3,'0')}</span>
     <span class="lr-score ${scoreCls}">${sc}</span>
-    <span class="lr-url" title="${url}"><a href="${url}" target="_blank">${shortUrl}</a></span>
+    <span class="lr-url" title="${_esc(url)}"><a href="${_safeHref(url)}" target="_blank">${_esc(shortUrl)}</a></span>
     <span class="lr-detail">${detail}</span>
     <span class="lr-time">${nowTime()}</span>`;
   box.appendChild(row);
@@ -1931,7 +1931,8 @@ function initUserBadge(){
 
 async function doLogout(){
   try {
-    await fetch('/logout', {method:'POST'});
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    await fetch('/logout', {method:'POST', headers:{'X-CSRF-Token': csrf}});
   } catch(e){ /* ignore */ }
   window.location.href = '/login';
 }
@@ -2191,6 +2192,7 @@ function loadUsers(){
 }
 
 function _esc(s){ const d=document.createElement('div'); d.textContent=String(s==null?'':s); return d.innerHTML; }
+function _safeHref(url){ try{ const u=new URL(url); return (u.protocol==='http:'||u.protocol==='https:') ? url : '#'; } catch(e){ return '#'; } }
 
 async function createUser(){
   const name=(document.getElementById('new-user-name')?.value||'').trim();
@@ -3173,7 +3175,7 @@ function openDrawer(url){
   const sc=d.score||0;
   const scClass=sc>=80?'lr-s-high':sc>=50?'lr-s-mid':'lr-s-low';
   document.getElementById('drawer-sub').innerHTML=
-    `<a href="${url}" target="_blank" style="color:var(--primary)">${url}</a> · <span class="lr-score ${scClass}">${sc}</span> · ${d.issues||0} issues · ${d.warnings||0} warnings`;
+    `<a href="${_safeHref(url)}" target="_blank" style="color:var(--primary)">${_esc(url)}</a> · <span class="lr-score ${scClass}">${sc}</span> · ${d.issues||0} issues · ${d.warnings||0} warnings`;
 
   const body=document.getElementById('drawer-body');
   if(!d.results||!d.results.length){
@@ -3189,8 +3191,8 @@ function openDrawer(url){
         <div class="check-group-title">${label} (${groups[k].length})</div>
         ${groups[k].map(r=>`
           <div class="check-row ${cls}">
-            <div class="check-tool">${(r.tool||'').replace(/_/g,' ')}</div>
-            <div class="check-msg">${r.message||'—'}</div>
+            <div class="check-tool">${_esc((r.tool||'').replace(/_/g,' '))}</div>
+            <div class="check-msg">${_esc(r.message||'—')}</div>
           </div>`).join('')}
       </div>`;
     }).join('');
@@ -3532,7 +3534,7 @@ function runCompare(){
   fetch(`/api/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`)
     .then(r=>r.json()).then(d=>{
       if(d.error){
-        document.getElementById('cmp-result').innerHTML=`<div class="card"><div class="empty" style="color:var(--danger)">${d.error}</div></div>`;
+        document.getElementById('cmp-result').innerHTML=`<div class="card"><div class="empty" style="color:var(--danger)">${_esc(d.error)}</div></div>`;
         return;
       }
       const rows=d.rows.sort((x,y)=>{
@@ -4247,6 +4249,11 @@ function _hideAll(...ids){ _hide(...ids); }
 function _showErr(id, msg){ const el=document.getElementById(id); if(el){el.textContent=msg||'Error';el.style.display='';} }
 async function _api(path, body={}){
   const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){
+    let errMsg='Request failed: '+r.status;
+    try{ const d=await r.json(); errMsg=d.error||d.message||errMsg; }catch(e){ /* ignore parse error */ }
+    throw new Error(errMsg);
+  }
   return r.json();
 }
 function _clearVal(...ids){ ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
@@ -4647,7 +4654,7 @@ async function runBingInspect() {
   if (!site_url) { _showErr('bing-error','Enter Site URL in the Overview card first'); return; }
   const d = await _api('/api/tools/bing/inspect', {url, site_url});
   const el = document.getElementById('bing-inspect-result');
-  if (!d.ok) { el.innerHTML=`<div class="error-box" style="display:block">${d.error}</div>`; _show('bing-inspect-result'); return; }
+  if (!d.ok) { el.innerHTML=`<div class="error-box" style="display:block">${_esc(d.error)}</div>`; _show('bing-inspect-result'); return; }
   const dd = d.data || {};
   const badge = dd.is_indexed ? '<span class="status-pass">Indexed</span>' : '<span class="status-warn">Not indexed</span>';
   el.innerHTML = `<div style="font-size:13px;line-height:1.8">
@@ -4774,7 +4781,7 @@ async function runGscOppAiOptimize(url) {
   try {
     const d = await _api('/api/tools/gsc_opp_ai_draft', {url, site_url});
     if (!d.ok) {
-      document.getElementById('ai-opt-variants-container').innerHTML = `<div class="error-box" style="display:block">${d.error || 'Failed to generate variants'}</div>`;
+      document.getElementById('ai-opt-variants-container').innerHTML = `<div class="error-box" style="display:block">${_esc(d.error || 'Failed to generate variants')}</div>`;
       return;
     }
     
@@ -5080,10 +5087,10 @@ async function runPhaseRunner() {
     const tb = document.querySelector('#phase-run-table tbody');
     const statusIcon = s => s==='pass'?'<span class="c-green">✓</span>':s==='warning'?'<span class="c-yellow">⚠</span>':s==='error'?'<span class="c-muted">—</span>':'<span class="c-red">✗</span>';
     tb.innerHTML = (d.results || []).map(r => `<tr>
-      <td style="font-size:12px">${(r.tool||'').replace(/_/g,' ')}</td>
+      <td style="font-size:12px">${_esc((r.tool||'').replace(/_/g,' '))}</td>
       <td>${statusIcon(r.status)}</td>
-      <td style="font-size:12px">${r.message||''}</td>
-      <td style="font-size:11px;color:var(--c-muted)">${r.details ? JSON.stringify(r.details).slice(0,80) : ''}</td>
+      <td style="font-size:12px">${_esc(r.message||'')}</td>
+      <td style="font-size:11px;color:var(--c-muted)">${r.details ? _esc(JSON.stringify(r.details).slice(0,80)) : ''}</td>
     </tr>`).join('') || '<tr><td colspan="4" style="color:var(--c-muted)">No results</td></tr>';
     _show('phase-run-result');
   } catch(e) { _hide('phase-run-spinner'); _showErr('phase-run-error', e.message); }

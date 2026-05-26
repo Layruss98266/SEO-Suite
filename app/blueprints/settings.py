@@ -30,6 +30,7 @@ from app.state import (
     PROFILES_PATH,
     REPORTS_DIR,
     UPLOAD_DIR,
+    _safe_report_path,
     _sanitize_csv,
 )
 from core.auth import login_required
@@ -287,13 +288,10 @@ def api_compare():
     """Compare two audit XLSX reports — returns score diffs per URL."""
     a_name = request.args.get("a", "")
     b_name = request.args.get("b", "")
-    if not (
-        re.match(r"^[\w\.\-]+\.xlsx$", a_name)
-        and re.match(r"^[\w\.\-]+\.xlsx$", b_name)
-    ):
+    pa = _safe_report_path(a_name, (".xlsx",))
+    pb = _safe_report_path(b_name, (".xlsx",))
+    if pa is None or pb is None:
         return jsonify({"error": "invalid filenames"}), 400
-    pa = REPORTS_DIR / a_name
-    pb = REPORTS_DIR / b_name
     if not (pa.exists() and pb.exists()):
         return jsonify({"error": "report(s) not found"}), 404
     try:

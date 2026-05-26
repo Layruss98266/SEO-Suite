@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 import os
-from urllib.parse import urlparse
+
 
 from flask import Blueprint, jsonify, request
 
@@ -758,9 +758,6 @@ def api_link_health():
 
     return jsonify(broken_link_checker(url))
 
-
-# Avoid a noqa for the urlparse import; keep it available for future tools.
-_ = urlparse  # type: ignore[func-returns-value]
 
 
 def register(app) -> None:

@@ -121,9 +121,9 @@ def _use_sqlite_backend() -> bool:
     return os.environ.get("SEO_SUITE_USERS_BACKEND", "sqlite").lower() != "json"
 
 # ── Account lockout (brute-force mitigation) ─────────────────────────────────
-_LOCKOUT_THRESHOLD = 10       # failed attempts before lockout
+_LOCKOUT_THRESHOLD = 5        # failed attempts before lockout (C-2/L-1: lowered from 10)
 _LOCKOUT_WINDOW    = 900      # seconds (15 min) — attempts older than this are forgotten
-_LOCKOUT_DURATION  = 900      # seconds (15 min) — how long the lockout lasts
+# _LOCKOUT_DURATION removed — it was identical to _LOCKOUT_WINDOW and never used (C-2)
 _failed_attempts: dict[str, list[float]] = {}   # username → [timestamp, ...]
 _lockout_lock = threading.Lock()
 
@@ -137,12 +137,28 @@ def _record_failed_login(username: str) -> None:
 
 
 def _is_locked_out(username: str) -> bool:
+    """Return True if the account is locked out.
+
+    Checks both the in-memory counter (fast, catches in-flight attempts) and
+    the persistent SQLite login_history table (C-1: survives process restarts /
+    deploys so an attacker can't reset the counter by timing a crash).
+    """
     now = time.monotonic()
     with _lockout_lock:
         attempts = _failed_attempts.get(username, [])
         recent = [t for t in attempts if now - t < _LOCKOUT_WINDOW]
         _failed_attempts[username] = recent
-        return len(recent) >= _LOCKOUT_THRESHOLD
+        if len(recent) >= _LOCKOUT_THRESHOLD:
+            return True
+    # Also consult the persistent DB so a restart doesn't reset the counter.
+    if _use_sqlite_backend():
+        try:
+            from core import db as _db
+            db_count = _db.count_recent_failures(_USERS_DB, username, window=_LOCKOUT_WINDOW)
+            return db_count >= _LOCKOUT_THRESHOLD
+        except Exception as exc:
+            _log.debug("_is_locked_out DB check failed: %s", exc)
+    return False
 
 
 def _clear_failed_logins(username: str) -> None:
@@ -360,15 +376,16 @@ def _send_login_notification(
         from app import state as _state
         from core.notifier import NotificationService
 
+        from html import escape as _esc_html
         when = datetime.now(timezone.utc).isoformat(timespec="seconds")
         body = f"""
         <h2>New sign-in to your SEO Suite account</h2>
         <p>We detected a sign-in from a new device or location.</p>
         <ul>
-          <li><b>Account:</b> {username}</li>
-          <li><b>Time:</b> {when} (UTC)</li>
-          <li><b>IP address:</b> {ip or "unknown"}</li>
-          <li><b>Browser:</b> {(user_agent or "unknown")[:200]}</li>
+          <li><b>Account:</b> {_esc_html(username)}</li>
+          <li><b>Time:</b> {_esc_html(when)} (UTC)</li>
+          <li><b>IP address:</b> {_esc_html(ip or "unknown")}</li>
+          <li><b>Browser:</b> {_esc_html((user_agent or "unknown")[:200])}</li>
         </ul>
         <p>If this was you, no action is needed. If it wasn't, change your password
         immediately and check <code>/api/auth/my_logins</code> for the full

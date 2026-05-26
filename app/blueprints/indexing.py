@@ -288,6 +288,8 @@ def api_index_stream():
     the connection isn't counted against the per-IP rate cap.
     """
     sub = _subscribe(_index_subscribers)
+    if sub is None:
+        return jsonify({"error": "Too many concurrent SSE connections"}), 503
 
     def gen():
         try:
@@ -413,6 +415,11 @@ def api_index_retry():
                 progress_cb=cb,
             )
             with _lock:
+                # Remove stale entries for retried URLs before writing fresh
+                # results so a URL that was skipped/errored during this run
+                # does not silently keep its previous status (H-4).
+                for url in error_urls:
+                    _last_index_run.pop(url, None)
                 _last_index_run.update(_run_results)
             error_count = sum(1 for s in _run_results.values() if _is_error_status(s))
             _index_queue.put(

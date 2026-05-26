@@ -88,15 +88,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR), static_folder=str(STATIC_DIR))
 init_auth(app)
 
-# CORS origins are env-configurable so production deployments don't need a code
-# change. Default is 8080 (the canonical port) — set CORS_ALLOWED_ORIGINS if
-# you front the app on a different port.
+# CORS origins: no default — must be explicitly set in production via the
+# CORS_ALLOWED_ORIGINS env var (comma-separated). Defaulting to localhost was
+# harmless locally but misleading in deployed envs (browsers block cross-origin
+# requests to localhost anyway). An empty list means no cross-origin requests
+# are allowed unless the env var is set.
 _cors_origins = [
     o.strip()
-    for o in os.getenv(
-        "CORS_ALLOWED_ORIGINS",
-        "http://localhost:8080,http://127.0.0.1:8080",
-    ).split(",")
+    for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
     if o.strip()
 ]
 CORS(app, origins=_cors_origins, supports_credentials=True)
@@ -104,6 +103,19 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload cap
 
 # Security headers, CSRF, error handlers, Jinja csrf_token global.
 init_middleware(app)
+
+# ── Startup security warnings ────────────────────────────────────────────────
+# Warn when the app is deployed on a known cloud platform but the operator
+# forgot to set SEO_SUITE_COOKIE_SECURE=1, which means HSTS and secure-cookie
+# flags are silently disabled. Only fires when a cloud env var is present so
+# local dev is never noisy.
+_CLOUD_ENV_SIGNALS = ("RENDER", "FLY_APP_NAME", "RAILWAY_ENVIRONMENT", "DYNO", "K_SERVICE")
+if any(os.getenv(v) for v in _CLOUD_ENV_SIGNALS):
+    if not os.getenv("SEO_SUITE_COOKIE_SECURE"):
+        logger.warning(
+            "Running on a cloud host but SEO_SUITE_COOKIE_SECURE is not set. "
+            "Set SEO_SUITE_COOKIE_SECURE=1 to enable HSTS and secure cookie flags."
+        )
 
 # Prometheus /metrics endpoint + per-request HTTP counters and histograms.
 # Returns 503 if prometheus-client isn't installed; restrict the route at the

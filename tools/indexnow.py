@@ -10,10 +10,15 @@ Spec: https://www.indexnow.org/documentation
 
 from __future__ import annotations
 
+import logging
 import secrets
 from typing import Any
 
+import requests
+
 from core.security import safe_requests_post, validate_public_url
+
+logger = logging.getLogger(__name__)
 
 # Official IndexNow endpoint (Bing accepts submissions for Bing + Yandex).
 # Microsoft routes submissions to all IndexNow-supporting search engines.
@@ -70,7 +75,8 @@ def submit_url(url: str, key: str, host: str, timeout: int = 10) -> dict[str, An
             "status": resp.status_code,
             "error": f"IndexNow returned HTTP {resp.status_code}",
         }
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("indexnow submit_url failed for %s: %s", url, e)
         return {"ok": False, "error": f"Request failed: {e}"}
 
 
@@ -124,7 +130,8 @@ def submit_bulk(
             "skipped": skipped,
             "error": None if ok else f"IndexNow returned HTTP {resp.status_code}",
         }
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("indexnow submit_bulk failed: %s", e)
         return {
             "ok": False,
             "submitted": 0,

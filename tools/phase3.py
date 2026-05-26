@@ -8,7 +8,10 @@ Phase 3 SEO Tools — Google Search Console API
 24. Sitemaps Status
 """
 
+import logging
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 
 def result(url, tool, status, value, message, details=None):
@@ -56,6 +59,7 @@ def clicks_impressions(url: str, service, site_url: str, days: int = 90) -> dict
         }, msg, {"date_range": f"{start} to {end}", "days": days})
 
     except Exception as e:
+        logger.warning("clicks_impressions GSC error for %s: %s", url, e)
         return result(url, "clicks_impressions", "error", None, f"GSC error: {e}")
 
 
@@ -97,6 +101,7 @@ def position_tracker(url: str, service, site_url: str) -> dict:
         })
 
     except Exception as e:
+        logger.warning("position_tracker GSC error for %s: %s", url, e)
         return result(url, "position_tracker", "error", None, f"GSC error: {e}")
 
 
@@ -144,6 +149,7 @@ def ctr_analyzer(service, site_url: str, min_impressions: int = 100) -> dict:
         })
 
     except Exception as e:
+        logger.warning("ctr_analyzer GSC error for %s: %s", site_url, e)
         return result(site_url, "ctr_analyzer", "error", None, f"GSC error: {e}")
 
 
@@ -184,6 +190,7 @@ def coverage_errors(service, site_url: str) -> dict:
         })
 
     except Exception as e:
+        logger.warning("coverage_errors GSC error for %s: %s", site_url, e)
         return result(site_url, "coverage_errors", "error", None, f"GSC error: {e}")
 
 
@@ -225,6 +232,7 @@ def top_queries(url: str, service, site_url: str, top_n: int = 10) -> dict:
         })
 
     except Exception as e:
+        logger.warning("top_queries GSC error for %s: %s", url, e)
         return result(url, "top_queries", "error", None, f"GSC error: {e}")
 
 
@@ -287,6 +295,7 @@ def sitemaps_status(service, site_url: str) -> dict:
         })
 
     except Exception as e:
+        logger.warning("sitemaps_status GSC error for %s: %s", site_url, e)
         return result(site_url, "sitemaps_status", "error", None, f"GSC error: {e}")
 
 
@@ -388,6 +397,7 @@ def opportunity_pages(service, site_url: str, min_impressions: int = 200,
             },
         })
     except Exception as e:
+        logger.warning("opportunity_pages GSC error for %s: %s", site_url, e)
         return result(site_url, "opportunity_pages", "error", None, f"GSC error: {e}")
 
 
@@ -453,6 +463,7 @@ def position_decay(service, site_url: str, days: int = 90,
             "decay_threshold": decay_threshold,
         })
     except Exception as e:
+        logger.warning("position_decay GSC error for %s: %s", site_url, e)
         return result(site_url, "position_decay", "error", None, f"GSC error: {e}")
 
 
@@ -520,6 +531,7 @@ def keyword_cannibalization(service, site_url: str, min_impressions: int = 50,
             "min_impressions_threshold": min_impressions,
         })
     except Exception as e:
+        logger.warning("keyword_cannibalization GSC error for %s: %s", site_url, e)
         return result(site_url, "keyword_cannibalization", "error", None, f"GSC error: {e}")
 
 
@@ -539,6 +551,7 @@ def manual_actions(url: str, service, site_url: str) -> dict:
         return result(url, "manual_actions", "fail", types, msg,
                       {"verdict": verdict, "actions": issues})
     except Exception as e:
+        logger.warning("manual_actions GSC error for %s: %s", url, e)
         return result(url, "manual_actions", "error", None, f"GSC error: {e}")
 
 

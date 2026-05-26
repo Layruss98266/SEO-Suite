@@ -358,6 +358,6 @@ def research_keywords(
                 ],
             },
         }
-    except Exception as exc:
+    except (requests.RequestException, OSError, ValueError, KeyError, RuntimeError) as exc:
         logger.exception("Keyword research failed for %s", seed_keyword)
         return {"ok": False, "error": str(exc)}

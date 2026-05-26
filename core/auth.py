@@ -171,6 +171,27 @@ def _load_users() -> dict:
 
     Default backend is SQLite (atomic writes, indexed reads). Set
     ``SEO_SUITE_USERS_BACKEND=json`` to fall back to the legacy file path.
+
+    Thread-safety notes (M-12)
+    --------------------------
+    SQLite backend: ``_load_users()`` is safe to call from multiple threads
+    concurrently. SQLite's WAL journal mode allows unlimited parallel readers;
+    writes are serialised by SQLite's internal locking. The Python-level
+    ``_users_lock`` is therefore *redundant for reads* in the SQLite path —
+    it is kept only for the read-check-write sequences in
+    :func:`create_user`, :func:`change_password`, and :func:`delete_user`
+    where the check and the write must be atomic at the application level.
+
+    JSON backend: ``_load_users()`` is NOT thread-safe on its own — the JSON
+    file can be partially written if two writers race. All call sites inside
+    write paths (:func:`create_user`, :func:`change_password`,
+    :func:`delete_user`) already hold ``_users_lock`` before calling
+    ``_load_users()``. Read-only paths such as :func:`auth_enabled`,
+    :func:`authenticate`, and :func:`_should_force_env_admin_rotation` do NOT
+    hold the lock, which means concurrent reads and writes are theoretically
+    racy on the JSON backend. In practice, write operations complete in
+    microseconds and the window is tiny, but switch to the SQLite backend
+    (default) for production deployments.
     """
     if _use_sqlite_backend():
         from core import db as _db
@@ -190,6 +211,12 @@ def _save_users(users: dict) -> None:
     SQLite writes are transactional (DELETE + INSERT all rows in one BEGIN…
     COMMIT block) so a mid-write crash rolls back to the previous state.
     The legacy JSON writer is non-atomic — kept only for rollback.
+
+    .. deprecated::
+        Prefer :func:`_save_user` (single-row upsert) or
+        :func:`_remove_user_from_store` (single-row delete) for mutations
+        that touch only one user. The bulk replace is retained for
+        migration helpers and tests.
     """
     if _use_sqlite_backend():
         from core import db as _db
@@ -198,6 +225,65 @@ def _save_users(users: dict) -> None:
         return
     _USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
     _USERS_PATH.write_text(json.dumps(users, indent=2), encoding="utf-8")
+
+
+def _save_user(username: str, user_data: dict) -> None:
+    """Persist a single user's data without touching any other rows.
+
+    SQLite backend: uses INSERT … ON CONFLICT DO UPDATE (upsert) — atomic
+    and O(1) regardless of user count.
+
+    JSON backend: must reload + rewrite the entire file. Callers must hold
+    ``_users_lock`` before calling so the read-modify-write is serialised.
+    """
+    if _use_sqlite_backend():
+        from core import db as _db
+
+        _db.upsert_user(_USERS_DB, username, user_data)
+        return
+    # JSON backend — non-atomic but inside _users_lock in every caller.
+    try:
+        existing = json.loads(_USERS_PATH.read_text(encoding="utf-8"))
+        if not isinstance(existing, dict):
+            existing = {}
+    except (FileNotFoundError, ValueError, OSError):
+        existing = {}
+    existing[username] = user_data
+    _USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _USERS_PATH.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+
+
+def _remove_user_from_store(username: str) -> None:
+    """Remove a single user from persistence without touching other rows.
+
+    SQLite backend: issues a single DELETE — O(1) via primary-key index.
+
+    JSON backend: must reload + rewrite the entire file. Callers must hold
+    ``_users_lock`` before calling.
+
+    Thread-safety note
+    ------------------
+    For the SQLite backend, DB-level write locking makes ``_users_lock``
+    redundant for single-row mutations; the DB serialises concurrent writers
+    internally. The lock is kept here for correctness of the JSON backend
+    and for the read-check-write pattern in :func:`delete_user` (where we
+    must check that a user exists and is not the last admin before deleting).
+    """
+    if _use_sqlite_backend():
+        from core import db as _db
+
+        _db.remove_user(_USERS_DB, username)
+        return
+    # JSON backend — non-atomic but inside _users_lock in every caller.
+    try:
+        existing = json.loads(_USERS_PATH.read_text(encoding="utf-8"))
+        if not isinstance(existing, dict):
+            existing = {}
+    except (FileNotFoundError, ValueError, OSError):
+        existing = {}
+    existing.pop(username, None)
+    _USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _USERS_PATH.write_text(json.dumps(existing, indent=2), encoding="utf-8")
 
 
 def _env_admin() -> str | None:
@@ -562,7 +648,7 @@ def change_password(username: str, current_password: str, new_password: str) -> 
 
         user["password_hash"] = _hash_password(new_password)
         users[username] = user
-        _save_users(users)
+        _save_user(username, user)  # single-row upsert — no DELETE-all
 
     _clear_failed_logins(username)
     _log.info("Password changed for user: %s", username)
@@ -599,12 +685,13 @@ def create_user(username: str, password: str, is_admin: bool = False) -> tuple[b
         # Bootstrap: the first account becomes admin when there's no env admin.
         if not users and _env_admin() is None:
             is_admin = True
-        users[username] = {
+        new_user = {
             "password_hash": _hash_password(password),
             "is_admin": bool(is_admin),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        _save_users(users)
+        users[username] = new_user
+        _save_user(username, new_user)  # single-row upsert — no DELETE-all
     _log.info("User created: %s (admin=%s)", username, bool(is_admin))
     return True, None
 
@@ -623,7 +710,7 @@ def delete_user(username: str) -> tuple[bool, str | None]:
             if not others:
                 return False, "Cannot delete the last admin — promote another user first"
         del users[username]
-        _save_users(users)
+        _remove_user_from_store(username)  # single-row delete — no DELETE-all
     _log.info("User deleted: %s", username)
     return True, None
 

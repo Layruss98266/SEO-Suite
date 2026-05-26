@@ -9,9 +9,12 @@ the stored config (so a masked/saved key can be tested without re-entering it).
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from tools._common import safe_error
+
+logger = logging.getLogger(__name__)
 
 # Mirror of the secret sentinel the settings route returns for masked keys.
 _SENTINEL = "••••••••"
@@ -41,7 +44,8 @@ def _test_pagespeed(data: dict, cfg: dict) -> dict:
         if resp.status_code in (400, 403):
             return {"ok": False, "message": "PageSpeed rejected the key (invalid or API not enabled)."}
         return {"ok": False, "message": f"PageSpeed returned HTTP {resp.status_code}."}
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
+        logger.warning("_test_pagespeed failed: %s", exc)
         return {"ok": False, "message": safe_error(exc)}
 
 
@@ -54,6 +58,7 @@ def _test_groq(data: dict, cfg: dict) -> dict:
         _chat([{"role": "user", "content": "ping"}], key, max_tokens=1)
         return {"ok": True, "message": "Groq API key works."}
     except Exception as exc:
+        logger.warning("_test_groq failed: %s", exc)
         return {"ok": False, "message": safe_error(exc)}
 
 
@@ -67,7 +72,8 @@ def _test_bing(data: dict, cfg: dict) -> dict:
         if isinstance(res, dict) and res.get("ErrorCode"):
             return {"ok": False, "message": f"Bing rejected the key: {res.get('Message', 'invalid key')}."}
         return {"ok": True, "message": "Bing Webmaster API key works."}
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
+        logger.warning("_test_bing failed: %s", exc)
         return {"ok": False, "message": safe_error(exc)}
 
 
@@ -82,7 +88,8 @@ def _test_moz(data: dict, cfg: dict) -> dict:
         if res.get("status") == "error":
             return {"ok": False, "message": "Moz rejected the credentials."}
         return {"ok": True, "message": "Moz API credentials work."}
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
+        logger.warning("_test_moz failed: %s", exc)
         return {"ok": False, "message": safe_error(exc)}
 
 
@@ -102,7 +109,8 @@ def _test_serpapi(data: dict, cfg: dict) -> dict:
             return {"ok": True, "message": "SerpAPI key works."}
         msg = body.get("error", f"HTTP {resp.status_code}")
         return {"ok": False, "message": f"SerpAPI rejected the key: {msg}."}
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
+        logger.warning("_test_serpapi failed: %s", exc)
         return {"ok": False, "message": safe_error(exc)}
 
 
@@ -120,7 +128,8 @@ def _test_dataforseo(data: dict, cfg: dict) -> dict:
         if resp.status_code == 200 and resp.json().get("status_code") == 20000:
             return {"ok": True, "message": "DataForSEO credentials work."}
         return {"ok": False, "message": "DataForSEO rejected the credentials."}
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
+        logger.warning("_test_dataforseo failed: %s", exc)
         return {"ok": False, "message": safe_error(exc)}
 
 
@@ -133,6 +142,7 @@ def _test_gsc(data: dict, cfg: dict) -> dict:
         svc.sites().list().execute()
         return {"ok": True, "message": "Google Search Console credentials work."}
     except Exception as exc:
+        logger.warning("_test_gsc failed: %s", exc)
         return {"ok": False, "message": safe_error(exc)}
 
 

@@ -22,6 +22,8 @@ import logging
 import threading
 import time
 import xml.etree.ElementTree as ET
+
+import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import urljoin, urlparse
@@ -87,7 +89,8 @@ def fetch_page(url: str, follow_redirects: bool = True) -> tuple:
                 resp = safe_requests_head(url, headers=HEADERS, timeout=8, allow_redirects=False)
                 if resp.status_code == 405:
                     resp = safe_requests_get(url, headers=HEADERS, timeout=8, allow_redirects=False)
-            except Exception:
+            except (requests.RequestException, OSError) as exc:
+                logger.warning("HEAD request failed for %s, falling back to GET: %s", url, exc)
                 resp = safe_requests_get(url, headers=HEADERS, timeout=8, allow_redirects=False)
         soup = (
             BeautifulSoup(resp.text, "html.parser")
@@ -96,7 +99,8 @@ def fetch_page(url: str, follow_redirects: bool = True) -> tuple:
         )
         _cache_set(_page_cache, _page_cache_lock, key, (resp, soup, time.time()))
         return resp, soup
-    except Exception:
+    except (requests.RequestException, OSError) as exc:
+        logger.warning("fetch_page failed for %s: %s", url, exc)
         _cache_set(_page_cache, _page_cache_lock, key, (None, None, time.time()))
         return None, None
 
@@ -138,7 +142,8 @@ def robots_check(url: str) -> dict:
             rp.set_url(robots_url)
             rp.parse(r.text.splitlines())
             _cache_set(_robots_cache, _robots_cache_lock, base, (rp, time.time()))
-        except Exception:
+        except (requests.RequestException, OSError, ValueError) as exc:
+            logger.warning("robots_check fetch failed for %s: %s", robots_url, exc)
             _cache_set(_robots_cache, _robots_cache_lock, base, (None, time.time()))
 
     cached = _cache_get(_robots_cache, _robots_cache_lock, base)
@@ -230,7 +235,8 @@ def redirect_check(url: str) -> dict:
                 "codes": [r.status_code for r in resp.history],
             },
         )
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("redirect_check failed for %s: %s", url, e)
         return result(url, "redirect", "error", None, str(e))
 
 
@@ -440,7 +446,8 @@ def broken_link_check(url: str) -> dict:
             r = safe_requests_head(link, headers=HEADERS, timeout=5)
             if r.status_code in (404, 410, 400, 403):
                 return {"url": link, "status": r.status_code}
-        except Exception:
+        except (requests.RequestException, OSError) as exc:
+            logger.warning("broken_link_check failed for %s: %s", link, exc)
             return {"url": link, "status": "timeout"}
         return None
 
@@ -512,13 +519,14 @@ def internal_links_check(url: str) -> dict:
 def sitemap_validate(sitemap_url: str) -> dict:
     try:
         sitemap_url = validate_public_url(sitemap_url)
-    except Exception as e:
+    except ValueError as e:
         return result(sitemap_url, "sitemap", "error", None, f"SSRF guard blocked sitemap URL: {e}")
 
     try:
         resp = safe_requests_get(sitemap_url, headers=HEADERS, timeout=8)
         resp.raise_for_status()
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("sitemap_validate fetch failed for %s: %s", sitemap_url, e)
         return result(sitemap_url, "sitemap", "error", None, f"Cannot fetch sitemap: {e}")
 
     issues = []
@@ -545,7 +553,8 @@ def sitemap_validate(sitemap_url: str) -> dict:
                 if loc.text
             ]
             parse_warning = f"Sitemap has minor XML issues (auto-recovered): {xml_err}"
-        except Exception:
+        except (ValueError, AttributeError, ImportError) as exc:
+            logger.warning("lxml recovery failed for sitemap %s: %s", sitemap_url, exc)
             # Last resort: regex extraction
             import re as _re
 
@@ -726,7 +735,8 @@ def ttfb_check(url: str) -> dict:
                 "total_ms": total_ms,
             },
         )
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("ttfb_check failed for %s: %s", url, e)
         return result(url, "ttfb", "error", None, str(e))
 
 
@@ -796,6 +806,7 @@ def domain_age_check(url: str) -> dict:
             {"expiry": str(expiry), "registrar": str(w.registrar or "")},
         )
     except Exception as e:
+        logger.warning("domain_age_check failed for %s: %s", url, e)
         return result(url, "domain_age", "error", None, f"WHOIS lookup failed: {e}")
 
 
@@ -842,7 +853,8 @@ def ssl_check(url: str) -> dict:
         return result(url, "ssl", "pass", expiry_str, msg)
     except _ssl.SSLCertVerificationError as e:
         return result(url, "ssl", "fail", None, f"SSL cert invalid: {e}")
-    except Exception as e:
+    except (OSError, ValueError) as e:
+        logger.warning("ssl_check failed for %s: %s", url, e)
         return result(url, "ssl", "error", None, f"SSL check failed: {e}")
 
 
@@ -863,13 +875,15 @@ def dns_health_check(url: str) -> dict:
     def _txt(name):
         try:
             return [r.to_text().strip('"') for r in _dns.resolve(name, "TXT")]
-        except Exception:
+        except Exception as exc:
+            logger.warning("DNS TXT lookup failed for %s: %s", name, exc)
             return []
 
     def _mx():
         try:
             return [str(r.exchange) for r in _dns.resolve(domain, "MX")]
-        except Exception:
+        except Exception as exc:
+            logger.warning("DNS MX lookup failed for %s: %s", domain, exc)
             return []
 
     with ThreadPoolExecutor(max_workers=3) as ex:
@@ -1081,7 +1095,8 @@ def https_enforcement_check(url: str) -> dict:
         msg = "HTTP → HTTPS redirect enforced" if enforced else "HTTP does not redirect to HTTPS"
         return result(url, "https_enforcement", s, enforced, msg,
                       {"http_url": http_url, "final_url": final})
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("https_enforcement_check failed for %s: %s", url, e)
         return result(url, "https_enforcement", "error", None, f"Check error: {e}")
 
 
@@ -1107,7 +1122,8 @@ def security_headers_check(url: str) -> dict:
             msg += f" — missing: {', '.join(missing[:2])}"
         return result(url, "security_headers", s, {"present": present, "missing": missing}, msg,
                       {"checked": list(HEADERS.values())})
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("security_headers_check failed for %s: %s", url, e)
         return result(url, "security_headers", "error", None, f"Header check error: {e}")
 
 
@@ -1128,6 +1144,7 @@ def spf_check(url: str) -> dict:
             return result(url, "spf", "pass", spf[:80], "SPF record found")
         return result(url, "spf", "fail", None, "No SPF record — email spoofing risk")
     except Exception as e:
+        logger.warning("spf_check failed for %s: %s", url, e)
         return result(url, "spf", "error", None, f"SPF lookup error: {e}")
 
 
@@ -1152,6 +1169,7 @@ def dmarc_check(url: str) -> dict:
                           {"policy": policy})
         return result(url, "dmarc", "fail", None, "No DMARC record found")
     except Exception as e:
+        logger.warning("dmarc_check failed for %s: %s", url, e)
         return result(url, "dmarc", "error", None, f"DMARC lookup error: {e}")
 
 
@@ -1172,6 +1190,7 @@ def mx_records_check(url: str) -> dict:
                           f"{len(mx)} MX record(s) found", {"records": mx[:5]})
         return result(url, "mx_records", "fail", [], "No MX records found")
     except Exception as e:
+        logger.warning("mx_records_check failed for %s: %s", url, e)
         return result(url, "mx_records", "error", None, f"MX lookup error: {e}")
 
 
@@ -1206,5 +1225,6 @@ def audit_url(url: str) -> list[dict]:
         try:
             results.append(fn(url))
         except Exception as e:
+            logger.exception("audit_url tool %s failed for %s: %s", name, url, e)
             results.append(result(url, name.lower(), "error", None, str(e)))
     return results

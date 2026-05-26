@@ -10,10 +10,13 @@ Environment variable: GROQ_API_KEY
 Config key:           groq_api_key
 """
 
+import logging
 import time
 
 from core.security import safe_requests_post, validate_public_url
 from tools._common import safe_error
+
+logger = logging.getLogger(__name__)
 
 _GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 _DEFAULT_MODEL  = "llama-3.1-8b-instant"   # fast + free tier friendly
@@ -144,6 +147,7 @@ def explain_audit(audit_results: list[dict] | dict, api_key: str,
             },
         }
     except Exception as exc:
+        logger.warning("explain_audit failed: %s", exc)
         return {"ok": False, "error": safe_error(exc)}
 
 
@@ -224,6 +228,7 @@ def draft_meta(url: str, current_title: str, current_desc: str,
 
         return {"ok": True, "variants": variants[:3], "model": model}
     except Exception as exc:
+        logger.warning("draft_meta failed for %s: %s", url, exc)
         return {"ok": False, "error": safe_error(exc)}
 
 
@@ -314,5 +319,6 @@ def explain_site_audit(audits: list[dict], api_key: str, model: str = _DEFAULT_M
             "model": model
         }
     except Exception as e:
+        logger.warning("explain_site_audit failed: %s", e)
         return {"ok": False, "error": safe_error(e)}
 

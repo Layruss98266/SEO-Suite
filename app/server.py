@@ -27,6 +27,7 @@ from app.middleware import init_middleware
 from app.state import (
     CFG,
     CONFIG_PATH,
+    _init_cfg,
     DATA_DIR,
     REPORTS_DIR,
     STATIC_DIR,
@@ -86,6 +87,10 @@ logger = logging.getLogger(__name__)
 
 # ── App construction ──────────────────────────────────────────────────────────
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR), static_folder=str(STATIC_DIR))
+# Populate CFG from config.json now that the app object exists.
+# _init_cfg() defers the filesystem read until here (not at import time) so
+# tests that import from app.state can patch load_config before it fires.
+_init_cfg()
 init_auth(app)
 
 # CORS origins: no default — must be explicitly set in production via the

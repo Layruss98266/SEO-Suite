@@ -4,12 +4,15 @@ Phase A: SERP Snippet Preview, Redirect Chain, HTTP Headers,
          Keyword Density, Code-to-Text Ratio, GZIP/Cache Headers
 """
 
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import requests
+
+logger = logging.getLogger(__name__)
 from bs4 import BeautifulSoup
 
 from core.security import safe_requests_get, safe_requests_head, validate_public_url
@@ -139,7 +142,8 @@ def serp_snippet_preview(url: str) -> dict:
             },
             "warnings": warnings,
         }
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, AttributeError) as e:
+        logger.warning("serp_snippet_preview failed for %s: %s", url, e)
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -225,7 +229,8 @@ def redirect_chain(url: str) -> dict:
             "total_hops": len(hops),
             "issues": issues,
         }
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("redirect_chain failed for %s: %s", url, e)
         return {"ok": False, "error": str(e), "hops": hops}
 
 
@@ -320,7 +325,8 @@ def http_headers(url: str) -> dict:
             "highlights": highlights,
             "total": len(annotated),
         }
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("http_headers failed for %s: %s", url, e)
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -466,7 +472,8 @@ def keyword_density(url: str, top_n: int = 20) -> dict:
             "unique_words": len(counts),
             "top_keywords": results,
         }
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, AttributeError) as e:
+        logger.warning("keyword_density failed for %s: %s", url, e)
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -514,7 +521,8 @@ def code_to_text_ratio(url: str) -> dict:
             "rating": rating,
             "advice": advice,
         }
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, AttributeError) as e:
+        logger.warning("code_to_text_ratio failed for %s: %s", url, e)
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -585,7 +593,8 @@ def compression_headers(url: str) -> dict:
             "total": len(checks),
             "score": score,
         }
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("compression_headers failed for %s: %s", url, e)
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -612,7 +621,8 @@ def robots_tester(url: str) -> dict:
 
     try:
         resp = fetch_html(robots_url, headers=HEADERS)
-    except Exception as exc:
+    except (requests.RequestException, OSError) as exc:
+        logger.warning("robots_tester fetch failed for %s: %s", robots_url, exc)
         return {"ok": False, "error": f"Could not fetch robots.txt: {safe_error(exc)}"}
 
     status_code = resp.status_code
@@ -778,7 +788,8 @@ def hreflang_validator(url: str) -> dict:
 
     try:
         resp = safe_requests_get(url, headers=HEADERS, timeout=TIMEOUT)
-    except Exception as exc:
+    except (requests.RequestException, OSError) as exc:
+        logger.warning("hreflang_validator fetch failed for %s: %s", url, exc)
         return {"ok": False, "error": f"Could not fetch page: {exc}"}
 
     if resp.status_code >= 400:
@@ -837,7 +848,8 @@ def hreflang_validator(url: str) -> dict:
             r = safe_requests_get(alt_url, headers=HEADERS, timeout=8)
             redirect_to = r.url if r.url != alt_url else None
             return {**entry, "status": r.status_code, "reachable": r.status_code < 400, "redirect_to": redirect_to}
-        except Exception:
+        except (requests.RequestException, OSError, ValueError) as exc:
+            logger.warning("hreflang alternate URL check failed for %s: %s", alt_url, exc)
             return {**entry, "status": None, "reachable": False, "redirect_to": None}
 
     check_entries = entries_raw[:15]
@@ -940,7 +952,8 @@ def _check_link(href: str, source_origin: str) -> dict:
             status = resp.status_code
         final_url = resp.url
         redirect  = final_url if final_url.rstrip("/") != href.rstrip("/") else None
-    except Exception as exc:
+    except (requests.RequestException, OSError) as exc:
+        logger.warning("_check_link failed for %s: %s", href, exc)
         return {"url": href, "type": link_type, "status": None, "error": str(exc)[:120], "ok": False}
 
     broken = status in range(400, 600)
@@ -965,7 +978,8 @@ def broken_link_checker(url: str) -> dict:
 
     try:
         resp = safe_requests_get(url, headers=_LINK_HEALTH_HEADERS, timeout=TIMEOUT)
-    except Exception as exc:
+    except (requests.RequestException, OSError) as exc:
+        logger.warning("broken_link_checker page fetch failed for %s: %s", url, exc)
         return {"ok": False, "error": f"Could not fetch page: {exc}"}
 
     soup        = BeautifulSoup(resp.text, "lxml")
@@ -995,7 +1009,8 @@ def broken_link_checker(url: str) -> dict:
             for fut in as_completed(futs, timeout=_WALL_CLOCK):
                 try:
                     results.append(fut.result())
-                except Exception:
+                except Exception as exc:
+                    logger.warning("broken_link_checker future failed for %s: %s", futs[fut], exc)
                     results.append({"url": futs[fut], "type": "external", "status": None, "ok": False})
         except TimeoutError:
             timed_out = True

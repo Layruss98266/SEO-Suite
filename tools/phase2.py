@@ -5,10 +5,15 @@ Phase 2 SEO Tools — Free Google APIs
 18. Crawlability Check (GSC API)
 """
 
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
+import requests
+
 from core.security import safe_requests_get
+
+logger = logging.getLogger(__name__)
 
 PAGESPEED_API = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SEOAuditBot/1.0)"}
@@ -18,7 +23,8 @@ def _thresholds():
     try:
         from core.checker import load_config
         t = load_config().get("thresholds", {})
-    except Exception:
+    except (OSError, ValueError, KeyError) as exc:
+        logger.warning("Failed to load thresholds config: %s", exc)
         t = {}
     return t
 
@@ -47,7 +53,8 @@ def pagespeed_check(url: str, api_key: str, strategy: str = "mobile") -> dict:
         resp = safe_requests_get(PAGESPEED_API, params=params, timeout=30)
         resp.raise_for_status()
         data = resp.json()
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, KeyError) as e:
+        logger.warning("pagespeed_check failed for %s (%s): %s", url, strategy, e)
         return result(url, f"pagespeed_{strategy}", "error", None, str(e))
 
     cats       = data.get("lighthouseResult", {}).get("categories", {})
@@ -156,6 +163,7 @@ def crawlability_check(url: str, gsc_service, site_url: str = None) -> dict:
         })
 
     except Exception as e:
+        logger.warning("crawlability_check GSC error for %s: %s", url, e)
         return result(url, "crawlability", "error", None, f"GSC error: {e}")
 
 
@@ -296,7 +304,8 @@ def performance_opportunities(url: str, api_key: str) -> dict:
             desk_f = ex.submit(pagespeed_check, url, api_key, "desktop")
             mob    = mob_f.result()
             desk   = desk_f.result()
-    except Exception as exc:
+    except (requests.RequestException, OSError) as exc:
+        logger.warning("performance_opportunities fetch failed for %s: %s", url, exc)
         return {"ok": False, "error": str(exc)}
 
     if mob.get("status") == "error":

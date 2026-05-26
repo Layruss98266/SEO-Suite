@@ -338,8 +338,9 @@ def save_users(db_path: Path, users: dict) -> None:
 
     The whole-table replacement matches the JSON-era semantics where every
     save rewrote the file. A more granular API (``upsert_user``,
-    ``delete_user``) is possible but would require changing every caller in
-    ``core/auth.py``; the wholesale replace keeps this drop-in.
+    ``remove_user``) is preferred for single-user mutations — see those
+    functions below. This bulk form is retained for migration and test
+    helpers only.
 
     Wrapped in a transaction so an exception mid-rewrite rolls back to the
     previous state instead of leaving the table half-empty.
@@ -368,6 +369,56 @@ def save_users(db_path: Path, users: dict) -> None:
         except Exception:
             conn.execute("ROLLBACK")
             raise
+
+
+def upsert_user(db_path: Path, username: str, user_data: dict) -> None:
+    """Insert or update a single user row (INSERT OR REPLACE semantics).
+
+    Preferred over :func:`save_users` for create/update operations because
+    it only touches one row and cannot accidentally truncate the table.
+
+    Columns ``last_login_at`` and ``last_login_ip`` are preserved on UPDATE
+    (only ``password_hash`` and ``is_admin`` are overwritten) so that a
+    password change doesn't wipe the last-login metadata.
+    """
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO users (username, password_hash, is_admin, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(username) DO UPDATE SET
+                    password_hash = excluded.password_hash,
+                    is_admin      = excluded.is_admin
+                """,
+                (
+                    username,
+                    user_data.get("password_hash", ""),
+                    1 if user_data.get("is_admin") else 0,
+                    user_data.get("created_at") or "",
+                ),
+            )
+    except sqlite3.Error as e:
+        logger.error("upsert_user failed for %s: %s", username, e)
+        raise
+
+
+def remove_user(db_path: Path, username: str) -> bool:
+    """Delete a single user row. Returns True if a row was deleted.
+
+    Preferred over :func:`save_users` for delete operations — avoids the
+    DELETE-all + re-insert round-trip and cannot inadvertently clear other
+    users on an error.
+    """
+    _ensure_schema(db_path)
+    try:
+        with _connect(db_path) as conn:
+            cur = conn.execute("DELETE FROM users WHERE username = ?", (username,))
+            return cur.rowcount > 0
+    except sqlite3.Error as e:
+        logger.error("remove_user failed for %s: %s", username, e)
+        return False
 
 
 # ── Login attempt history ────────────────────────────────────────────────────

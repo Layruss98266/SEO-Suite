@@ -11,6 +11,8 @@ All tools gracefully degrade if API keys are not configured.
 import logging
 import time
 from collections.abc import Callable
+
+import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import urlparse
@@ -34,7 +36,8 @@ def _fetch_with_backoff(method: Callable, *args: Any, max_retries: int = 3, **kw
                     time.sleep(min(2 ** attempt, 4))  # max 4s between retries
                 continue
             return resp
-        except Exception:
+        except (requests.RequestException, OSError) as exc:
+            logger.warning("_fetch_with_backoff attempt %d failed: %s", attempt + 1, exc)
             if attempt == max_retries - 1:
                 raise
             time.sleep(min(2 ** attempt, 4))
@@ -72,7 +75,7 @@ def backlink_check(url: str, ahrefs_key: str = "", dataforseo_login: str = "",
             msg = f"Backlinks: {backlinks:,} | Referring domains: {ref_domains:,}"
             return result(url, "backlinks", s, {"backlinks": backlinks, "ref_domains": ref_domains}, msg,
                           {"source": "DataForSEO", "domain_rank": rank})
-        except Exception as e:
+        except (requests.RequestException, OSError, ValueError, KeyError) as e:
             logger.warning("backlink_check DataForSEO error for %s: %s", url, e)
 
     # No paid API configured
@@ -118,7 +121,7 @@ def domain_authority(url: str, moz_access_id: str = "", moz_secret_key: str = ""
             msg = f"Domain Authority: {da}/100 | Page Authority: {pa}/100"
             return result(url, "domain_authority", s, {"da": da, "pa": pa}, msg,
                           {"source": "Moz", "domain": domain})
-        except Exception as e:
+        except (requests.RequestException, OSError, ValueError, KeyError) as e:
             logger.warning("domain_authority Moz error for %s: %s", url, e)
 
     return result(url, "domain_authority", "warning", None,
@@ -151,7 +154,8 @@ def keyword_rank_tracker(url: str, keywords: list[str], serpapi_key: str = "",
                 return {"keyword": kw, "rank": rank,
                         "in_top_10": rank is not None and rank <= 10,
                         "in_top_3":  rank is not None and rank <= 3}
-            except Exception as e:
+            except (requests.RequestException, OSError, ValueError, KeyError) as e:
+                logger.warning("SerpAPI lookup failed for keyword %r: %s", kw, e)
                 return {"keyword": kw, "rank": None, "error": str(e)}
 
         with ThreadPoolExecutor(max_workers=5) as ex:
@@ -176,7 +180,8 @@ def keyword_rank_tracker(url: str, keywords: list[str], serpapi_key: str = "",
                         rank = item.get("rank_absolute"); break
                 results_list.append({"keyword": kw, "rank": rank,
                                      "in_top_10": rank is not None and rank <= 10})
-        except Exception as e:
+        except (requests.RequestException, OSError, ValueError, KeyError) as e:
+            logger.warning("DataForSEO rank_tracker failed for %s: %s", url, e)
             return result(url, "rank_tracker", "error", None, str(e))
     else:
         return result(url, "rank_tracker", "warning", [],
@@ -256,7 +261,8 @@ def competitor_comparison(target_url: str, keyword: str, serpapi_key: str = "",
             "top_competitor": competitors[0]["domain"] if competitors else "",
         })
 
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, KeyError) as e:
+        logger.warning("competitor_comparison failed for %s: %s", target_url, e)
         return result(target_url, "competitor", "error", None, f"API error: {e}")
 
 
@@ -324,7 +330,8 @@ def broken_backlinks(url: str, dataforseo_login: str = "",
         broken   = task.get("total_count", 0) or 0
         s        = "pass" if broken == 0 else "warning" if broken <= 10 else "fail"
         return result(url, "broken_backlinks", s, broken, f"Broken backlinks: {broken:,}")
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, KeyError) as e:
+        logger.warning("broken_backlinks failed for %s: %s", url, e)
         return result(url, "broken_backlinks", "error", None, f"DataForSEO error: {e}")
 
 
@@ -351,7 +358,8 @@ def nofollow_ratio(url: str, dataforseo_login: str = "",
         msg      = f"Dofollow: {pct_do}% | Nofollow: {round(100 - pct_do, 1)}%"
         return result(url, "nofollow_ratio", s,
                       {"dofollow": dofollow, "nofollow": nofollow}, msg)
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, KeyError) as e:
+        logger.warning("nofollow_ratio failed for %s: %s", url, e)
         return result(url, "nofollow_ratio", "error", None, f"DataForSEO error: {e}")
 
 
@@ -385,7 +393,8 @@ def spam_score(url: str, moz_access_id: str = "", moz_secret_key: str = "") -> d
         s     = "pass" if spam <= 3 else "warning" if spam <= 7 else "fail"
         return result(url, "spam_score", s, spam, f"Spam score: {spam}/17 (Moz)",
                       {"source": "Moz"})
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, KeyError) as e:
+        logger.warning("spam_score failed for %s: %s", url, e)
         return result(url, "spam_score", "error", None, f"Moz error: {e}")
 
 
@@ -415,7 +424,8 @@ def serp_features(url: str, keywords: list, serpapi_key: str = "",
         s   = "pass" if features else "warning"
         msg = f"SERP features for '{kw}': {', '.join(features) or 'none detected'}"
         return result(url, "serp_features", s, features, msg, {"keyword": kw})
-    except Exception as e:
+    except (requests.RequestException, OSError, ValueError, KeyError) as e:
+        logger.warning("serp_features failed for %s: %s", url, e)
         return result(url, "serp_features", "error", None, f"SERP error: {e}")
 
 
@@ -436,7 +446,7 @@ def rank_change(url: str, keywords: list, serpapi_key: str = "",
     if _RANK_FILE.exists():
         try:
             history = json.loads(_RANK_FILE.read_text(encoding="utf-8"))
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.debug("rank_history.json unreadable, starting fresh: %s", e)
 
     domain   = urlparse(url).netloc
@@ -463,7 +473,7 @@ def rank_change(url: str, keywords: list, serpapi_key: str = "",
     try:
         _RANK_FILE.parent.mkdir(parents=True, exist_ok=True)
         _RANK_FILE.write_text(json.dumps(history, indent=2), encoding="utf-8")
-    except Exception as e:
+    except OSError as e:
         logger.debug("rank_history.json write failed: %s", e)
 
     if not changes:

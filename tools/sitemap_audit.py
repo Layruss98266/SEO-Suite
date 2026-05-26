@@ -18,9 +18,15 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
+import logging
+
+import requests
+
 from core.checker import fetch_sitemap_urls
 from core.security import validate_public_url
 from tools._common import fetch_html, safe_error
+
+logger = logging.getLogger(__name__)
 
 _SITEMAP_SIZE_LIMIT = 50_000          # URLs per sitemap (Google limit)
 _SITEMAP_BYTES_LIMIT = 50 * 1024 * 1024  # 50 MB
@@ -83,7 +89,8 @@ def audit_sitemap(
             timeout=timeout,
             headers={"User-Agent": "Mozilla/5.0 (compatible; SEO-Suite/2.0)"},
         )
-    except Exception as e:
+    except (requests.RequestException, OSError) as e:
+        logger.warning("audit_sitemap fetch failed for %s: %s", sitemap_url, e)
         return {"ok": False, "error": safe_error(e)}
 
     if resp.status_code >= 400:
@@ -188,7 +195,7 @@ def audit_sitemap(
         try:
             from datetime import datetime
             datetime.fromisoformat(lm.replace("Z", "+00:00"))
-        except ValueError:
+        except (ValueError, OverflowError):
             invalid_lastmod += 1
     if invalid_lastmod:
         issues.append({

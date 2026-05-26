@@ -675,7 +675,7 @@ def generate_schema(schema_type: str, data: dict) -> dict:
             if field.get("required") and not str(data.get(field["id"], "")).strip():
                 warnings.append(f"Missing required field: {field['label']}")
         return {"ok": True, "schema_type": schema_type, "markup": markup, "json": obj, "warnings": warnings}
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, AttributeError) as e:
         logger.exception("generate_schema failed for %s", schema_type)
         return {"ok": False, "error": str(e)}
 
@@ -731,9 +731,9 @@ def generate_robots_txt(data: dict) -> dict:
             lines.append(f"Sitemap: {_clean(data['sitemap'])}")
 
         return {"ok": True, "content": "\n".join(lines).strip(), "warnings": warnings}
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         from tools._common import safe_error
-        logger.exception("generator failed")
+        logger.exception("generate_robots_txt failed")
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -794,9 +794,9 @@ def generate_sitemap(data: dict) -> dict:
 
         lines.append("</urlset>")
         return {"ok": True, "content": "\n".join(lines), "url_count": count, "warnings": warnings}
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         from tools._common import safe_error
-        logger.exception("generator failed")
+        logger.exception("generate_sitemap failed")
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -856,9 +856,9 @@ def generate_hreflang(data: dict) -> dict:
             "count": len(tags),
             "warnings": warnings,
         }
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         from tools._common import safe_error
-        logger.exception("generator failed")
+        logger.exception("generate_hreflang failed")
         return {"ok": False, "error": safe_error(e)}
 
 
@@ -943,6 +943,6 @@ def generate_meta_tags(data: dict) -> dict:
             warnings.append("No social sharing image set (og:image / twitter:image)")
 
         return {"ok": True, "content": content, "warnings": warnings}
-    except Exception as e:
-        logger.exception("meta tags generation failed")
+    except (ValueError, TypeError, KeyError) as e:
+        logger.exception("generate_meta_tags failed")
         return {"ok": False, "error": str(e)}

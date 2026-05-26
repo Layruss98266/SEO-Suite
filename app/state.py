@@ -60,8 +60,26 @@ for _d in (DATA_DIR, REPORTS_DIR, UPLOAD_DIR):
     except OSError:
         pass
 
-# Loaded once at import; refreshed in /api/settings POST.
-CFG = load_config()
+# CFG is populated lazily by _init_cfg() (called from app/server.py at
+# startup) and refreshed in the /api/settings POST handler. Starting with
+# an empty dict avoids a filesystem read at import time, which improves test
+# isolation and speeds up imports in environments where config.json is absent.
+#
+# All callers that do ``from app.state import CFG`` receive a reference to
+# this same dict object; mutations via CFG.clear()/CFG.update() are visible
+# to every importer because Python dicts are passed by reference.
+CFG: dict = {}
+
+
+def _init_cfg() -> None:
+    """Populate CFG from disk. Call once at app startup (see app/server.py).
+
+    Safe to call multiple times — subsequent calls are no-ops if CFG is
+    already populated. Use ``CFG.clear(); CFG.update(load_config())`` to
+    force a refresh (the /api/settings POST handler does exactly this).
+    """
+    if not CFG:
+        CFG.update(load_config())
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 # Cap on per-run audit result lists so a huge sitemap can't blow up memory.

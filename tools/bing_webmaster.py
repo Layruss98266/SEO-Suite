@@ -6,9 +6,14 @@ API key: Bing Webmaster Tools → Settings → API Access → Generate key
 Docs:    https://learn.microsoft.com/en-us/bingwebmaster/getting-access
 """
 
+import logging
 from urllib.parse import quote_plus, urlencode
 
+import requests
+
 from core.security import safe_requests_get, safe_requests_post
+
+logger = logging.getLogger(__name__)
 
 # Base URL for all Bing Webmaster API calls
 _BASE = "https://ssl.bing.com/webmaster/api.svc/json"
@@ -66,7 +71,8 @@ def url_traffic(site_url: str, api_key: str, period: int = 1) -> dict:
             "avg_position": avg_position,
             "period":      period_label,
         }}
-    except Exception as exc:
+    except (requests.RequestException, OSError, ValueError, KeyError) as exc:
+        logger.warning("url_traffic failed for %s: %s", site_url, exc)
         return {"ok": False, "error": str(exc)}
 
 
@@ -118,7 +124,8 @@ def crawl_stats(site_url: str, api_key: str) -> dict:
             },
             "timeline": timeline,
         }}
-    except Exception as exc:
+    except (requests.RequestException, OSError, ValueError, KeyError) as exc:
+        logger.warning("crawl_stats failed for %s: %s", site_url, exc)
         return {"ok": False, "error": str(exc)}
 
 
@@ -171,7 +178,8 @@ def sitemap_status(site_url: str, api_key: str) -> dict:
                f"{total_indexed}/{total_urls} URLs indexed ({overall_rate}%)")
 
         return {"ok": True, "status": s, "message": msg, "issues": issues, "data": parsed}
-    except Exception as exc:
+    except (requests.RequestException, OSError, ValueError, KeyError) as exc:
+        logger.warning("sitemap_status failed for %s: %s", site_url, exc)
         return {"ok": False, "error": str(exc)}
 
 
@@ -206,7 +214,8 @@ def inspect_url(page_url: str, site_url: str, api_key: str) -> dict:
             "crawl_state":  crawl_state,
             "index_state":  index_state,
         }}
-    except Exception as exc:
+    except (requests.RequestException, OSError, ValueError, KeyError) as exc:
+        logger.warning("inspect_url failed for %s: %s", page_url, exc)
         return {"ok": False, "error": str(exc)}
 
 
@@ -218,7 +227,8 @@ def submit_url(page_url: str, site_url: str, api_key: str) -> dict:
     try:
         _post("SubmitUrl", api_key, {"siteUrl": site_url, "url": page_url})
         return {"ok": True, "message": f"Submitted to Bing: {page_url}"}
-    except Exception as exc:
+    except (requests.RequestException, OSError) as exc:
+        logger.warning("submit_url failed for %s: %s", page_url, exc)
         return {"ok": False, "error": str(exc)}
 
 

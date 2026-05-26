@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 from bs4 import BeautifulSoup
 
 from core.security import safe_requests_get, safe_requests_head, validate_public_url
-from tools._common import fetch_html, safe_error
+from tools._common import ToolFetchError, fetch_html, safe_error
 
 HEADERS = {
     "User-Agent": (
@@ -521,7 +521,7 @@ def code_to_text_ratio(url: str) -> dict:
             "rating": rating,
             "advice": advice,
         }
-    except (requests.RequestException, OSError, ValueError, AttributeError) as e:
+    except (requests.RequestException, OSError, ValueError, AttributeError, ToolFetchError) as e:
         logger.warning("code_to_text_ratio failed for %s: %s", url, e)
         return {"ok": False, "error": safe_error(e)}
 

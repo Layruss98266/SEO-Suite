@@ -77,12 +77,23 @@ def validate_public_url(url: str, *, allow_empty_path: bool = True) -> str:
     if host in _METADATA_HOSTS:
         raise ValueError("Metadata service URLs are not allowed")
 
+    # Try to parse host as an IP literal.
+    # IMPORTANT: ipaddress.ip_address() raises a plain ValueError (not the
+    # subclass AddressValueError) when the input is not a valid IP address.
+    # We must NOT catch ValueError here because _reject_private_ip() also
+    # raises ValueError — catching both in one clause would swallow private-IP
+    # rejections and allow them through. Use a sentinel variable instead.
+    _ip: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
     try:
-        ip = ipaddress.ip_address(host)
-        # Host is a valid IP literal — reject if private/loopback/etc.
-        _reject_private_ip(ip)
-    except ipaddress.AddressValueError:
-        # Host is not an IP literal — resolve and validate every returned address.
+        _ip = ipaddress.ip_address(host)
+    except ValueError:
+        pass  # host is a hostname, not an IP literal — resolve below
+
+    if _ip is not None:
+        # Host IS a valid IP literal — reject if private/loopback/etc.
+        _reject_private_ip(_ip)
+    else:
+        # Host is a hostname — resolve and validate every returned address.
         try:
             infos = socket.getaddrinfo(
                 host,

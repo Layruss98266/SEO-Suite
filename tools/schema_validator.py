@@ -18,7 +18,7 @@ from typing import Any
 import requests
 
 from core.security import validate_public_url
-from tools._common import fetch_html, safe_error
+from tools._common import ToolFetchError, fetch_html, safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ def validate_url(url: str, timeout: int = 8) -> dict[str, Any]:
                 "User-Agent": "Mozilla/5.0 (compatible; SEO-Suite/2.0; +https://seo-suite.local)"
             },
         )
-    except (requests.RequestException, OSError) as e:
+    except (requests.RequestException, OSError, ToolFetchError) as e:
         logger.warning("schema_validator fetch failed for %s: %s", url, e)
         return {"ok": False, "error": safe_error(e)}
 

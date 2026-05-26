@@ -9,7 +9,7 @@ Phase 3 SEO Tools — Google Search Console API
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def result(url, tool, status, value, message, details=None):
 
 
 def date_range(days: int = 90):
-    end   = datetime.utcnow().date()
+    end   = datetime.now(timezone.utc).date()
     start = end - timedelta(days=days)
     return str(start), str(end)
 
@@ -302,7 +302,7 @@ def sitemaps_status(service, site_url: str) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 # Run all Phase 3 tools for a site
 # ══════════════════════════════════════════════════════════════════════════════
-def audit_site(service, site_url: str, sample_urls: list[str] = None) -> list[dict]:
+def audit_site(service, site_url: str, sample_urls: list[str] | None = None) -> list[dict]:
     results = []
     results.append(ctr_analyzer(service, site_url))
     results.append(coverage_errors(service, site_url))

@@ -6,12 +6,45 @@ Extracted from core/checker.py for single-responsibility.
 from __future__ import annotations
 
 import logging
+import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+def _starttls_optional() -> bool:
+    """Return True if operator opted out of mandatory STARTTLS.
+
+    Set ``SEO_SUITE_SMTP_INSECURE=1`` only for trusted internal SMTP relays
+    that do not speak TLS. Default is to require STARTTLS so credentials
+    are never sent over cleartext.
+    """
+    return os.environ.get("SEO_SUITE_SMTP_INSECURE", "").strip() in {"1", "true", "yes"}
+
+
+def _secure_starttls(smtp: smtplib.SMTP) -> None:
+    """Upgrade an SMTP connection to TLS, refusing silent cleartext fallback.
+
+    If the server does not advertise STARTTLS we raise, unless the operator
+    has explicitly set ``SEO_SUITE_SMTP_INSECURE=1``.
+    """
+    smtp.ehlo()
+    if not smtp.has_extn("starttls"):
+        if _starttls_optional():
+            logger.warning(
+                "SMTP server does not advertise STARTTLS; sending in cleartext "
+                "because SEO_SUITE_SMTP_INSECURE=1 is set"
+            )
+            return
+        raise RuntimeError(
+            "SMTP server does not support STARTTLS; refusing to send credentials "
+            "in cleartext. Set SEO_SUITE_SMTP_INSECURE=1 to override for trusted hosts."
+        )
+    smtp.starttls()  # raises on failure
+    smtp.ehlo()
 
 
 class NotificationService:
@@ -59,7 +92,7 @@ class NotificationService:
             msg["To"] = ", ".join(cfg["to"])
             msg.attach(MIMEText(html_body, "html"))
             with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=10) as s:
-                s.starttls()
+                _secure_starttls(s)
                 s.login(cfg["username"], cfg["password"])
                 s.sendmail(cfg["from"], cfg["to"], msg.as_string())
             logger.info("Email sent ✓")
@@ -87,7 +120,7 @@ class NotificationService:
             msg["To"] = recipient
             msg.attach(MIMEText(html_body, "html"))
             with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=10) as s:
-                s.starttls()
+                _secure_starttls(s)
                 s.login(cfg["username"], cfg["password"])
                 s.sendmail(cfg["from"], [recipient], msg.as_string())
             logger.info("Ad-hoc email sent to %s ✓", recipient)

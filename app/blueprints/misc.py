@@ -13,9 +13,10 @@ Includes:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, session
 
 from app.state import DATA_DIR, PROJECT_ROOT, REPORTS_DIR, TEMPLATE_DIR, UPLOAD_DIR
 from core.auth import login_required
@@ -133,9 +134,25 @@ _SWAGGER_UI_HTML = """<!DOCTYPE html>
 </html>"""
 
 
+def _public_docs_enabled() -> bool:
+    """Whether unauthenticated visitors may view ``/openapi.yaml`` and ``/docs``.
+
+    Default OFF: the API spec leaks attack surface (every endpoint, every
+    parameter shape) to anyone who can reach the host. Operators can flip
+    ``SEO_SUITE_PUBLIC_DOCS=1`` when they intentionally want to expose the
+    spec to third-party integrators.
+    """
+    return os.environ.get("SEO_SUITE_PUBLIC_DOCS") == "1"
+
+
 @bp.route("/openapi.yaml")
 def openapi_spec():
-    """Serve the OpenAPI 3.1 spec as YAML. Unauthenticated — public API docs."""
+    """Serve the OpenAPI 3.1 spec as YAML.
+
+    Authed-only by default — see :func:`_public_docs_enabled`.
+    """
+    if not _public_docs_enabled() and not session.get("authed"):
+        return jsonify({"error": "Not authorized"}), 401
     if not _OPENAPI_SPEC_PATH.is_file():
         return "OpenAPI spec not found", 404
     return (
@@ -149,13 +166,15 @@ def openapi_spec():
 def api_docs():
     """Swagger UI viewer for the OpenAPI spec at /openapi.yaml.
 
-    Unauthenticated so integrators can discover the API without an account.
-    The UI itself just renders the spec — no auth is granted.
+    Authed-only by default. Set ``SEO_SUITE_PUBLIC_DOCS=1`` to expose the
+    docs publicly when running a developer portal.
 
     Returns a relaxed CSP allowing the unpkg.com CDN for the Swagger UI
     bundle. This only affects this route; every other response keeps the
     default CSP from app/middleware.py.
     """
+    if not _public_docs_enabled() and not session.get("authed"):
+        return ("Login required to view API docs.", 401, {"Content-Type": "text/plain"})
     import secrets
     nonce = secrets.token_hex(16)
     html = _SWAGGER_UI_HTML.replace("<script>", f'<script nonce="{nonce}">')

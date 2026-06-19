@@ -368,14 +368,40 @@ def init_auth(app: Flask) -> None:
     )
 
 
+# Mirror app/server.py::_CLOUD_ENV_SIGNALS so cloud detection stays in sync
+# between the server startup banner and the auth gate.
+_CLOUD_ENV_SIGNALS = (
+    "RENDER",
+    "FLY_APP_NAME",
+    "RAILWAY_ENVIRONMENT",
+    "HEROKU_APP_NAME",
+    "DYNO",
+    "K_SERVICE",
+    "WEBSITE_SITE_NAME",  # Azure App Service
+)
+
+
+def _on_cloud_host() -> bool:
+    """True when any well-known cloud-platform env var is set."""
+    return any(os.environ.get(v) for v in _CLOUD_ENV_SIGNALS)
+
+
 def auth_enabled() -> bool:
     """Auth is on if an env admin is configured OR any file-based user exists
     OR if explicitly forced via env var (e.g. on public hosting).
-    By default, we also enable it if running on Render or in a production-like env.
+
+    On a detected cloud host, ``SEO_SUITE_NO_AUTH=1`` is refused — disabling
+    auth in production is almost always a misconfiguration.  Operators who
+    genuinely need it must set ``SEO_SUITE_ALLOW_NO_AUTH_CLOUD=1`` to ack.
     """
     if os.environ.get("SEO_SUITE_NO_AUTH") == "1":
+        if _on_cloud_host() and os.environ.get("SEO_SUITE_ALLOW_NO_AUTH_CLOUD") != "1":
+            raise RuntimeError(
+                "SEO_SUITE_NO_AUTH=1 is refused on cloud hosts. "
+                "Set SEO_SUITE_ALLOW_NO_AUTH_CLOUD=1 to override (NOT recommended)."
+            )
         return False
-    if os.environ.get("RENDER") == "true" or os.environ.get("SEO_SUITE_FORCE_AUTH") == "1":
+    if _on_cloud_host() or os.environ.get("SEO_SUITE_FORCE_AUTH") == "1":
         return True
     return bool(os.environ.get("SEO_SUITE_PASSWORD_HASH")) or bool(_load_users())
 

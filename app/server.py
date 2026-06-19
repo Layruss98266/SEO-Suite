@@ -114,12 +114,18 @@ init_middleware(app)
 # forgot to set SEO_SUITE_COOKIE_SECURE=1, which means HSTS and secure-cookie
 # flags are silently disabled. Only fires when a cloud env var is present so
 # local dev is never noisy.
-_CLOUD_ENV_SIGNALS = ("RENDER", "FLY_APP_NAME", "RAILWAY_ENVIRONMENT", "DYNO", "K_SERVICE")
+from core.auth import _CLOUD_ENV_SIGNALS  # noqa: E402  (kept in sync with auth.py)
+
 if any(os.getenv(v) for v in _CLOUD_ENV_SIGNALS):
     if not os.getenv("SEO_SUITE_COOKIE_SECURE"):
         logger.warning(
             "Running on a cloud host but SEO_SUITE_COOKIE_SECURE is not set. "
             "Set SEO_SUITE_COOKIE_SECURE=1 to enable HSTS and secure cookie flags."
+        )
+    if os.getenv("SEO_SUITE_NO_AUTH") == "1" and os.getenv("SEO_SUITE_ALLOW_NO_AUTH_CLOUD") != "1":
+        raise RuntimeError(
+            "SEO_SUITE_NO_AUTH=1 is refused on cloud hosts. "
+            "Set SEO_SUITE_ALLOW_NO_AUTH_CLOUD=1 to override (NOT recommended)."
         )
 
 # Prometheus /metrics endpoint + per-request HTTP counters and histograms.

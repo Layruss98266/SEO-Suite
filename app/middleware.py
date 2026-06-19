@@ -44,7 +44,7 @@ def _validate_csrf(resp_on_fail: bool = True):
     token = request.form.get("_csrf_token") or request.headers.get("X-CSRF-Token", "")
     if not token or not secrets.compare_digest(token, session.get("_csrf_token", "")):
         if resp_on_fail:
-            return jsonify({"error": "CSRF validation failed"}), 403
+            return jsonify({"ok": False, "error": "CSRF validation failed"}), 403
     return None
 
 
@@ -128,7 +128,7 @@ def _csrf_protect():
 # ── Error handlers ───────────────────────────────────────────────────────────
 
 def _too_large(_e):
-    return jsonify({"error": "File too large — 10 MB maximum"}), 413
+    return jsonify({"ok": False, "error": "File too large — 10 MB maximum"}), 413
 
 
 # ── Wiring ───────────────────────────────────────────────────────────────────

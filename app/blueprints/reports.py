@@ -19,6 +19,7 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request, send_file
 
+from app.blueprints import api_error
 from app.state import (
     REPORTS_DIR,
     _REPORT_STEM_RE,
@@ -167,11 +168,11 @@ def api_download(filename):
 @login_required
 def api_reports_delete(filename):
     if not re.match(r"^[\w\-\.]+$", filename):
-        return jsonify({"error": "Invalid filename"}), 400
+        return api_error("Invalid filename", 400)
     stem = filename.rsplit(".", 1)[0]
     deleted = _delete_report_stem(stem)
     if not deleted:
-        return jsonify({"error": "File not found"}), 404
+        return api_error("File not found", 404)
     return jsonify({"deleted": deleted})
 
 
@@ -182,7 +183,7 @@ def api_reports_delete_bulk():
     data = request.get_json(force=True) or {}
     names = data.get("names", [])
     if not isinstance(names, list) or not names:
-        return jsonify({"error": "names list required"}), 400
+        return api_error("names list required", 400)
 
     deleted, failed = [], []
     for name in names:
@@ -210,7 +211,7 @@ def api_reports_delete_all():
     """Nuclear option — wipes all reports. Body must include ``{confirm: 'YES'}``."""
     data = request.get_json(force=True) or {}
     if data.get("confirm") != "YES":
-        return jsonify({"error": "confirm:'YES' required"}), 400
+        return api_error("confirm:'YES' required", 400)
     deleted = 0
     # Per-stem deletion enforces the pattern guard for every group.
     seen = set()
@@ -231,9 +232,9 @@ def api_reports_summary():
     name = request.args.get("file", "")
     p = _safe_report_path(name, (".json", ".xlsx"))
     if p is None:
-        return jsonify({"error": "invalid filename"}), 400
+        return api_error("invalid filename", 400)
     if not p.exists():
-        return jsonify({"error": "not found"}), 404
+        return api_error("not found", 404)
     try:
         if name.endswith(".json"):
             data = json.loads(p.read_text(encoding="utf-8"))
@@ -261,7 +262,7 @@ def api_reports_summary():
         )
     except Exception as e:
         logger.error("Summary error: %s", e, exc_info=True)
-        return jsonify({"error": "An internal error occurred"}), 500
+        return api_error("An internal error occurred", 500)
 
 
 @bp.route("/api/reports/preview/<filename>")
@@ -270,7 +271,7 @@ def api_reports_preview(filename):
     """Rich preview data for the side drawer — works for both indexing + audit reports."""
     # Route through _safe_report_path for resolve()+relative_to() traversal guard.
     if _safe_report_path(filename, (".csv", ".html", ".json", ".xlsx")) is None:
-        return jsonify({"error": "Invalid filename"}), 400
+        return api_error("Invalid filename", 400)
 
     base = filename.rsplit(".", 1)[0]
 
@@ -279,7 +280,7 @@ def api_reports_preview(filename):
     if csv_path.exists() or filename.endswith(".csv"):
         p = REPORTS_DIR / filename if filename.endswith(".csv") else csv_path
         if not p.exists():
-            return jsonify({"error": "not found"}), 404
+            return api_error("not found", 404)
         try:
             rows = []
             with open(p, encoding="utf-8") as f:
@@ -311,7 +312,7 @@ def api_reports_preview(filename):
             )
         except Exception as e:
             logger.error("Preview indexing error: %s", e, exc_info=True)
-            return jsonify({"error": "An internal error occurred"}), 500
+            return api_error("An internal error occurred", 500)
 
     # ── Audit report (JSON sidecar preferred, xlsx fallback) ─────────────
     json_path = REPORTS_DIR / (base + ".json")
@@ -361,7 +362,7 @@ def api_reports_preview(filename):
             )
         except Exception as e:
             logger.error("Preview audit JSON error: %s", e, exc_info=True)
-            return jsonify({"error": "An internal error occurred"}), 500
+            return api_error("An internal error occurred", 500)
 
     if xlsx_path.exists():
         try:
@@ -394,9 +395,9 @@ def api_reports_preview(filename):
             )
         except Exception as e:
             logger.error("Preview audit XLSX error: %s", e, exc_info=True)
-            return jsonify({"error": "An internal error occurred"}), 500
+            return api_error("An internal error occurred", 500)
 
-    return jsonify({"error": "Report data not found"}), 404
+    return api_error("Report data not found", 404)
 
 
 # ── History ───────────────────────────────────────────────────────────────────
@@ -422,7 +423,7 @@ def api_reports_pdf(filename):
         return "Report not found", 404
     stem = html_path.stem
     if not _pdf_semaphore.acquire(blocking=False):
-        return jsonify({"error": "PDF generation busy — retry shortly"}), 503
+        return api_error("PDF generation busy — retry shortly", 503)
     try:
         from playwright.sync_api import sync_playwright
 
@@ -445,7 +446,7 @@ def api_reports_pdf(filename):
         }
     except Exception as e:
         logger.error("PDF generation failed: %s", e, exc_info=True)
-        return jsonify({"error": "An internal error occurred"}), 500
+        return api_error("An internal error occurred", 500)
     finally:
         _pdf_semaphore.release()
 

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, session
 
+from app.blueprints import api_error
 from app.state import DATA_DIR, PROJECT_ROOT, REPORTS_DIR, TEMPLATE_DIR, UPLOAD_DIR
 from core.auth import login_required
 
@@ -165,7 +166,7 @@ def openapi_spec():
     Authed-only by default — see :func:`_public_docs_enabled`.
     """
     if not _public_docs_enabled() and not session.get("authed"):
-        return jsonify({"error": "Not authorized"}), 401
+        return api_error("Not authorized", 401)
     if not _OPENAPI_SPEC_PATH.is_file():
         return "OpenAPI spec not found", 404
     return (

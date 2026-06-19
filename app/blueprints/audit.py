@@ -31,6 +31,7 @@ from flask import Blueprint, Response, jsonify, request
 
 from app.blueprints import api_error
 from app.metrics import record_audit_event
+from tools._phase_runner import run_fns_parallel, run_phase
 from app.state import (
     CFG,
     MAX_AUDIT_RESULTS,
@@ -565,8 +566,7 @@ def api_audit_single_phase(phase_num: int):
                         "error": "Phase 4 requires at least one of: DataForSEO, Moz, or SerpAPI credentials",
                     }
                 ), 400
-            with ThreadPoolExecutor(max_workers=min(len(fns), 8)) as ex:
-                results = [f.result() for f in [ex.submit(fn) for fn in fns]]
+            results = run_fns_parallel(fns, max_workers=8)
 
         from core.seo_audit import calc_seo_score
 

@@ -24,6 +24,7 @@ from datetime import datetime
 
 from flask import Blueprint, Response, jsonify, request
 
+from app.blueprints import api_error
 from app.metrics import record_indexing_event
 from app.state import (
     ERROR_PREFIXES,
@@ -174,17 +175,17 @@ def api_index_run():
     with _lock:
         running = _index_status.get("running", False)
     if running:
-        return jsonify({"error": "Already running"}), 400
+        return api_error("Already running", 400)
 
     try:
         data = request.get_json(force=True) or {}
     except Exception:
-        return jsonify({"error": "Invalid JSON in request body"}), 400
+        return api_error("Invalid JSON in request body", 400)
 
     input_type = data.get("input_type", "sitemap")
     raw = data.get("input", "").strip()
     if not raw:
-        return jsonify({"error": "No URL or sitemap provided"}), 400
+        return api_error("No URL or sitemap provided", 400)
     # SSRF guard for URL-bearing input modes. CSV/list inputs are filesystem or
     # multi-URL — those URLs are checked individually downstream by Playwright,
     # which targets google.com (not the user-supplied host).
@@ -192,7 +193,7 @@ def api_index_run():
         raw = _norm_url(raw)
         ok, reason = is_safe_url(raw)
         if not ok:
-            return jsonify({"error": f"URL refused: {reason}"}), 400
+            return api_error(f"URL refused: {reason}", 400)
     pattern = data.get("pattern", "")
     # Clamp limit so a client can't request a 999999-URL run that ties up
     # Playwright workers and disk.
@@ -206,7 +207,7 @@ def api_index_run():
     # can't also flip running=True and spawn a second worker thread.
     with _lock:
         if _index_status["running"]:
-            return jsonify({"error": "Already running"}), 400
+            return api_error("Already running", 400)
         _index_status.update({"running": True, "total": estimated_total, "done": 0})
 
     def run():
@@ -320,7 +321,7 @@ def api_index_stream():
     """
     sub = _subscribe(_index_subscribers)
     if sub is None:
-        return jsonify({"error": "Too many concurrent SSE connections"}), 503
+        return api_error("Too many concurrent SSE connections", 503)
 
     def gen():
         try:
@@ -373,7 +374,7 @@ def api_index_pause():
     with _lock:
         running = _index_status.get("running", False)
     if not running:
-        return jsonify({"error": "Not running"}), 400
+        return api_error("Not running", 400)
     _index_paused.clear()  # block the worker thread
     _index_queue.put({"type": "paused"})
     return jsonify({"paused": True})
@@ -402,7 +403,7 @@ def api_index_retry():
     with _lock:
         running = _index_status.get("running", False)
     if running:
-        return jsonify({"error": "Already running"}), 400
+        return api_error("Already running", 400)
 
     error_urls = [
         url
@@ -411,7 +412,7 @@ def api_index_retry():
     ]
 
     if not error_urls:
-        return jsonify({"error": "No failed URLs to retry"}), 400
+        return api_error("No failed URLs to retry", 400)
 
     data = request.get_json() or {}
     headless = data.get("headless", False)
@@ -419,7 +420,7 @@ def api_index_retry():
 
     with _lock:
         if _index_status["running"]:
-            return jsonify({"error": "Already running"}), 400
+            return api_error("Already running", 400)
         _index_status.update({"running": True, "total": len(error_urls), "done": 0})
 
     def run():
@@ -484,7 +485,7 @@ def api_index_partial():
     """
     data = _snapshot_last_index_run()
     if not data:
-        return jsonify({"error": "No results yet"}), 404
+        return api_error("No results yet", 404)
     # Lazy import — avoids pulling Playwright/etc at module import time and
     # mirrors the import pattern used in `_save_partial_index_report`.
     from core.checker import get_crawl_depth, get_priority_score, get_url_type

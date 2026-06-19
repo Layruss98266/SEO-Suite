@@ -23,6 +23,8 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from werkzeug.utils import secure_filename
 
+from app.blueprints import api_error
+
 from app import state
 from app.state import (
     CFG,
@@ -162,12 +164,12 @@ def api_settings():
     if request.method == "POST":
         new_cfg = request.get_json() or {}
         if not isinstance(new_cfg, dict):
-            return jsonify({"error": "JSON object required"}), 400
+            return api_error("JSON object required", 400)
         filtered = {k: v for k, v in new_cfg.items() if k in _SETTINGS_ALLOWED_KEYS}
         rejected = sorted(set(new_cfg) - _SETTINGS_ALLOWED_KEYS)
         err = _validate_settings(filtered)
         if err:
-            return jsonify({"error": err}), 400
+            return api_error(err, 400)
         existing = json.loads(state.CONFIG_PATH.read_text(encoding="utf-8")) if state.CONFIG_PATH.exists() else {}
         merged = _merge_settings(filtered, existing)
         state.CONFIG_PATH.write_text(json.dumps(merged, indent=2))
@@ -231,7 +233,7 @@ def api_profiles():
     data = request.get_json(force=True) or {}
     name = (data.get("name") or "").strip()
     if not name:
-        return jsonify({"error": "name required"}), 400
+        return api_error("name required", 400)
     profiles[name] = {
         "use_cases": data.get("use_cases", []),
         "tasks": data.get("tasks", []),
@@ -249,13 +251,13 @@ def api_profiles():
 def api_upload():
     """Upload a CSV/Excel file. Returns server path for use as 'input' with input_type='csv'."""
     if "file" not in request.files:
-        return jsonify({"error": "No file in request"}), 400
+        return api_error("No file in request", 400)
     f = request.files["file"]
     if not f.filename:
-        return jsonify({"error": "No file selected"}), 400
+        return api_error("No file selected", 400)
     name = f.filename
     if not name.lower().endswith((".csv", ".xlsx", ".xls", ".tsv", ".txt")):
-        return jsonify({"error": "Only .csv .xlsx .xls .tsv .txt allowed"}), 400
+        return api_error("Only .csv .xlsx .xls .tsv .txt allowed", 400)
     # werkzeug's hardened sanitizer handles unicode + reserved Windows names.
     safe = secure_filename(name) or "upload"
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -263,7 +265,7 @@ def api_upload():
     try:
         f.save(str(dest))
     except Exception as e:
-        return jsonify({"error": f"Save failed: {e}"}), 500
+        return api_error(f"Save failed: {e}", 500)
 
     # Sanitize CSV content: strip formula prefixes that could execute in Excel.
     if safe.lower().endswith((".csv", ".tsv", ".txt")):
@@ -297,9 +299,9 @@ def api_compare():
     pa = _safe_report_path(a_name, (".xlsx",))
     pb = _safe_report_path(b_name, (".xlsx",))
     if pa is None or pb is None:
-        return jsonify({"error": "invalid filenames"}), 400
+        return api_error("invalid filenames", 400)
     if not (pa.exists() and pb.exists()):
-        return jsonify({"error": "report(s) not found"}), 404
+        return api_error("report(s) not found", 404)
     try:
         import openpyxl as _ox
 
@@ -323,7 +325,7 @@ def api_compare():
         b = _scores(pb)
     except Exception as e:
         logger.error("Compare error: %s", e, exc_info=True)
-        return jsonify({"error": "An internal error occurred"}), 500
+        return api_error("An internal error occurred", 500)
     all_urls = sorted(set(a) | set(b))
     rows = []
     for u in all_urls:

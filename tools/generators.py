@@ -763,6 +763,8 @@ def generate_sitemap(data: dict) -> dict:
         ]
         count = 0
         for entry in urls:
+            if isinstance(entry, str):
+                entry = {"url": entry}
             url = (entry.get("url") or "").strip()
             if not url:
                 continue

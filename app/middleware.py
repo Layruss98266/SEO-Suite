@@ -32,13 +32,14 @@ def generate_csrf_token() -> str:
 def _validate_csrf(resp_on_fail: bool = True):
     """Return an error response if the current request fails CSRF check.
 
-    GET/HEAD/OPTIONS are exempt (no state change). JSON API requests are also
-    exempt because they're protected by SameSite cookies and the JSON content
-    type forbids cross-origin form submission.
+    GET/HEAD/OPTIONS are exempt (no state change).  Every other method must
+    carry a valid token, either as the ``_csrf_token`` form field or the
+    ``X-CSRF-Token`` header.  The historical exemption for
+    ``application/json`` requests has been removed — SameSite cookies are
+    defence-in-depth, not a substitute for CSRF tokens, and modern attacks
+    routinely POST JSON cross-origin (``fetch(..., {mode: 'no-cors'})``).
     """
     if request.method in ("GET", "HEAD", "OPTIONS"):
-        return None
-    if request.path.startswith("/api/") and request.is_json:
         return None
     token = request.form.get("_csrf_token") or request.headers.get("X-CSRF-Token", "")
     if not token or not secrets.compare_digest(token, session.get("_csrf_token", "")):
@@ -94,22 +95,34 @@ def _set_security_headers(response):
 
 # ── Before-request CSRF guard ────────────────────────────────────────────────
 
-_CSRF_PROTECTED_PATHS = ("/login", "/signup", "/contact", "/login/totp", "/logout")
+# Deny-by-default for every state-changing method.  Only routes that
+# *cannot* obtain a token first are exempted (e.g. the bootstrap endpoint
+# that hands out the token itself, and the public site contact form which
+# embeds its own hidden field).  Auth flows (/login, /signup, /login/totp)
+# embed the token in their POST forms — they pass CSRF naturally and don't
+# need to be on this list.
+_CSRF_EXEMPT_PATHS: tuple[str, ...] = (
+    "/api/csrf",      # GET-only token bootstrap (defence-in-depth — GETs are exempt by method too)
+)
 
 
 def _csrf_protect():
-    """Enforce CSRF on POST submissions to form endpoints.
+    """Enforce CSRF on every state-changing request.
 
-    Skipped when the session has no token yet (first visit / test client
-    without GET preamble) so the route can still serve its own 401/error
-    response instead of being short-circuited with a 403.
+    Skipped when:
+      * method is GET/HEAD/OPTIONS (no state change)
+      * path is in :data:`_CSRF_EXEMPT_PATHS`
+      * the session has no token yet (first visit / test client without
+        GET preamble) — lets the underlying route serve its own 401/error
+        instead of a confusing 403.
     """
-    if request.method == "POST" and request.path in _CSRF_PROTECTED_PATHS:
-        if "_csrf_token" in session:
-            result = _validate_csrf()
-            if result:
-                return result
-    return None
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    if request.path in _CSRF_EXEMPT_PATHS:
+        return None
+    if "_csrf_token" not in session:
+        return None
+    return _validate_csrf()
 
 
 # ── Error handlers ───────────────────────────────────────────────────────────

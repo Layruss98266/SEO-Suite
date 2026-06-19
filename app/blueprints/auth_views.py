@@ -150,6 +150,11 @@ def login():
             session["username"] = identity["username"]
             session["is_admin"] = identity["is_admin"]
             session.permanent = True
+            # Re-seed the CSRF token after session.clear() so the very next
+            # POST is protected — without this, there's a window between
+            # login and the SPA's /api/csrf bootstrap where the deny-by-
+            # default middleware (S2) skips its check (no token in session).
+            generate_csrf_token()
             if identity.get("must_rotate_password"):
                 session["must_rotate_password"] = True
 

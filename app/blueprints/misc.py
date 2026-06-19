@@ -84,6 +84,19 @@ def health_ready():
     return jsonify({"status": "ok" if overall_ok else "degraded", "checks": checks}), status
 
 
+@bp.route("/api/csrf")
+def api_csrf():
+    """Hand out the session's CSRF token for SPA fetch() calls.
+
+    The dashboard's fetch wrapper calls this once on load and stores the
+    token, then injects it as the ``X-CSRF-Token`` header on every
+    POST/PUT/PATCH/DELETE.  Unauthenticated because the login form needs
+    a token before login completes.
+    """
+    from app.middleware import generate_csrf_token
+    return jsonify({"token": generate_csrf_token()})
+
+
 @bp.route("/api/use_cases")
 @login_required
 def api_use_cases():

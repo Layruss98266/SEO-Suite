@@ -1,3 +1,32 @@
+// ── CSRF token bootstrap + fetch wrapper ──────────────────────────────────────
+// Every state-changing request now requires X-CSRF-Token (deny-by-default on
+// the server, see app/middleware.py).  We fetch the token once on load and
+// wrap window.fetch to inject it on every non-GET/HEAD same-origin call so
+// individual call sites don't need to know about it.
+let _csrfToken = '';
+const _csrfReady = fetch('/api/csrf', { credentials: 'same-origin' })
+  .then(r => r.ok ? r.json() : { token: '' })
+  .then(d => { _csrfToken = d.token || ''; })
+  .catch(() => { /* offline — calls will fail with 403 and surface there */ });
+
+(function patchFetch() {
+  const orig = window.fetch.bind(window);
+  window.fetch = function(input, init) {
+    init = init || {};
+    const method = (init.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    const isSameOrigin = url.startsWith('/') || url.startsWith(window.location.origin);
+    if (isSameOrigin && method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+      const headers = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined));
+      if (_csrfToken && !headers.has('X-CSRF-Token')) {
+        headers.set('X-CSRF-Token', _csrfToken);
+      }
+      init.headers = headers;
+    }
+    return orig(input, init);
+  };
+})();
+
 // ── Server health preflight ───────────────────────────────────────────────────
 function withServerCheck(fn, logFn) {
   fetch('/health')

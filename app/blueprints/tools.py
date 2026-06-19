@@ -165,6 +165,21 @@ def api_page_type():
     return jsonify(detect_page_type(url))
 
 
+@bp.route("/api/tools/blog_audit", methods=["POST"])
+@login_required
+def api_blog_audit():
+    """Run the blog/article-page audit (author, dates, schema, OG, reading time)."""
+    data = request.get_json(force=True) or {}
+    url = _norm_url((data.get("url") or "").strip())
+    if not url:
+        return api_error("url required", 400)
+    if (rej := _reject_unsafe(url)):
+        return rej
+    from tools.blog_audit import audit_blog_post
+
+    return jsonify(audit_blog_post(url))
+
+
 @bp.route("/api/tools/duplicate_scan", methods=["POST"])
 @login_required
 def api_duplicate_scan():

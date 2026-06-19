@@ -399,6 +399,15 @@
 | UI/UX | 12 | 8 | 4 |
 | Content | 11 | 7 | 4 |
 | Persona/Product | 9 | 1 | 8 |
-| **Total** | **77** | **34** | **43** |
+| UI/UX + NEW | 13 | 9 | 4 |
+| **Total** | **78** | **36** | **42** |
 
-_Last updated: 2026-06-19 — commit `3312fc4` + second batch_
+### U-NEW2 `[LOW]` `[x]` Nav logo shows "v?" — version missing from /health
+- `app/blueprints/misc.py` `/health` endpoint
+- **Issue:** `GET /health` returned `{"status":"ok"}` with no `version` field. `dashboard.js` reads `d.version` from this endpoint; missing field fell back to `"v?"` permanently in the nav logo and sidebar.
+- **Fix:** Added `"version": VERSION` to `/health` response.
+- **Commit:** `506941d`
+
+---
+
+_Last updated: 2026-06-19 — commit `506941d` (35/77 + 1 new = 36 fixed)_

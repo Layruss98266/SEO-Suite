@@ -6,6 +6,7 @@ Covers:
 * ``GET/POST /signup`` — self-registration form (rate-limited via :func:`register`)
 * ``GET/POST /logout`` — clears the session
 * ``GET/POST /api/users``, ``DELETE /api/users/<u>`` — admin user management
+* ``GET /api/me`` — current user identity + admin flag
 * ``GET /api/auth_status`` — auth configuration snapshot for the Settings UI
 * ``POST /api/auth/change_credentials`` — generate an env-admin hash for the
   user to paste into their ``.env`` file
@@ -1087,6 +1088,21 @@ def api_auth_status():
             "must_rotate_password": _should_force_env_admin_rotation(me),
         }
     )
+
+
+@bp.route("/api/me")
+@login_required
+def api_me():
+    """Return the current user's identity and admin flag.
+
+    Lets the SPA check admin status before making admin-only calls (e.g.
+    ``/api/users``) so those 403 responses are eliminated, not just handled.
+    """
+    return jsonify({
+        "ok": True,
+        "username": session.get("username"),
+        "is_admin": bool(session.get("is_admin")),
+    })
 
 
 @bp.route("/api/auth/change_credentials", methods=["POST"])

@@ -27,6 +27,14 @@ const _csrfReady = fetch('/api/csrf', { credentials: 'same-origin' })
   };
 })();
 
+// ── Current-user identity bootstrap ──────────────────────────────────────────
+// Fetch once on load; used to skip /api/users for non-admin users (avoids 403).
+let _meData = null;
+fetch('/api/me', { credentials: 'same-origin' })
+  .then(r => r.ok ? r.json() : { ok: false })
+  .then(d => { _meData = d; })
+  .catch(() => {});
+
 // ── Server health preflight ───────────────────────────────────────────────────
 function withServerCheck(fn, logFn) {
   fetch('/health')
@@ -2186,6 +2194,8 @@ function loadSettings(){
 // ── Settings: user management (admin only) ────────────────────────────────────
 function loadUsers(){
   const panel = document.getElementById('users-admin');
+  // Skip the call entirely for non-admins (avoids 403 console noise)
+  if (_meData && !_meData.is_admin) { if(panel) panel.style.display='none'; return; }
   fetch('/api/users').then(r=>{
     if(r.status===403 || r.status===401){ if(panel) panel.style.display='none'; return null; }
     return r.json();

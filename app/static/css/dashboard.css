@@ -2681,3 +2681,51 @@ body.dark .home-strip-item-ai{background:rgba(99,102,241,.1);border-color:rgba(9
 .u-no-underline{text-decoration:none}
 .u-uppercase{text-transform:uppercase}
 .u-resize-v{resize:vertical}
+
+/* ═══ TOOL ROW (URL input + action buttons) ═════════════════════════════════ */
+/* Used in every tool panel: <div class="tool-row"><input ...><button ...></div> */
+.tool-row{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+}
+.tool-row .input{min-width:0}
+
+/* ═══ MOBILE IMPROVEMENTS ══════════════════════════════════════════════════ */
+@media (max-width:720px){
+  /* Tab rows scroll horizontally instead of wrapping */
+  .tab-row{
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    flex-wrap:nowrap;padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  .tab-row::-webkit-scrollbar{display:none}
+
+  /* Tool row: main input takes full width, buttons wrap below */
+  .tool-row .u-flex-1{width:100%;flex:1 1 100%}
+  .tool-row select:not([style*='width']){flex:1;min-width:0}
+}
+
+@media (max-width:480px){
+  /* Drawer takes full width and sits below topbar */
+  .drawer{
+    top:58px!important;
+    width:100%!important;max-width:100%!important;
+    border-left:none;border-top:1px solid var(--border);
+  }
+
+  /* Toasts above mobile bottom nav */
+  .toast-stack{bottom:70px;right:10px;left:10px}
+  .toast{min-width:0;max-width:100%}
+
+  /* Checklist/scored-issues result panels scroll on small screens */
+  .check-row,.scored-issue-row{overflow-wrap:break-word;word-break:break-word}
+
+  /* Full-width select in tool rows */
+  .tool-row select{width:100%!important;flex:1 1 100%}
+
+  /* Aud-URL row keeps input + button together */
+  .aud-url-row,.aud-control-row{flex-wrap:wrap}
+  .aud-url-row .input{flex:1 1 100%}
+
+  /* Pagination controls wrap */
+  .rep-pager{flex-wrap:wrap;justify-content:center;gap:8px}
+}

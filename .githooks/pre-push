@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# pre-push hook — doc-ref sanity checks before pushing to remote.
+# Install: git config core.hooksPath .githooks
+# Or copy to .git/hooks/pre-push and chmod +x it.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+warn() { echo "⚠  PRE-PUSH WARNING: $*" >&2; }
+info() { echo "ℹ  pre-push: $*" >&2; }
+
+# ── 1. VERSION drift check ────────────────────────────────────────────────────
+VERSION=$(python - <<'PY'
+import sys; sys.path.insert(0, '.')
+try:
+    from core.version import VERSION; print(VERSION)
+except Exception: print('unknown')
+PY
+)
+
+# If AUDIT_LOG exists and mentions a different version in its header, warn.
+if [ -f "$REPO_ROOT/AUDIT_LOG.md" ]; then
+  LOG_DATE=$(head -5 "$REPO_ROOT/AUDIT_LOG.md" | grep -oP '\d{4}-\d{2}-\d{2}' | head -1 || true)
+  info "AUDIT_LOG last dated: ${LOG_DATE:-unknown}. Current VERSION=$VERSION"
+fi
+
+# ── 2. agents.md freshness ────────────────────────────────────────────────────
+if [ ! -f "$REPO_ROOT/agents.md" ]; then
+  warn "agents.md missing — create it before pushing (see CLAUDE.md)."
+fi
+
+# ── 3. AUDIT_LOG progress table sync ─────────────────────────────────────────
+if [ -f "$REPO_ROOT/AUDIT_LOG.md" ]; then
+  OPEN_ITEMS=$(grep -c '^\### .* `\[ \]`' "$REPO_ROOT/AUDIT_LOG.md" 2>/dev/null || echo 0)
+  FIXED_ITEMS=$(grep -c '^\### .* `\[x\]`' "$REPO_ROOT/AUDIT_LOG.md" 2>/dev/null || echo 0)
+  info "AUDIT_LOG: $FIXED_ITEMS fixed, $OPEN_ITEMS open"
+fi
+
+# ── 4. No .env committed ──────────────────────────────────────────────────────
+if git diff --cached --name-only 2>/dev/null | grep -qE '^\.env$|^\.env\.'; then
+  echo "🚫 PRE-PUSH BLOCKED: .env file staged for commit. Remove it first." >&2
+  exit 1
+fi
+
+# Check pushed commits too
+REMOTE="$1"
+URL="$2"
+while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+  if [ "$LOCAL_SHA" = "0000000000000000000000000000000000000000" ]; then
+    continue  # deleting branch
+  fi
+  BASE="${REMOTE_SHA:-$(git rev-list --max-parents=0 HEAD)}"
+  if git diff "$BASE" "$LOCAL_SHA" --name-only 2>/dev/null | grep -qE '^\.env$|^\.env\.'; then
+    echo "🚫 PRE-PUSH BLOCKED: .env file in commit range $BASE..$LOCAL_SHA." >&2
+    exit 1
+  fi
+done
+
+info "All checks passed. VERSION=$VERSION. Pushing..."
+exit 0

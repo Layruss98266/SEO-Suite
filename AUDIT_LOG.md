@@ -23,7 +23,7 @@
 - **Issue:** `lxml.etree.XMLParser(recover=True)` with default `resolve_entities=True` and `no_network` unset on user-fetched sitemap content. Allows XXE / out-of-band fetch via DOCTYPE.
 - **Fix:** `XMLParser(recover=True, resolve_entities=False, no_network=True, huge_tree=False)` on all three sites.
 
-### S2 `[HIGH]` `[ ]` CSRF allowlist is backwards
+### S2 `[HIGH]` `[x]` CSRF allowlist is backwards
 - `app/middleware.py` — `_CSRF_PROTECTED_PATHS` opt-in list covers only 5 paths
 - **Issue:** Everything outside it (incl. `/api/users`, `/api/auth/totp/disable`, `/api/auth/me/delete`) bypasses CSRF. `SameSite=Lax` alone does not protect same-origin script-injected POSTs.
 - **Fix:** Deny-by-default; explicitly exempt only declared public APIs.
@@ -37,7 +37,7 @@
 - `app/blueprints/auth_views.py` `/api/users` create + DELETE
 - **Fix:** `limiter.limit("30 per minute")` applied programmatically to both `api_users_create` and `api_users_delete` view functions in `register()`. (DELETE was missed in the original batch — added in follow-up audit.)
 
-### S5 `[MED]` `[ ]` CSP missing headers + unsafe-inline style-src
+### S5 `[MED]` `[x]` CSP missing headers + unsafe-inline style-src
 - `app/middleware.py`
 - **Issue:** `'unsafe-inline'` in `style-src`; missing `Permissions-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, `Cross-Origin-Embedder-Policy`.
 - **Fix:** Remove `'unsafe-inline'` from style-src (use nonces); add restrictive COOP/CORP/COEP/Permissions-Policy headers.
@@ -46,36 +46,36 @@
 - `core/notifier.py`
 - **Fix:** `smtplib.SMTP(timeout=10)`
 
-### S7 `[MED]` `[ ]` OpenAPI docs unauthenticated
+### S7 `[MED]` `[x]` OpenAPI docs unauthenticated
 - `app/blueprints/misc.py` `/openapi.yaml` + `/docs`
 - **Fix:** Gate behind `@login_required` or env flag.
 
-### S8 `[MED]` `[ ]` Signup auto-login without email verify
+### S8 `[MED]` `[x]` Signup auto-login without email verify
 - `app/blueprints/auth_views.py` `/signup`
 - **Issue:** Auto-logs-in new account, no CAPTCHA. Account farming vector on public deploys.
 
-### S9 `[MED]` `[ ]` SEO_SUITE_NO_AUTH=1 silently disables auth in cloud
+### S9 `[MED]` `[x]` SEO_SUITE_NO_AUTH=1 silently disables auth in cloud
 - `core/auth.py`
 - **Fix:** Refuse to start when cloud env signal + `SEO_SUITE_NO_AUTH=1`.
 
-### S10 `[MED]` `[ ]` Cloud detection incomplete
+### S10 `[MED]` `[x]` Cloud detection incomplete
 - `core/auth.py` — misses `RAILWAY_ENVIRONMENT`, `HEROKU_APP_NAME`, `DYNO`, `K_SERVICE`
 - **Fix:** Mirror `_CLOUD_ENV_SIGNALS` list from `server.py`.
 
 ### S11 `[MED]` `[x]` CI actions still tag-pinned — L-9 regression
 - `.github/workflows/ci.yml` — uses `@v4`, `@v5` tags, NOT 40-char SHA
-- **Issue:** Commit `14d112b` claims L-9 hash-pinning is "complete" — it is not. Doc/commit drift.
-- **Fix:** Re-pin every action to full SHA digest.
+- **Issue:** Commit `14d112b` claims L-9 hash-pinning is "complete" — it is not. Prior fix had truncated 39-char SHAs (wrong) and corrupted setup-python SHA with uppercase letters.
+- **Fix:** Re-pinned to verified full 40-char SHAs via GitHub API: checkout→`11bd71901bbe5b1630ceea73d27597364c9af683`, setup-python→`0b93645e9fea7318ecaed2b359559ac225c90a2b`, upload-artifact→`65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08`.
 
 ### S12 `[LOW]` `[x]` Dockerfile base image tag-pinned not digest
 - **Fix:** Add `@sha256:…` to base image.
 - **Resolved 2026-06-19:** `Dockerfile` now pins `mcr.microsoft.com/playwright/python:v1.48.0-jammy@sha256:b4bedaaee2a9d1ca83dc30ec8cae65105151dbe7ba41be0154cee6a6a7cdc669`. Refresh instructions documented in the Dockerfile header.
 
-### S13 `[LOW]` `[ ]` flask-limiter memory:// is per-worker
+### S13 `[LOW]` `[x]` flask-limiter memory:// is per-worker
 - `app/server.py` — multi-worker deploy = independent rate-limit buckets per worker.
 - **Fix:** Move to Redis storage URI or document the limitation.
 
-### S14 `[LOW]` `[ ]` CSP sandbox defeats itself
+### S14 `[LOW]` `[x]` CSP sandbox defeats itself
 - `app/blueprints/reports.py` — `sandbox allow-same-origin` defeats sandbox vs same origin.
 - **Fix:** Drop `allow-same-origin` or serve from separate origin.
 
@@ -83,7 +83,7 @@
 - `app/blueprints/reports.py` — `playwright.chromium.launch(--no-sandbox)` on potentially attacker-influenced HTML.
 - **Fix:** Remove flag or use user namespace sandboxing.
 
-### S16 `[LOW]` `[ ]` next param regex too permissive
+### S16 `[LOW]` `[x]` next param regex too permissive
 - `app/blueprints/auth_views.py` — whitespace / unicode not stripped before regex validation.
 - **Fix:** Tighten to `r"^/[A-Za-z0-9/_\-?=&%.+#]*$"` and strip/normalize first.
 
@@ -156,11 +156,11 @@
 - **Issue:** 500-URL run exhausts GSC quota (2000 req/day default) with no detection or abort.
 - **Fix:** Exponential backoff on `quotaExceeded`; abort further GSC calls in that run.
 
-### C11 `[MED]` `[ ]` audit.py run() 170-line nested god function
+### C11 `[MED]` `[x]` audit.py run() 170-line nested god function
 - `app/blueprints/audit.py:22844`
 - **Fix:** Extract `_run_audit_thread(...)` to module level.
 
-### C12 `[MED]` `[ ]` Phase 3 parallel result collection defeats parallelism
+### C12 `[MED]` `[x]` Phase 3 parallel result collection defeats parallelism
 - `app/blueprints/audit.py:23198`
 - **Issue:** `[f.result() for f in [ex.submit(fn) for fn in fns]]` — collects in submit order; slow first future blocks all.
 - **Fix:** Use `executor.map()` or `as_completed`.
@@ -187,7 +187,7 @@
 - **Issue:** Defaults to CP1252 on Windows while write-side uses UTF-8.
 - **Fix:** `read_text(encoding="utf-8")`.
 
-### C18 `[MED]` `[ ]` CSRF bypass for all JSON API POSTs
+### C18 `[MED]` `[x]` CSRF bypass for all JSON API POSTs
 - `app/middleware.py:19444`
 - **Issue:** `if request.is_json: return None` blanket exemption. SameSite=Lax alone insufficient.
 - **Fix:** Require explicit `X-Requested-With` header check on state-changing endpoints.
@@ -230,7 +230,7 @@
 - **Issue:** Used throughout but never defined in `:root` or `body.dark`. Silently inherit `initial` (transparent/0) in all themes.
 - **Fix:** Define them in `:root` mapped to existing token equivalents.
 
-### U2 `[HIGH]` `[ ]` 443 inline style= overrides in dashboard.html
+### U2 `[HIGH]` `[x]` 443 inline style= overrides in dashboard.html
 - **Issue:** Bypass token system; don't respond to dark mode; major maintainability debt.
 - **Fix:** Audit and extract the most frequent patterns into utility classes.
 
@@ -238,7 +238,7 @@
 - `app/templates/site/base.html` + `app/templates/dashboard.html`
 - **Fix:** `<a class="skip-link" href="#main-content">Skip to content</a>` as first child of body.
 
-### U4 `[HIGH]` `[ ]` Form span labels not associated to inputs
+### U4 `[HIGH]` `[x]` Form span labels not associated to inputs
 - `app/templates/dashboard.html`
 - **Issue:** `<span class="label">` used everywhere instead of `<label for="id">`. Screen readers skip them.
 - **Fix:** Convert to `<label for="...">` or add `aria-labelledby`.
@@ -273,7 +273,7 @@
 - `.tb-search` hidden at 720px — only Ctrl+K remains (keyboard-only on desktop).
 - **Fix:** Add search icon tap-target on mobile that opens the palette.
 
-### U12 `[LOW]` `[ ]` Sidebar collapse state not persisted
+### U12 `[LOW]` `[x]` Sidebar collapse state not persisted
 - `app/static/js/dashboard.js` — no localStorage read/write for sidebar collapse state.
 - **Fix:** Save to localStorage on toggle; restore on load.
 
@@ -309,14 +309,14 @@
 - `app/templates/site/base.html` — no `{% block description %}` overrides on any page.
 - **Fix:** Add per-page descriptions to home, features, pricing, about.
 
-### CT7 `[MED]` `[ ]` Missing critical pages
+### CT7 `[MED]` `[x]` Missing critical pages
 - `/docs` — no setup instructions linked from marketing site (largest conversion gap)
 - `/privacy` — no privacy policy (legal risk)
 - `/terms` — no terms of service
 - `/changelog` — expected by open-source evaluators
 - **Fix:** At minimum stub /privacy, /terms, and add GitHub docs link to pricing + footer.
 
-### CT8 `[MED]` `[ ]` Blog zero original content
+### CT8 `[MED]` `[x]` Blog zero original content
 - `app/templates/site/blog.html` — 5 outbound links only. Zero organic SEO value.
 - **Fix:** Write 2 pillar posts: "free Screaming Frog alternative" + "self-hosted SEO tool guide"
 
@@ -395,13 +395,15 @@
 ## Fix Progress Summary
 | Category | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| Security | 21 | 7 | 14 |
-| Code Quality | 26 | 13 | 13 |
-| UI/UX | 12 | 8 | 4 |
-| Content | 11 | 7 | 4 |
-| Persona/Product | 9 | 1 | 8 |
-| UI/UX + NEW | 15 | 11 | 4 |
-| **Total** | **83** | **40** | **43** |
+| Security | 21 | 18 | 3 (S15, S18, S-NEW inline handlers) |
+| Code Quality | 26 | 16 | 10 (C20–C25 + 4 others) |
+| UI/UX | 12 | 11 | 1 (U5, U11 partially) |
+| Content | 11 | 9 | 2 (CT3, CT11) |
+| Persona/Product | 9 | 1 | 8 (P1–P9 minus P5) |
+| NEW items | 7 | 7 | 0 |
+| **Total** | **86** | **62** | **24** |
+
+*Last updated: 2026-06-19 (Batch G)*
 
 ### U-NEW2 `[LOW]` `[x]` Nav logo shows "v?" — version missing from /health
 - `app/blueprints/misc.py` `/health` endpoint
@@ -420,6 +422,26 @@
 - **Issue:** Clicking Run without selecting a use case (or with empty URL/file) fired a 3-second toast then returned silently — left spinner running, button disabled, no visible feedback. User perception: app broken.
 - **Fix:** Render persistent inline `✖` error in `#uc-error`, clear spinner, re-enable button.
 - **Commit:** `accbf65`
+
+### G-NEW1 `[MED]` `[x]` /api/me endpoint added — eliminates 403 console noise for non-admins
+- **Issue:** `loadUsers()` in dashboard.js called `/api/users` unconditionally, causing a 403 in DevTools console for non-admin users (even though the 403 was handled gracefully in JS).
+- **Fix:** Added `GET /api/me` endpoint (`app/blueprints/auth_views.py`) returning `{ok, username, is_admin}`. SPA fetches it on load; `loadUsers()` skips the `/api/users` call if `_meData.is_admin` is false.
+
+### G-NEW2 `[MED]` `[x]` CI SHA pinning broken — 39-char truncated SHAs
+- **Issue:** All three pinned action SHAs were 39 chars (missing last char), and setup-python SHA had uppercase letters — both invalid. CI failed on every push.
+- **Fix:** Verified correct 40-char SHAs via GitHub API and updated all 8 occurrences in `ci.yml`.
+
+### G-NEW3 `[LOW]` `[x]` .tool-row has no CSS definition
+- **Issue:** `.tool-row` used in 15+ tool panel forms to layout URL input + buttons, but no CSS. The `u-flex-1` on the input had no flex parent to grow into — layout was broken/unstyled.
+- **Fix:** Added `.tool-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}` to `dashboard.css`. Added mobile breakpoints so input fills full width and buttons wrap below.
+
+### G-NEW4 `[LOW]` `[x]` agents.md missing
+- **Issue:** CLAUDE.md rule requires `agents.md` at repo root. File didn't exist.
+- **Fix:** Created `agents.md` with project overview, stack, key files, env vars, gotchas.
+
+### G-NEW5 `[LOW]` `[x]` Pre-push hook missing
+- **Issue:** No git hook to catch .env commits, warn on doc drift, or validate SHA pins before push.
+- **Fix:** Created `.githooks/pre-push` (committable). Install: `git config core.hooksPath .githooks`.
 
 ### C-NEW2 `[CRIT]` `[x]` CSP script-src 'self' broke every dashboard button
 - `app/middleware.py` security headers

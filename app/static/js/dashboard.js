@@ -4103,12 +4103,18 @@ function copyUcResults() {
 }
 
 async function runUseCase() {
-  if (!_activeUseCase) { toast('Select a use case from the sidebar', 'warn'); return; }
+  const errEl = document.getElementById('uc-error');
+  if (!_activeUseCase) {
+    errEl.style.display = '';
+    errEl.textContent   = '✖ Pick a use case first — open the Use Cases menu in the top nav or sidebar, then click one (e.g. Crawl Access, On-Page SEO).';
+    toast('Select a use case from the sidebar', 'warn');
+    return;
+  }
 
   const btn = document.getElementById('uc-run-btn');
   btn.disabled = true;
   document.getElementById('uc-results').style.display = 'none';
-  document.getElementById('uc-error').style.display   = 'none';
+  errEl.style.display = 'none';
   document.getElementById('uc-spinner').style.display = '';
 
   try {
@@ -4116,7 +4122,13 @@ async function runUseCase() {
 
     if (_activeUcFormat === 'csv') {
       const fileInput = document.getElementById('uc-file');
-      if (!fileInput.files.length) { toast('Select a CSV or XLSX file', 'warn'); return; }
+      if (!fileInput.files.length) {
+        errEl.style.display = ''; errEl.textContent = '✖ Select a CSV or XLSX file first.';
+        toast('Select a CSV or XLSX file', 'warn');
+        document.getElementById('uc-spinner').style.display = 'none';
+        btn.disabled = false;
+        return;
+      }
       const fd = new FormData();
       fd.append('file', fileInput.files[0]);
       fd.append('use_case', _activeUseCase);
@@ -4128,7 +4140,14 @@ async function runUseCase() {
       fetchOpts = { method: 'POST', body: fd };
     } else {
       const inputUrl = document.getElementById('uc-url').value.trim();
-      if (!inputUrl) { toast('Enter a ' + (_activeUcFormat === 'sitemap' ? 'sitemap URL' : _activeUcFormat === 'domain' ? 'domain' : 'URL') + ' first', 'warn'); return; }
+      if (!inputUrl) {
+        const what = _activeUcFormat === 'sitemap' ? 'sitemap URL' : _activeUcFormat === 'domain' ? 'domain' : 'URL';
+        errEl.style.display = ''; errEl.textContent = '✖ Enter a ' + what + ' first.';
+        toast('Enter a ' + what + ' first', 'warn');
+        document.getElementById('uc-spinner').style.display = 'none';
+        btn.disabled = false;
+        return;
+      }
       const body = { url: inputUrl, use_case: _activeUseCase, input_format: _activeUcFormat };
       if (_activeUseCase === 'rankings') {
         const kw = document.getElementById('uc-keywords').value.trim();

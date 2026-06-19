@@ -26,11 +26,16 @@ bp = Blueprint("misc", __name__)
 @bp.route("/app")
 @login_required
 def app_dashboard():
-    return (
-        (TEMPLATE_DIR / "dashboard.html").read_text(encoding="utf-8"),
-        200,
-        {"Content-Type": "text/html"},
+    from core.version import VERSION
+    html = (TEMPLATE_DIR / "dashboard.html").read_text(encoding="utf-8")
+    # Cache-bust static assets on every release so browsers don't serve
+    # stale JS/CSS after an upgrade.
+    html = (
+        html
+        .replace("/static/js/dashboard.js", f"/static/js/dashboard.js?v={VERSION}")
+        .replace("/static/css/dashboard.css", f"/static/css/dashboard.css?v={VERSION}")
     )
+    return (html, 200, {"Content-Type": "text/html"})
 
 
 @bp.route("/health")

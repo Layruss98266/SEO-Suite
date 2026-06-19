@@ -394,9 +394,11 @@
 ## Fix Progress Summary
 | Category | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| Security | 20 | 0 | 20 |
-| Code Quality | 25 | 0 | 25 |
-| UI/UX | 12 | 0 | 12 |
-| Content | 11 | 0 | 11 |
+| Security | 20 | 2 | 18 |
+| Code Quality | 25 | 6 | 19 |
+| UI/UX | 12 | 3 | 9 |
+| Content | 11 | 6 | 5 |
 | Persona/Product | 9 | 0 | 9 |
-| **Total** | **77** | **0** | **77** |
+| **Total** | **77** | **17** | **60** |
+
+_Last updated: 2026-06-19 — commit `afa21e9`_

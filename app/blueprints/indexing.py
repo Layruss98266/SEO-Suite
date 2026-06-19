@@ -66,6 +66,35 @@ bp = Blueprint("indexing", __name__)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+# Canonical 7-column header for indexing CSV exports. Shared between the
+# end-of-run report, the cancelled-run partial report, and the live mid-run
+# `/api/index/partial` download so downstream tools (Excel, pandas, Screaming
+# Frog) see a stable column shape regardless of when the export is triggered.
+INDEX_CSV_HEADER = [
+    "#",
+    "URL",
+    "Google Indexed",
+    "Priority",
+    "Depth",
+    "URL Type",
+    "Checked At",
+]
+
+
+def _pad_row(row: list, width: int = len(INDEX_CSV_HEADER)) -> list:
+    """Right-pad ``row`` with empty strings so it matches ``width`` columns.
+
+    Truncates over-long rows to ``width`` to guarantee column alignment even
+    when a partial/cancelled export hands us a short tuple.
+    """
+    row = list(row)
+    if len(row) < width:
+        row = row + [""] * (width - len(row))
+    elif len(row) > width:
+        row = row[:width]
+    return row
+
+
 def _is_error_status(status: str) -> bool:
     """True if a per-URL status string indicates a failure to verify indexing.
 
@@ -115,20 +144,20 @@ def _save_partial_index_report() -> tuple[str, str]:
             counts[status] = counts.get(status, 0) + 1
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
             w = _csv.writer(f)
-            w.writerow(
-                ["#", "URL", "Google Indexed", "Priority", "Depth", "URL Type", "Checked At"]
-            )
+            w.writerow(INDEX_CSV_HEADER)
             for r in rows:
                 w.writerow(
-                    [
-                        r["num"],
-                        r["url"],
-                        r["status"],
-                        r["priority"],
-                        r["depth"],
-                        r["url_type"],
-                        r["checked_at"],
-                    ]
+                    _pad_row(
+                        [
+                            r["num"],
+                            r["url"],
+                            r["status"],
+                            r["priority"],
+                            r["depth"],
+                            r["url_type"],
+                            r["checked_at"],
+                        ]
+                    )
                 )
         ReportGenerator().html(rows, html_path, counts, {}, None, [])
         return html_path.name, csv_path.name
@@ -446,15 +475,38 @@ def api_index_retry():
 @bp.route("/api/index/partial")
 @login_required
 def api_index_partial():
-    """Return completed-so-far indexing results as CSV for mid-run export."""
+    """Return completed-so-far indexing results as CSV for mid-run export.
+
+    Emits the same 7-column shape as the end-of-run report and the cancelled-run
+    partial report (see ``INDEX_CSV_HEADER``). Earlier this endpoint emitted a
+    bespoke 2-column format which broke downstream tools that expected the
+    canonical schema (AUDIT_LOG C9).
+    """
     data = _snapshot_last_index_run()
     if not data:
         return jsonify({"error": "No results yet"}), 404
+    # Lazy import — avoids pulling Playwright/etc at module import time and
+    # mirrors the import pattern used in `_save_partial_index_report`.
+    from core.checker import get_crawl_depth, get_priority_score, get_url_type
+
     buf = _io.StringIO()
     w = _csv.writer(buf)
-    w.writerow(["URL", "Status"])
-    for url, status in data.items():
-        w.writerow([url, status])
+    w.writerow(INDEX_CSV_HEADER)
+    ts_now = datetime.now().isoformat()
+    for i, (url, status) in enumerate(data.items(), 1):
+        w.writerow(
+            _pad_row(
+                [
+                    i,
+                    url,
+                    status,
+                    get_priority_score(url),
+                    get_crawl_depth(url),
+                    get_url_type(url),
+                    ts_now,
+                ]
+            )
+        )
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     return buf.getvalue(), 200, {
         "Content-Type": "text/csv",

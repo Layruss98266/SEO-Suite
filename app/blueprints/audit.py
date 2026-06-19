@@ -413,9 +413,15 @@ def api_audit_partial():
         return jsonify({"error": "No results yet"}), 404
     buf = _io.StringIO()
     w = _csv.writer(buf)
-    w.writerow(["URL", "Score", "Issues", "Warnings"])
+    header = ["URL", "Score", "Issues", "Warnings"]
+    w.writerow(header)
     for r in rows:
-        w.writerow([r["url"], r["score"], r["issues"], r["warnings"]])
+        # Pad short rows so a cancelled/partial run can't emit a ragged CSV
+        # that misaligns columns in Excel/pandas (AUDIT_LOG C9).
+        row = [r.get("url", ""), r.get("score", ""), r.get("issues", ""), r.get("warnings", "")]
+        if len(row) < len(header):
+            row = row + [""] * (len(header) - len(row))
+        w.writerow(row)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     return buf.getvalue(), 200, {
         "Content-Type": "text/csv",

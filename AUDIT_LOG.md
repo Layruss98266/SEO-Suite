@@ -146,7 +146,7 @@
 - **Issue:** `input()` prompt inside module imported by every Flask route. Dead + confusing in web context.
 - **Fix:** Move CLI helpers to `core/cli.py`.
 
-### C9 `[HIGH]` `[ ]` Partial CSV inconsistent column count
+### C9 `[HIGH]` `[x]` Partial CSV inconsistent column count
 - `app/blueprints/indexing.py:18241`
 - **Issue:** `/api/index/partial` exports 2 cols (URL, Status); worker CSV writes 7 cols. Same "export" button, different shapes.
 - **Fix:** Standardise to 7-col format or make format explicit per export type.

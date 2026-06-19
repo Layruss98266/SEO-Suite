@@ -152,14 +152,24 @@ if _sentry_dsn:
     )
 
 # ── Rate limiting (Stage 1-B) ────────────────────────────────────────────────
-# In-memory store — no Redis dependency needed for single-server deployments.
-# Limits apply per remote IP address. Per-route limits are applied inside each
-# blueprint's ``register()`` factory so they target the bound view function.
+# Storage: in-memory by default (single worker); set SEO_SUITE_LIMITER_URI
+# (e.g. redis://localhost:6379/0, memcached://...) for a multi-worker /
+# multi-process deploy so all workers share one rate-limit bucket per IP.
+# Per-route limits are applied inside each blueprint's ``register()`` factory
+# so they target the bound view function.
+_limiter_uri = os.getenv("SEO_SUITE_LIMITER_URI", "memory://")
+if _limiter_uri == "memory://" and any(os.getenv(v) for v in _CLOUD_ENV_SIGNALS):
+    logger.warning(
+        "flask-limiter is using memory:// storage on a cloud host. "
+        "Multi-worker deploys will get per-worker rate-limit buckets, which "
+        "weakens brute-force protection. Set SEO_SUITE_LIMITER_URI=redis://… "
+        "for a shared backend."
+    )
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     default_limits=["240 per minute"],
-    storage_uri="memory://",
+    storage_uri=_limiter_uri,
 )
 
 # Start the SSE subscriber-cleanup thread now that state is initialised.

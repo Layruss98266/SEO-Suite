@@ -24,7 +24,9 @@ import time
 import xml.etree.ElementTree as ET
 
 import requests
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
+
+from tools._phase_runner import run_phase
 from typing import Any
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
@@ -451,12 +453,11 @@ def broken_link_check(url: str) -> dict:
             return {"url": link, "status": "timeout"}
         return None
 
-    broken = []
-    with ThreadPoolExecutor(max_workers=10) as ex:
-        for res in as_completed([ex.submit(_check, lnk) for lnk in links]):
-            r = res.result()
-            if r:
-                broken.append(r)
+    broken = [
+        r
+        for r in run_phase(links, _check, max_workers=10, preserve_order=False)
+        if r
+    ]
 
     s = "fail" if broken else "pass"
     msg = f"{len(broken)} broken link(s) found" if broken else f"All {len(links)} links OK"

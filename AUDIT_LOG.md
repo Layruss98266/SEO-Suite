@@ -170,13 +170,13 @@
 - **Issue:** Full JSON serialise + `os.replace` on every single URL. 500 URLs = ~500 full writes.
 - **Fix:** Batch every N URLs (e.g. 10) or write only on completion.
 
-### C14 `[MED]` `[ ]` Duplicate ThreadPoolExecutor boilerplate across phases
+### C14 `[MED]` `[x]` Duplicate ThreadPoolExecutor boilerplate across phases
 - `app/blueprints/audit.py:23115-23271`
-- **Fix:** Extract `_run_fns_parallel(fns, max_workers)` helper.
+- **Fix:** Extracted `run_fns_parallel` / `run_phase` in `tools/_phase_runner.py`. Applied to audit.py phase 1/3/4 blocks and tools/phase1.py broken-link checker.
 
-### C15 `[MED]` `[ ]` _require_public_url walrus pattern repeated 10+ times
+### C15 `[MED]` `[x]` _require_public_url walrus pattern repeated 10+ times
 - `app/blueprints/tools.py:18887, 18910, 18931, 18968, 18994, 19096, 19099, 19121, 19143, 19165`
-- **Fix:** Wrap into helper returning response or None.
+- **Fix:** Added `_check_public_url(value, field)` helper in `app/state.py` returning response-or-None. Also added `require_public_url` decorator form for single-URL routes. Replaced all 10 walrus call sites in `app/blueprints/tools.py`.
 
 ### C16 `[MED]` `[x]` mkdir loop swallows OSError silently
 - `app/state.py:29401`

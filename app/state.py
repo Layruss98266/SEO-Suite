@@ -246,6 +246,55 @@ def _require_public_url(value: str, field_name: str = "url"):
         return None, (jsonify({"error": f"Invalid {field_name}: {exc}"}), 400)
 
 
+def _check_public_url(value: str, field_name: str = "url"):
+    """Validate ``value``; return ``None`` on success or a Flask error response
+    tuple ``(jsonify(...), 400)`` on failure.
+
+    Lighter-weight wrapper around ``_require_public_url`` for routes that only
+    need the early-return guard and don't consume the validated URL. Collapses
+    the repeated walrus pattern ``if (rej := _require_public_url(u, "u"))[1]: return rej[1]``.
+
+    See AUDIT_LOG.md C15.
+    """
+    _, err = _require_public_url(value, field_name)
+    return err
+
+
+def require_public_url(field_name: str = "url", *, body_key: str | None = None):
+    """Decorator form of ``_check_public_url`` for single-URL routes.
+
+    Pulls the URL from the request body (JSON or form), then args. ``body_key``
+    overrides which key to read; defaults to ``field_name``. Use the helper
+    ``_check_public_url`` directly for routes that validate multiple URLs.
+    """
+    from functools import wraps
+
+    from flask import request
+
+    key = body_key or field_name
+
+    def deco(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            data = request.get_json(silent=True) or {}
+            value = (
+                (data.get(key) if isinstance(data, dict) else None)
+                or request.form.get(key)
+                or request.args.get(key)
+                or ""
+            ).strip()
+            if not value:
+                return jsonify({"error": f"{field_name} required"}), 400
+            err = _check_public_url(value, field_name)
+            if err:
+                return err
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    return deco
+
+
 def _safe_public_url_list(raw: str) -> list[str]:
     """Split a comma-separated URL list and drop any URL that fails SSRF check."""
     urls = []

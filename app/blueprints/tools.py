@@ -35,10 +35,10 @@ from flask import Blueprint, jsonify, request
 
 from app.state import (
     CFG,
+    _check_public_url,
     _int,
     _norm_url,
     _reject_unsafe,
-    _require_public_url,
 )
 from core.auth import login_required
 from core.checker import build_gsc_service
@@ -249,8 +249,8 @@ def api_bing_overview():
     period = _int(data, "period", 2, 1, 3)
     if not site_url:
         return jsonify({"ok": False, "error": "site_url required"}), 400
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     if not api_key:
         return jsonify(
             {"ok": False, "error": "Bing API key required (set in Settings → bing_api_key)"}
@@ -272,8 +272,8 @@ def api_bing_inspect():
         return jsonify({"ok": False, "error": "url and site_url required"}), 400
     if (rej := _reject_unsafe(page_url)):
         return rej
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     if not api_key:
         return jsonify({"ok": False, "error": "Bing API key required"}), 400
     from tools.bing_webmaster import inspect_url
@@ -293,8 +293,8 @@ def api_bing_submit():
         return jsonify({"ok": False, "error": "url and site_url required"}), 400
     if (rej := _reject_unsafe(page_url)):
         return rej
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     if not api_key:
         return jsonify({"ok": False, "error": "Bing API key required"}), 400
     from tools.bing_webmaster import submit_url
@@ -330,8 +330,8 @@ def api_gsc_opportunities():
     site_url = _norm_url((data.get("site_url") or "").strip())
     if not site_url:
         return jsonify({"ok": False, "error": "site_url required"}), 400
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     svc, err = _gsc_service_or_error()
     if err:
         return err
@@ -356,8 +356,8 @@ def api_gsc_opp_ai_draft():
         return jsonify({"ok": False, "error": "url and site_url required"}), 400
     if (rej := _reject_unsafe(url)):
         return rej
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
 
     gsc_cfg = CFG.get("gsc", {})
     if not gsc_cfg.get("enabled"):
@@ -458,10 +458,10 @@ def api_gsc_position_tracker():
     site_url = _norm_url((data.get("site_url") or "").strip())
     if not url or not site_url:
         return jsonify({"ok": False, "error": "url and site_url required"}), 400
-    if (rej := _require_public_url(url, "url"))[1]:
-        return rej[1]
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(url, "url")):
+        return err
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     svc, err = _gsc_service_or_error()
     if err:
         return err
@@ -483,8 +483,8 @@ def api_gsc_ctr_analyzer():
     min_impressions = _int(data, "min_impressions", 100, 0, 1_000_000)
     if not site_url:
         return jsonify({"ok": False, "error": "site_url required"}), 400
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     svc, err = _gsc_service_or_error()
     if err:
         return err
@@ -505,8 +505,8 @@ def api_gsc_coverage_errors():
     site_url = _norm_url((data.get("site_url") or "").strip())
     if not site_url:
         return jsonify({"ok": False, "error": "site_url required"}), 400
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     svc, err = _gsc_service_or_error()
     if err:
         return err
@@ -527,8 +527,8 @@ def api_gsc_sitemaps_status():
     site_url = _norm_url((data.get("site_url") or "").strip())
     if not site_url:
         return jsonify({"ok": False, "error": "site_url required"}), 400
-    if (rej := _require_public_url(site_url, "site_url"))[1]:
-        return rej[1]
+    if (err := _check_public_url(site_url, "site_url")):
+        return err
     svc, err = _gsc_service_or_error()
     if err:
         return err

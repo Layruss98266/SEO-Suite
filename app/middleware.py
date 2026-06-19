@@ -60,6 +60,17 @@ def _set_security_headers(response):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("X-XSS-Protection", "1; mode=block")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    # Cross-origin isolation: COOP/CORP/COEP-ish hardening.
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    # Permissions-Policy: deny every powerful API by default.  This app
+    # never needs camera/mic/geolocation/etc., so opt every page out.
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+        "magnetometer=(), microphone=(), payment=(), usb=(), "
+        "interest-cohort=()",
+    )
     if os.environ.get("SEO_SUITE_COOKIE_SECURE") == "1":
         response.headers.setdefault(
             "Strict-Transport-Security",

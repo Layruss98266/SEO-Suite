@@ -1193,10 +1193,10 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
         if not quiet or status != "Indexed":
             icon = f"{GREEN}✅{RESET}" if status=="Indexed" else (f"{RED}❌{RESET}" if status=="Not Indexed" else f"{YELLOW}⚠{RESET}")
             with _print_lock:
-                print(f"[{num:>4}] {url}\n       {icon} {status}\n")
+                logger.info("[%4d] %s -> %s", num, url, status)
 
     if use_gsc and gsc_service:
-        print(f"\n{BOLD}Using Google Search Console API (primary)…{RESET}\n")
+        logger.info("Using Google Search Console API (primary)")
         iterator = tqdm(remaining, unit="url") if HAS_TQDM else remaining
         # URLs GSC can't resolve (not an owned property, quota exhausted, etc.)
         # are deferred to a browser SERP-scrape fallback so they still get a verdict.
@@ -1214,15 +1214,17 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
                 for url, err in gsc_deferred:
                     on_result(url, err)
             else:
-                print(f"\n{YELLOW}GSC could not resolve {len(gsc_deferred)} URL(s) "
-                      f"(not owned / quota) — falling back to browser…{RESET}\n")
+                logger.warning(
+                    "GSC could not resolve %d URL(s) (not owned / quota) — falling back to browser",
+                    len(gsc_deferred),
+                )
                 _run_browser_pass([u for u, _ in gsc_deferred], headless,
                                   proxy_list, delay_state, on_result)
     elif n_parallel > 1:
-        print(f"\n{BOLD}Using {n_parallel} parallel browser tabs…{RESET}\n")
+        logger.info("Using %d parallel browser tabs", n_parallel)
         check_parallel(remaining, n_parallel, proxy_list, headless, delay_state, on_result)
     else:
-        print(f"\n{BOLD}Checking {len(remaining)} URLs…{RESET}\n")
+        logger.info("Checking %d URLs", len(remaining))
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=headless,
@@ -1247,7 +1249,7 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
 
             # Retry failed URLs with a fresh browser so a crashed context doesn't block retries
             if failed_urls:
-                print(f"\n{YELLOW}Auto-retrying {len(failed_urls)} failed URLs…{RESET}\n")
+                logger.info("Auto-retrying %d failed URLs", len(failed_urls))
                 try:
                     with sync_playwright() as retry_pw:
                         retry_browser = retry_pw.chromium.launch(
@@ -1277,14 +1279,14 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
                                         save_progress(pf, {**full_saved, **current_results})
                                     break
                             with _print_lock:
-                                print(f"  [retry] {url} → {status}")
+                                logger.info("[retry] %s -> %s", url, status)
                         try:
                             retry_browser.close()
                         except Exception:
                             pass
                 except Exception as e:
                     with _print_lock:
-                        print(f"{YELLOW}  Retry pass failed: {e}{RESET}")
+                        logger.warning("Retry pass failed: %s", e)
 
             try:
                 browser.close()
@@ -1351,7 +1353,7 @@ def execute_and_save(urls: list[str], headless: bool = False, quiet: bool = Fals
     save_history(counts, len(all_rows), timestamp)
     history = load_history()
 
-    print(f"\n{BOLD}Generating reports…{RESET}")
+    logger.info("Generating reports")
     _gen = ReportGenerator()
     try:
         _gen.excel(all_rows, excel_path, type_summary)
@@ -1364,25 +1366,31 @@ def execute_and_save(urls: list[str], headless: bool = False, quiet: bool = Fals
                 try: _p.unlink()
                 except OSError: pass
         raise
-    print(f"  CSV    → {BOLD}{csv_path}{RESET}")
+    logger.info("CSV report written: %s", csv_path)
 
     NotificationService(CFG).notify_all(counts, len(all_rows), html_path)
 
     total = len(all_rows)
-    print(f"\n{BOLD}{CYAN}{'='*56}\n  SUMMARY\n{'='*56}{RESET}")
-    print(f"  Total          : {total}")
-    print(f"  {GREEN}Indexed        : {counts.get('Indexed',0)}{RESET}")
-    print(f"  {RED}Not Indexed    : {counts.get('Not Indexed',0)}{RESET}")
-    errs = sum(v for k,v in counts.items() if k not in ("Indexed","Not Indexed"))
-    if errs: print(f"  {YELLOW}Errors/Other   : {errs}{RESET}")
-    print(f"\n{BOLD}  By URL Type:{RESET}")
+    errs = sum(v for k, v in counts.items() if k not in ("Indexed", "Not Indexed"))
+    logger.info(
+        "SUMMARY total=%d indexed=%d not_indexed=%d errors=%d",
+        total,
+        counts.get("Indexed", 0),
+        counts.get("Not Indexed", 0),
+        errs,
+    )
     for t, c in sorted(type_summary.items()):
-        print(f"    {t:<30} {GREEN}{c.get('Indexed',0)} indexed{RESET}  {RED}{c.get('Not Indexed',0)} not indexed{RESET}")
+        logger.info(
+            "  by_type %s indexed=%d not_indexed=%d",
+            t, c.get("Indexed", 0), c.get("Not Indexed", 0),
+        )
     if compare_data:
-        print(f"\n{BOLD}  Changes:{RESET}")
-        print(f"    {GREEN}Newly indexed    : {len(compare_data['newly_indexed'])}{RESET}")
-        print(f"    {RED}Newly de-indexed : {len(compare_data['newly_deindexed'])}{RESET}")
-    print(f"\n  Open → {BOLD}{html_path}{RESET}\n")
+        logger.info(
+            "Changes: newly_indexed=%d newly_deindexed=%d",
+            len(compare_data["newly_indexed"]),
+            len(compare_data["newly_deindexed"]),
+        )
+    logger.info("Report ready: %s", html_path)
     return html_path
 
 

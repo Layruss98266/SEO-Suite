@@ -192,9 +192,9 @@
 - **Issue:** `if request.is_json: return None` blanket exemption. SameSite=Lax alone insufficient.
 - **Fix:** Require explicit `X-Requested-With` header check on state-changing endpoints.
 
-### C19 `[LOW]` `[ ]` print() calls in library/Flask import path
+### C19 `[LOW]` `[x]` print() calls in library/Flask import path
 - `core/checker.py` — multiple `print()` calls. Won't surface under gunicorn.
-- **Fix:** Replace with `logger.debug()`.
+- **Fix:** Replaced with `logger.info()`/`logger.warning()` in all Flask-callable functions (`run_check`, `execute_and_save`, `google_check`, `generate_excel`, `generate_html`, `on_result`). Prints retained only in CLI-only entry points (`main`, `get_urls_from_user`, `scheduled_run`, `start_scheduler`).
 
 ### C20 `[LOW]` `[ ]` generate_html is a 200-line f-string
 - `core/checker.py:30474`
@@ -204,9 +204,9 @@
 - `tools/generators.py:34736`
 - **Fix:** Refactor to `BUILDERS = {"article": _build_article, …}` registry.
 
-### C22 `[LOW]` `[ ]` winsound beep in Flask import path
+### C22 `[LOW]` `[x]` winsound beep in Flask import path
 - `core/checker.py:29836`
-- **Fix:** Move to `core/cli.py` behind `if __name__ == "__main__"` guard.
+- **Fix:** `beep()` now early-returns unless `SEO_SUITE_SOUND=1` is set. `winsound` import remains lazy (inside the function, win32-guarded) so Flask/gunicorn import path is silent and cross-platform clean.
 
 ### C23 `[LOW]` `[ ]` i_counter dict-as-mutable-int hack
 - `app/blueprints/audit.py:22941`

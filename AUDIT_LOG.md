@@ -99,9 +99,9 @@
 - `core/auth.py` — spam unique usernames → unbounded memory growth.
 - **Fix:** Use a TTL cache or cap max size.
 
-### S20 `[LOW]` `[ ]` login_history 500-row read no pagination
+### S20 `[LOW]` `[x]` login_history 500-row read no pagination
 - `app/blueprints/auth_views.py` — admin can DoS DB by requesting max 500.
-- **Fix:** Paginate with cursor.
+- **Fix:** Paginate with `?limit=50&offset=0` (limit clamped to [1,200]); response now `{rows,total,limit,offset}`. `core.db.get_login_history` accepts `offset`; added `core.db.count_login_history`.
 
 ---
 

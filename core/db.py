@@ -480,15 +480,17 @@ def get_login_history(
     username: str | None = None,
     success: bool | None = None,
     limit: int = 100,
+    offset: int = 0,
 ) -> list[dict]:
     """Return recent login attempts, newest first.
 
     Filter by ``username`` to view one account's history; leave None for
     admin-wide view. ``success=False`` filters to failures only (useful for
-    spotting brute force).
+    spotting brute force). ``offset`` supports pagination.
     """
     _ensure_schema(db_path)
     limit = max(1, min(limit, _LOGIN_HISTORY_MAX_ROWS))
+    offset = max(0, int(offset))
 
     clauses = []
     params: list = []
@@ -499,13 +501,13 @@ def get_login_history(
         clauses.append("success = ?")
         params.append(1 if success else 0)
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
-    params.append(limit)
+    params.extend([limit, offset])
 
     try:
         with _connect(db_path) as conn:
             rows = conn.execute(
                 f"SELECT id, username, ts, ip, user_agent, success, reason "
-                f"FROM login_attempts {where} ORDER BY ts DESC LIMIT ?",
+                f"FROM login_attempts {where} ORDER BY ts DESC LIMIT ? OFFSET ?",
                 params,
             ).fetchall()
     except sqlite3.Error as e:
@@ -524,6 +526,33 @@ def get_login_history(
         }
         for r in rows
     ]
+
+
+def count_login_history(
+    db_path: Path,
+    username: str | None = None,
+    success: bool | None = None,
+) -> int:
+    """Return total matching login_attempts rows for pagination."""
+    _ensure_schema(db_path)
+    clauses = []
+    params: list = []
+    if username is not None:
+        clauses.append("username = ?")
+        params.append(username)
+    if success is not None:
+        clauses.append("success = ?")
+        params.append(1 if success else 0)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    try:
+        with _connect(db_path) as conn:
+            row = conn.execute(
+                f"SELECT COUNT(*) AS n FROM login_attempts {where}", params
+            ).fetchone()
+    except sqlite3.Error as e:
+        logger.error("count_login_history failed: %s", e)
+        return 0
+    return int(row["n"] or 0)
 
 
 def count_recent_failures(

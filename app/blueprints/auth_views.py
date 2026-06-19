@@ -46,6 +46,36 @@ logger = logging.getLogger(__name__)
 bp = Blueprint("auth_views", __name__)
 
 
+def _safe_next(value: str | None) -> str:
+    """Validate a ``next`` redirect target against open-redirect vectors.
+
+    Returns the value unchanged when it is a safe same-origin relative path,
+    otherwise returns ``"/"``. Blocks:
+
+    * empty / missing values
+    * values that don't start with ``/`` (absolute URLs like ``https://evil``)
+    * values starting with ``//`` (protocol-relative URLs → browsers resolve
+      to ``//evil.com`` as ``https://evil.com``)
+    * values containing ``\\`` (Windows-style path separators that some
+      browsers normalise into ``/``, enabling ``/\\evil.com``)
+    * values containing ``://`` anywhere (defence-in-depth against
+      ``/redirect?to=http://evil`` style payloads if the value is later
+      concatenated into another URL)
+    """
+    if not value:
+        return "/"
+    v = value.strip()
+    if (
+        not v
+        or not v.startswith("/")
+        or v.startswith("//")
+        or "\\" in v
+        or "://" in v
+    ):
+        return "/"
+    return v
+
+
 @bp.before_app_request
 def _enforce_server_side_session():
     """Drop the cookie session if its server-side row no longer exists.
@@ -86,8 +116,8 @@ def login():
         # next submission passes the CSRF check (the field must be present even on
         # error pages; omitting it causes a 403 on the second attempt).
         _csrf_hidden = f'<input type="hidden" name="_csrf_token" value="{generate_csrf_token()}">'
-        _next_val = (request.form.get("next") or "").strip()
-        if _next_val and _next_val.startswith("/") and not _next_val.startswith("//"):
+        _next_val = _safe_next(request.form.get("next"))
+        if _next_val != "/":
             _csrf_hidden += f'\n      <input type="hidden" name="next" value="{esc(_next_val)}">'
         if _is_locked_out(username):
             page = (
@@ -146,12 +176,8 @@ def login():
             # original destination (e.g. /app). Validate strictly: must be a
             # relative path starting with / and must not start with // (which
             # browsers treat as a protocol-relative URL, enabling open-redirect).
-            _next = request.form.get("next") or request.args.get("next") or ""
-            _next = _next.strip()
-            if _next and _next.startswith("/") and not _next.startswith("//"):
-                dest = _next
-            else:
-                dest = "/app"
+            _next = _safe_next(request.form.get("next") or request.args.get("next"))
+            dest = _next if _next != "/" else "/app"
             return ("", 302, {"Location": dest})
         page = (
             LOGIN_PAGE
@@ -160,10 +186,9 @@ def login():
         )
         return page, 401, {"Content-Type": "text/html"}
     # GET — embed ?next= and CSRF token into the form as hidden fields.
-    _next = request.args.get("next", "")
-    _next = _next.strip() if (_next.startswith("/") and not _next.startswith("//")) else ""
+    _next = _safe_next(request.args.get("next"))
     hidden = f'<input type="hidden" name="_csrf_token" value="{generate_csrf_token()}">'
-    if _next:
+    if _next != "/":
         hidden += f'\n      <input type="hidden" name="next" value="{esc(_next)}">'
     page = LOGIN_PAGE.replace("__NEXT__", hidden).replace("__ERROR__", "")
     return page, 200, {"Content-Type": "text/html"}
@@ -802,7 +827,8 @@ def api_login_history():
     Query params:
       * ``username`` — filter to one account
       * ``failures_only=1`` — return only failed attempts (brute-force scan)
-      * ``limit`` — cap rows (default 100, max 500)
+      * ``limit`` — page size (default 50, max 200) — S20: paginated
+      * ``offset`` — page offset (default 0, clamped to total)
     """
     if not _use_sqlite_login_history():
         return jsonify({"ok": False, "error": "Login history requires the SQLite backend"}), 503
@@ -812,18 +838,37 @@ def api_login_history():
 
     username = (request.args.get("username") or "").strip() or None
     failures_only = request.args.get("failures_only") in ("1", "true", "yes")
+    success_filter = False if failures_only else None
     try:
-        limit = max(1, min(int(request.args.get("limit", "100")), 500))
+        limit = max(1, min(int(request.args.get("limit", "50")), 200))
     except (TypeError, ValueError):
-        limit = 100
+        limit = 50
+    try:
+        offset = max(0, int(request.args.get("offset", "0")))
+    except (TypeError, ValueError):
+        offset = 0
+
+    total = _db.count_login_history(
+        _USERS_DB, username=username, success=success_filter
+    )
+    if offset > total:
+        offset = total
 
     rows = _db.get_login_history(
         _USERS_DB,
         username=username,
-        success=(False if failures_only else None),
+        success=success_filter,
         limit=limit,
+        offset=offset,
     )
-    return jsonify({"ok": True, "rows": rows, "count": len(rows)})
+    return jsonify({
+        "ok": True,
+        "rows": rows,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "count": len(rows),
+    })
 
 
 @bp.route("/api/auth/my_logins")

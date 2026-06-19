@@ -41,7 +41,8 @@ def health():
     in-depth status. Liveness probes only need a 200 to consider the instance
     healthy.
     """
-    return jsonify({"status": "ok"})
+    from core.version import VERSION
+    return jsonify({"status": "ok", "version": VERSION})
 
 
 @bp.route("/health/ready")

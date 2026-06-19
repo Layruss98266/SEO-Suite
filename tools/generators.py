@@ -248,6 +248,468 @@ SCHEMA_TEMPLATES = {
 }
 
 
+def _build_article(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": data.get("headline", ""),
+        "description": data.get("description", ""),
+        "author": {"@type": "Person", "name": data.get("author", "")},
+        "publisher": {
+            "@type": "Organization",
+            "name": data.get("publisher", ""),
+        },
+        "datePublished": data.get("date_published", ""),
+        "url": data.get("url", ""),
+    }
+    if data.get("author_url"):
+        obj["author"]["url"] = data["author_url"]
+    if data.get("publisher_logo"):
+        obj["publisher"]["logo"] = {"@type": "ImageObject", "url": data["publisher_logo"]}
+    if data.get("date_modified"):
+        obj["dateModified"] = data["date_modified"]
+    if data.get("image"):
+        obj["image"] = data["image"]
+    return obj
+
+
+def _build_faq(data: dict) -> dict:
+    items = data.get("faq_items", [])
+    return {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": item.get("question", ""),
+                "acceptedAnswer": {"@type": "Answer", "text": item.get("answer", "")},
+            }
+            for item in items
+            if item.get("question")
+        ],
+    }
+
+
+def _build_product(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": data.get("name", ""),
+        "description": data.get("description", ""),
+        "url": data.get("url", ""),
+    }
+    if data.get("image"):
+        obj["image"] = data["image"]
+    if data.get("brand"):
+        obj["brand"] = {"@type": "Brand", "name": data["brand"]}
+    if data.get("sku"):
+        obj["sku"] = data["sku"]
+    if data.get("price") or data.get("availability"):
+        offer = {"@type": "Offer"}
+        if data.get("price"):
+            offer["price"] = data["price"]
+        if data.get("currency"):
+            offer["priceCurrency"] = data["currency"]
+        if data.get("availability"):
+            offer["availability"] = f"https://schema.org/{data['availability']}"
+        obj["offers"] = offer
+    if data.get("rating_value"):
+        obj["aggregateRating"] = {
+            "@type": "AggregateRating",
+            "ratingValue": data["rating_value"],
+            "reviewCount": data.get("rating_count", "1"),
+        }
+    return obj
+
+
+def _build_breadcrumb(data: dict) -> dict:
+    items = data.get("items", [])
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": i + 1,
+                "name": item.get("name", ""),
+                "item": item.get("url", ""),
+            }
+            for i, item in enumerate(items)
+            if item.get("name")
+        ],
+    }
+
+
+def _build_localbusiness(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": data.get("name", ""),
+        "url": data.get("url", ""),
+    }
+    if data.get("description"):
+        obj["description"] = data["description"]
+    if data.get("telephone"):
+        obj["telephone"] = data["telephone"]
+    if data.get("image"):
+        obj["image"] = data["image"]
+    if data.get("price_range"):
+        obj["priceRange"] = data["price_range"]
+    addr_parts = {
+        k: data.get(k)
+        for k in ["address", "city", "state", "zip", "country"]
+        if data.get(k)
+    }
+    if addr_parts:
+        obj["address"] = {
+            "@type": "PostalAddress",
+            "streetAddress": addr_parts.get("address", ""),
+            "addressLocality": addr_parts.get("city", ""),
+            "addressRegion": addr_parts.get("state", ""),
+            "postalCode": addr_parts.get("zip", ""),
+            "addressCountry": addr_parts.get("country", ""),
+        }
+    return obj
+
+
+def _build_video(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        "name": data.get("name", ""),
+        "description": data.get("description", ""),
+        "thumbnailUrl": data.get("thumbnail_url", ""),
+        "uploadDate": data.get("upload_date", ""),
+    }
+    if data.get("duration"):
+        obj["duration"] = data["duration"]
+    if data.get("content_url"):
+        obj["contentUrl"] = data["content_url"]
+    if data.get("embed_url"):
+        obj["embedUrl"] = data["embed_url"]
+    return obj
+
+
+def _build_event(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "name": data.get("name", ""),
+        "startDate": data.get("start_date", ""),
+        "location": {
+            "@type": "Place",
+            "name": data.get("location_name", ""),
+        },
+        "eventStatus": f"https://schema.org/{data.get('event_status', 'EventScheduled')}",
+        "eventAttendanceMode": f"https://schema.org/{data.get('attendance_mode', 'OfflineEventAttendanceMode')}",
+    }
+    if data.get("description"):
+        obj["description"] = data["description"]
+    if data.get("end_date"):
+        obj["endDate"] = data["end_date"]
+    if data.get("location_address"):
+        obj["location"]["address"] = data["location_address"]
+    if data.get("image"):
+        obj["image"] = data["image"]
+    if data.get("url"):
+        obj["url"] = data["url"]
+    if data.get("organizer_name"):
+        org = {"@type": "Organization", "name": data["organizer_name"]}
+        if data.get("organizer_url"):
+            org["url"] = data["organizer_url"]
+        obj["organizer"] = org
+    if data.get("offer_price"):
+        offer = {
+            "@type": "Offer",
+            "price": data["offer_price"],
+            "priceCurrency": data.get("offer_currency", "USD"),
+            "availability": "https://schema.org/InStock",
+        }
+        if data.get("offer_url"):
+            offer["url"] = data["offer_url"]
+        obj["offers"] = offer
+    return obj
+
+
+def _build_howto(data: dict) -> dict:
+    steps_text = data.get("steps", [])
+    if isinstance(steps_text, str):
+        steps_list = [s.strip() for s in steps_text.splitlines() if s.strip()]
+    elif isinstance(steps_text, list):
+        steps_list = [
+            s.get("text", "") if isinstance(s, dict) else str(s)
+            for s in steps_text
+            if s
+        ]
+    else:
+        steps_list = []
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": data.get("name", ""),
+        "description": data.get("description", ""),
+        "step": [
+            {
+                "@type": "HowToStep",
+                "position": i + 1,
+                "text": step,
+            }
+            for i, step in enumerate(steps_list)
+        ],
+    }
+    if data.get("total_time"):
+        obj["totalTime"] = data["total_time"]
+    if data.get("image"):
+        obj["image"] = data["image"]
+    if data.get("supplies"):
+        supplies = [s.strip() for s in str(data["supplies"]).splitlines() if s.strip()]
+        obj["supply"] = [{"@type": "HowToSupply", "name": s} for s in supplies]
+    if data.get("tools"):
+        tools = [s.strip() for s in str(data["tools"]).splitlines() if s.strip()]
+        obj["tool"] = [{"@type": "HowToTool", "name": t} for t in tools]
+    return obj
+
+
+def _build_person(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": data.get("name", ""),
+    }
+    for src, dst in [
+        ("url", "url"),
+        ("image", "image"),
+        ("job_title", "jobTitle"),
+        ("email", "email"),
+        ("telephone", "telephone"),
+    ]:
+        if data.get(src):
+            obj[dst] = data[src]
+    if data.get("works_for"):
+        obj["worksFor"] = {"@type": "Organization", "name": data["works_for"]}
+    if data.get("same_as"):
+        links = [s.strip() for s in str(data["same_as"]).splitlines() if s.strip()]
+        if links:
+            obj["sameAs"] = links
+    return obj
+
+
+def _build_organization(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": data.get("name", ""),
+        "url": data.get("url", ""),
+    }
+    if data.get("logo"):
+        obj["logo"] = data["logo"]
+    for src, dst in [
+        ("description", "description"),
+        ("telephone", "telephone"),
+        ("email", "email"),
+        ("founding_date", "foundingDate"),
+    ]:
+        if data.get(src):
+            obj[dst] = data[src]
+    addr_parts = {
+        k: data.get(k)
+        for k in ["address", "city", "state", "zip", "country"]
+        if data.get(k)
+    }
+    if addr_parts:
+        obj["address"] = {
+            "@type": "PostalAddress",
+            "streetAddress": addr_parts.get("address", ""),
+            "addressLocality": addr_parts.get("city", ""),
+            "addressRegion": addr_parts.get("state", ""),
+            "postalCode": addr_parts.get("zip", ""),
+            "addressCountry": addr_parts.get("country", ""),
+        }
+    if data.get("same_as"):
+        links = [s.strip() for s in str(data["same_as"]).splitlines() if s.strip()]
+        if links:
+            obj["sameAs"] = links
+    return obj
+
+
+def _build_recipe(data: dict) -> dict:
+    ings = [s.strip() for s in str(data.get("ingredients", "")).splitlines() if s.strip()]
+    steps = [s.strip() for s in str(data.get("instructions", "")).splitlines() if s.strip()]
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Recipe",
+        "name": data.get("name", ""),
+        "description": data.get("description", ""),
+        "image": data.get("image", ""),
+        "author": {"@type": "Person", "name": data.get("author", "")},
+        "recipeIngredient": ings,
+        "recipeInstructions": [
+            {"@type": "HowToStep", "position": i + 1, "text": s}
+            for i, s in enumerate(steps)
+        ],
+    }
+    for src, dst in [
+        ("date_published", "datePublished"),
+        ("prep_time", "prepTime"),
+        ("cook_time", "cookTime"),
+        ("total_time", "totalTime"),
+        ("recipe_yield", "recipeYield"),
+        ("recipe_category", "recipeCategory"),
+        ("recipe_cuisine", "recipeCuisine"),
+    ]:
+        if data.get(src):
+            obj[dst] = data[src]
+    if data.get("calories"):
+        obj["nutrition"] = {
+            "@type": "NutritionInformation",
+            "calories": f"{data['calories']} calories",
+        }
+    return obj
+
+
+def _build_jobposting(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "JobPosting",
+        "title": data.get("title", ""),
+        "description": data.get("description", ""),
+        "datePosted": data.get("date_posted", ""),
+        "hiringOrganization": {
+            "@type": "Organization",
+            "name": data.get("hiring_org", ""),
+        },
+        "jobLocation": {
+            "@type": "Place",
+            "address": {
+                "@type": "PostalAddress",
+                "addressLocality": data.get("city", ""),
+                "addressCountry": data.get("country", ""),
+            },
+        },
+    }
+    if data.get("hiring_org_url"):
+        obj["hiringOrganization"]["sameAs"] = data["hiring_org_url"]
+    if data.get("hiring_org_logo"):
+        obj["hiringOrganization"]["logo"] = data["hiring_org_logo"]
+    if data.get("address"):
+        obj["jobLocation"]["address"]["streetAddress"] = data["address"]
+    if data.get("state"):
+        obj["jobLocation"]["address"]["addressRegion"] = data["state"]
+    if data.get("zip"):
+        obj["jobLocation"]["address"]["postalCode"] = data["zip"]
+    if data.get("employment_type"):
+        obj["employmentType"] = data["employment_type"]
+    if data.get("valid_through"):
+        obj["validThrough"] = data["valid_through"]
+    if data.get("salary_min") or data.get("salary_max"):
+        value = {
+            "@type": "QuantitativeValue",
+            "unitText": data.get("salary_unit", "YEAR"),
+        }
+        if data.get("salary_min") and data.get("salary_max"):
+            value["minValue"] = data["salary_min"]
+            value["maxValue"] = data["salary_max"]
+        else:
+            value["value"] = data.get("salary_min") or data.get("salary_max")
+        obj["baseSalary"] = {
+            "@type": "MonetaryAmount",
+            "currency": data.get("salary_currency", "USD"),
+            "value": value,
+        }
+    return obj
+
+
+def _build_course(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Course",
+        "name": data.get("name", ""),
+        "description": data.get("description", ""),
+        "provider": {
+            "@type": "Organization",
+            "name": data.get("provider_name", ""),
+        },
+    }
+    if data.get("provider_url"):
+        obj["provider"]["sameAs"] = data["provider_url"]
+    if data.get("url"):
+        obj["url"] = data["url"]
+    return obj
+
+
+def _build_review(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "Review",
+        "itemReviewed": {
+            "@type": data.get("item_type", "Product"),
+            "name": data.get("item_name", ""),
+        },
+        "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": data.get("rating_value", ""),
+            "bestRating": data.get("rating_best", "5"),
+        },
+        "author": {"@type": "Person", "name": data.get("author", "")},
+    }
+    if data.get("review_body"):
+        obj["reviewBody"] = data["review_body"]
+    if data.get("date_published"):
+        obj["datePublished"] = data["date_published"]
+    return obj
+
+
+def _build_softwareapp(data: dict) -> dict:
+    obj = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": data.get("name", ""),
+        "operatingSystem": data.get("operating_system", ""),
+        "applicationCategory": data.get("application_category", ""),
+    }
+    if data.get("description"):
+        obj["description"] = data["description"]
+    if data.get("url"):
+        obj["url"] = data["url"]
+    if data.get("image"):
+        obj["image"] = data["image"]
+    if data.get("price") is not None and str(data.get("price", "")).strip() != "":
+        obj["offers"] = {
+            "@type": "Offer",
+            "price": data["price"],
+            "priceCurrency": data.get("currency", "USD"),
+        }
+    if data.get("rating_value"):
+        obj["aggregateRating"] = {
+            "@type": "AggregateRating",
+            "ratingValue": data["rating_value"],
+            "ratingCount": data.get("rating_count", "1"),
+        }
+    return obj
+
+
+# Dispatch registry — maps schema_type to its builder. Adding a new schema is a
+# one-line append; no more 15-branch elif chain to navigate or accidentally
+# skip a return in.
+_SCHEMA_BUILDERS = {
+    "article":       _build_article,
+    "faq":           _build_faq,
+    "product":       _build_product,
+    "breadcrumb":    _build_breadcrumb,
+    "localbusiness": _build_localbusiness,
+    "video":         _build_video,
+    "event":         _build_event,
+    "howto":         _build_howto,
+    "person":        _build_person,
+    "organization":  _build_organization,
+    "recipe":        _build_recipe,
+    "jobposting":    _build_jobposting,
+    "course":        _build_course,
+    "review":        _build_review,
+    "softwareapp":   _build_softwareapp,
+}
+
+
 def generate_schema(schema_type: str, data: dict) -> dict:
     """Generate JSON-LD schema markup from form data."""
     schema_type = schema_type.lower()
@@ -255,419 +717,10 @@ def generate_schema(schema_type: str, data: dict) -> dict:
         return {"ok": False, "error": f"Unknown schema type: {schema_type}"}
 
     try:
-        if schema_type == "article":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Article",
-                "headline": data.get("headline", ""),
-                "description": data.get("description", ""),
-                "author": {"@type": "Person", "name": data.get("author", "")},
-                "publisher": {
-                    "@type": "Organization",
-                    "name": data.get("publisher", ""),
-                },
-                "datePublished": data.get("date_published", ""),
-                "url": data.get("url", ""),
-            }
-            if data.get("author_url"):
-                obj["author"]["url"] = data["author_url"]
-            if data.get("publisher_logo"):
-                obj["publisher"]["logo"] = {"@type": "ImageObject", "url": data["publisher_logo"]}
-            if data.get("date_modified"):
-                obj["dateModified"] = data["date_modified"]
-            if data.get("image"):
-                obj["image"] = data["image"]
-
-        elif schema_type == "faq":
-            items = data.get("faq_items", [])
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "FAQPage",
-                "mainEntity": [
-                    {
-                        "@type": "Question",
-                        "name": item.get("question", ""),
-                        "acceptedAnswer": {"@type": "Answer", "text": item.get("answer", "")},
-                    }
-                    for item in items
-                    if item.get("question")
-                ],
-            }
-
-        elif schema_type == "product":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Product",
-                "name": data.get("name", ""),
-                "description": data.get("description", ""),
-                "url": data.get("url", ""),
-            }
-            if data.get("image"):
-                obj["image"] = data["image"]
-            if data.get("brand"):
-                obj["brand"] = {"@type": "Brand", "name": data["brand"]}
-            if data.get("sku"):
-                obj["sku"] = data["sku"]
-            if data.get("price") or data.get("availability"):
-                offer = {"@type": "Offer"}
-                if data.get("price"):
-                    offer["price"] = data["price"]
-                if data.get("currency"):
-                    offer["priceCurrency"] = data["currency"]
-                if data.get("availability"):
-                    offer["availability"] = f"https://schema.org/{data['availability']}"
-                obj["offers"] = offer
-            if data.get("rating_value"):
-                obj["aggregateRating"] = {
-                    "@type": "AggregateRating",
-                    "ratingValue": data["rating_value"],
-                    "reviewCount": data.get("rating_count", "1"),
-                }
-
-        elif schema_type == "breadcrumb":
-            items = data.get("items", [])
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "BreadcrumbList",
-                "itemListElement": [
-                    {
-                        "@type": "ListItem",
-                        "position": i + 1,
-                        "name": item.get("name", ""),
-                        "item": item.get("url", ""),
-                    }
-                    for i, item in enumerate(items)
-                    if item.get("name")
-                ],
-            }
-
-        elif schema_type == "localbusiness":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "LocalBusiness",
-                "name": data.get("name", ""),
-                "url": data.get("url", ""),
-            }
-            if data.get("description"):
-                obj["description"] = data["description"]
-            if data.get("telephone"):
-                obj["telephone"] = data["telephone"]
-            if data.get("image"):
-                obj["image"] = data["image"]
-            if data.get("price_range"):
-                obj["priceRange"] = data["price_range"]
-            addr_parts = {
-                k: data.get(k)
-                for k in ["address", "city", "state", "zip", "country"]
-                if data.get(k)
-            }
-            if addr_parts:
-                obj["address"] = {
-                    "@type": "PostalAddress",
-                    "streetAddress": addr_parts.get("address", ""),
-                    "addressLocality": addr_parts.get("city", ""),
-                    "addressRegion": addr_parts.get("state", ""),
-                    "postalCode": addr_parts.get("zip", ""),
-                    "addressCountry": addr_parts.get("country", ""),
-                }
-        elif schema_type == "video":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "VideoObject",
-                "name": data.get("name", ""),
-                "description": data.get("description", ""),
-                "thumbnailUrl": data.get("thumbnail_url", ""),
-                "uploadDate": data.get("upload_date", ""),
-            }
-            if data.get("duration"):
-                obj["duration"] = data["duration"]
-            if data.get("content_url"):
-                obj["contentUrl"] = data["content_url"]
-            if data.get("embed_url"):
-                obj["embedUrl"] = data["embed_url"]
-
-        elif schema_type == "event":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Event",
-                "name": data.get("name", ""),
-                "startDate": data.get("start_date", ""),
-                "location": {
-                    "@type": "Place",
-                    "name": data.get("location_name", ""),
-                },
-                "eventStatus": f"https://schema.org/{data.get('event_status', 'EventScheduled')}",
-                "eventAttendanceMode": f"https://schema.org/{data.get('attendance_mode', 'OfflineEventAttendanceMode')}",
-            }
-            if data.get("description"):
-                obj["description"] = data["description"]
-            if data.get("end_date"):
-                obj["endDate"] = data["end_date"]
-            if data.get("location_address"):
-                obj["location"]["address"] = data["location_address"]
-            if data.get("image"):
-                obj["image"] = data["image"]
-            if data.get("url"):
-                obj["url"] = data["url"]
-            if data.get("organizer_name"):
-                org = {"@type": "Organization", "name": data["organizer_name"]}
-                if data.get("organizer_url"):
-                    org["url"] = data["organizer_url"]
-                obj["organizer"] = org
-            if data.get("offer_price"):
-                offer = {
-                    "@type": "Offer",
-                    "price": data["offer_price"],
-                    "priceCurrency": data.get("offer_currency", "USD"),
-                    "availability": "https://schema.org/InStock",
-                }
-                if data.get("offer_url"):
-                    offer["url"] = data["offer_url"]
-                obj["offers"] = offer
-
-        elif schema_type == "howto":
-            steps_text = data.get("steps", [])
-            if isinstance(steps_text, str):
-                steps_list = [s.strip() for s in steps_text.splitlines() if s.strip()]
-            elif isinstance(steps_text, list):
-                steps_list = [
-                    s.get("text", "") if isinstance(s, dict) else str(s)
-                    for s in steps_text
-                    if s
-                ]
-            else:
-                steps_list = []
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "HowTo",
-                "name": data.get("name", ""),
-                "description": data.get("description", ""),
-                "step": [
-                    {
-                        "@type": "HowToStep",
-                        "position": i + 1,
-                        "text": step,
-                    }
-                    for i, step in enumerate(steps_list)
-                ],
-            }
-            if data.get("total_time"):
-                obj["totalTime"] = data["total_time"]
-            if data.get("image"):
-                obj["image"] = data["image"]
-            if data.get("supplies"):
-                supplies = [s.strip() for s in str(data["supplies"]).splitlines() if s.strip()]
-                obj["supply"] = [{"@type": "HowToSupply", "name": s} for s in supplies]
-            if data.get("tools"):
-                tools = [s.strip() for s in str(data["tools"]).splitlines() if s.strip()]
-                obj["tool"] = [{"@type": "HowToTool", "name": t} for t in tools]
-
-        elif schema_type == "person":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Person",
-                "name": data.get("name", ""),
-            }
-            for src, dst in [
-                ("url", "url"),
-                ("image", "image"),
-                ("job_title", "jobTitle"),
-                ("email", "email"),
-                ("telephone", "telephone"),
-            ]:
-                if data.get(src):
-                    obj[dst] = data[src]
-            if data.get("works_for"):
-                obj["worksFor"] = {"@type": "Organization", "name": data["works_for"]}
-            if data.get("same_as"):
-                links = [s.strip() for s in str(data["same_as"]).splitlines() if s.strip()]
-                if links:
-                    obj["sameAs"] = links
-
-        elif schema_type == "organization":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Organization",
-                "name": data.get("name", ""),
-                "url": data.get("url", ""),
-            }
-            if data.get("logo"):
-                obj["logo"] = data["logo"]
-            for src, dst in [
-                ("description", "description"),
-                ("telephone", "telephone"),
-                ("email", "email"),
-                ("founding_date", "foundingDate"),
-            ]:
-                if data.get(src):
-                    obj[dst] = data[src]
-            addr_parts = {
-                k: data.get(k)
-                for k in ["address", "city", "state", "zip", "country"]
-                if data.get(k)
-            }
-            if addr_parts:
-                obj["address"] = {
-                    "@type": "PostalAddress",
-                    "streetAddress": addr_parts.get("address", ""),
-                    "addressLocality": addr_parts.get("city", ""),
-                    "addressRegion": addr_parts.get("state", ""),
-                    "postalCode": addr_parts.get("zip", ""),
-                    "addressCountry": addr_parts.get("country", ""),
-                }
-            if data.get("same_as"):
-                links = [s.strip() for s in str(data["same_as"]).splitlines() if s.strip()]
-                if links:
-                    obj["sameAs"] = links
-
-        elif schema_type == "recipe":
-            ings = [s.strip() for s in str(data.get("ingredients", "")).splitlines() if s.strip()]
-            steps = [s.strip() for s in str(data.get("instructions", "")).splitlines() if s.strip()]
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Recipe",
-                "name": data.get("name", ""),
-                "description": data.get("description", ""),
-                "image": data.get("image", ""),
-                "author": {"@type": "Person", "name": data.get("author", "")},
-                "recipeIngredient": ings,
-                "recipeInstructions": [
-                    {"@type": "HowToStep", "position": i + 1, "text": s}
-                    for i, s in enumerate(steps)
-                ],
-            }
-            for src, dst in [
-                ("date_published", "datePublished"),
-                ("prep_time", "prepTime"),
-                ("cook_time", "cookTime"),
-                ("total_time", "totalTime"),
-                ("recipe_yield", "recipeYield"),
-                ("recipe_category", "recipeCategory"),
-                ("recipe_cuisine", "recipeCuisine"),
-            ]:
-                if data.get(src):
-                    obj[dst] = data[src]
-            if data.get("calories"):
-                obj["nutrition"] = {
-                    "@type": "NutritionInformation",
-                    "calories": f"{data['calories']} calories",
-                }
-
-        elif schema_type == "jobposting":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "JobPosting",
-                "title": data.get("title", ""),
-                "description": data.get("description", ""),
-                "datePosted": data.get("date_posted", ""),
-                "hiringOrganization": {
-                    "@type": "Organization",
-                    "name": data.get("hiring_org", ""),
-                },
-                "jobLocation": {
-                    "@type": "Place",
-                    "address": {
-                        "@type": "PostalAddress",
-                        "addressLocality": data.get("city", ""),
-                        "addressCountry": data.get("country", ""),
-                    },
-                },
-            }
-            if data.get("hiring_org_url"):
-                obj["hiringOrganization"]["sameAs"] = data["hiring_org_url"]
-            if data.get("hiring_org_logo"):
-                obj["hiringOrganization"]["logo"] = data["hiring_org_logo"]
-            if data.get("address"):
-                obj["jobLocation"]["address"]["streetAddress"] = data["address"]
-            if data.get("state"):
-                obj["jobLocation"]["address"]["addressRegion"] = data["state"]
-            if data.get("zip"):
-                obj["jobLocation"]["address"]["postalCode"] = data["zip"]
-            if data.get("employment_type"):
-                obj["employmentType"] = data["employment_type"]
-            if data.get("valid_through"):
-                obj["validThrough"] = data["valid_through"]
-            if data.get("salary_min") or data.get("salary_max"):
-                value = {
-                    "@type": "QuantitativeValue",
-                    "unitText": data.get("salary_unit", "YEAR"),
-                }
-                if data.get("salary_min") and data.get("salary_max"):
-                    value["minValue"] = data["salary_min"]
-                    value["maxValue"] = data["salary_max"]
-                else:
-                    value["value"] = data.get("salary_min") or data.get("salary_max")
-                obj["baseSalary"] = {
-                    "@type": "MonetaryAmount",
-                    "currency": data.get("salary_currency", "USD"),
-                    "value": value,
-                }
-
-        elif schema_type == "course":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Course",
-                "name": data.get("name", ""),
-                "description": data.get("description", ""),
-                "provider": {
-                    "@type": "Organization",
-                    "name": data.get("provider_name", ""),
-                },
-            }
-            if data.get("provider_url"):
-                obj["provider"]["sameAs"] = data["provider_url"]
-            if data.get("url"):
-                obj["url"] = data["url"]
-
-        elif schema_type == "review":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "Review",
-                "itemReviewed": {
-                    "@type": data.get("item_type", "Product"),
-                    "name": data.get("item_name", ""),
-                },
-                "reviewRating": {
-                    "@type": "Rating",
-                    "ratingValue": data.get("rating_value", ""),
-                    "bestRating": data.get("rating_best", "5"),
-                },
-                "author": {"@type": "Person", "name": data.get("author", "")},
-            }
-            if data.get("review_body"):
-                obj["reviewBody"] = data["review_body"]
-            if data.get("date_published"):
-                obj["datePublished"] = data["date_published"]
-
-        elif schema_type == "softwareapp":
-            obj = {
-                "@context": "https://schema.org",
-                "@type": "SoftwareApplication",
-                "name": data.get("name", ""),
-                "operatingSystem": data.get("operating_system", ""),
-                "applicationCategory": data.get("application_category", ""),
-            }
-            if data.get("description"):
-                obj["description"] = data["description"]
-            if data.get("url"):
-                obj["url"] = data["url"]
-            if data.get("image"):
-                obj["image"] = data["image"]
-            if data.get("price") is not None and str(data.get("price", "")).strip() != "":
-                obj["offers"] = {
-                    "@type": "Offer",
-                    "price": data["price"],
-                    "priceCurrency": data.get("currency", "USD"),
-                }
-            if data.get("rating_value"):
-                obj["aggregateRating"] = {
-                    "@type": "AggregateRating",
-                    "ratingValue": data["rating_value"],
-                    "ratingCount": data.get("rating_count", "1"),
-                }
-
-        else:
+        builder = _SCHEMA_BUILDERS.get(schema_type)
+        if builder is None:
             return {"ok": False, "error": "Unhandled schema type"}
+        obj = builder(data)
 
         markup = f'<script type="application/ld+json">\n{json.dumps(obj, indent=2)}\n</script>'
         warnings = []

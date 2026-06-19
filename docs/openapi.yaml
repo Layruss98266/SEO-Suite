@@ -71,6 +71,7 @@ paths:
                 type: object
                 properties:
                   status: {type: string, example: "ok"}
+                  version: {type: string, example: "2.1.0"}
   /health/ready:
     get:
       tags: [Health]

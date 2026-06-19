@@ -35,7 +35,7 @@
 
 ### S4 `[HIGH]` `[x]` Admin user mgmt unthrottled
 - `app/blueprints/auth_views.py` `/api/users` create + DELETE
-- **Fix:** `@limiter.limit("30 per minute")`
+- **Fix:** `limiter.limit("30 per minute")` applied programmatically to both `api_users_create` and `api_users_delete` view functions in `register()`. (DELETE was missed in the original batch — added in follow-up audit.)
 
 ### S5 `[MED]` `[ ]` CSP missing headers + unsafe-inline style-src
 - `app/middleware.py`

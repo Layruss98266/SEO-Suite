@@ -40,11 +40,12 @@ def app_dashboard():
 
 @bp.route("/health")
 def health():
-    """Public, intentionally minimal — no version, no run-state.
+    """Public liveness probe.
 
-    Use ``/health/ready`` or authed endpoints (e.g. ``/api/history``) for
-    in-depth status. Liveness probes only need a 200 to consider the instance
-    healthy.
+    Returns ``{"status": "ok", "version": <VERSION>}``.  The ``version``
+    field powers the dashboard cache-bust (``/app`` rewrites static asset
+    URLs to ``?v=<VERSION>``) and lets the SPA show the running build in
+    the nav logo. Use ``/health/ready`` for deeper readiness checks.
     """
     from core.version import VERSION
     return jsonify({"status": "ok", "version": VERSION})

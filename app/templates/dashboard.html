@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -34,6 +34,10 @@
     <span class="tb-search-kbd">Ctrl K</span>
     <div class="tb-search-results" id="tb-search-results"></div>
   </div>
+
+  <button class="tb-mob-search tb-icon-btn" onclick="openCmdPalette()" title="Search" aria-label="Open search" style="display:none">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+  </button>
 
   <div class="tb-spacer"></div>
 
@@ -179,6 +183,7 @@
     <button class="modal-tab" data-tab="keys"     onclick="helpTab('keys',this)">API Keys</button>
     <button class="modal-tab" data-tab="shortcuts" onclick="helpTab('shortcuts',this)">Shortcuts</button>
     <button class="modal-tab" data-tab="troubleshoot" onclick="helpTab('troubleshoot',this)">Troubleshoot</button>
+    <button class="modal-tab" data-tab="api"          onclick="helpTab('api',this)">API Reference</button>
     <button class="modal-tab" data-tab="about"    onclick="helpTab('about',this)">About</button>
   </div>
   <div class="modal-body" id="help-body"></div>
@@ -552,6 +557,20 @@
 
 <!-- ═══ HOME ═══════════════════════════════════════════════════════════════ -->
 <div class="panel active" id="panel-home">
+<div class="onboarding-banner" id="onboarding-banner" style="display:none">
+  <div class="onboarding-inner">
+    <div class="onboarding-icon">🚀</div>
+    <div class="onboarding-body">
+      <div class="onboarding-title">Welcome to SEO Suite!</div>
+      <div class="onboarding-steps">
+        <div class="onboarding-step"><span class="step-num">1</span> <strong>Enter your domain</strong> in the Audit or Indexing panel and run your first check.</div>
+        <div class="onboarding-step"><span class="step-num">2</span> <strong>Add your API keys</strong> in Settings to unlock GSC, PageSpeed, and AI features.</div>
+        <div class="onboarding-step"><span class="step-num">3</span> <strong>Explore Use Cases</strong> for guided workflows tailored to common SEO tasks.</div>
+      </div>
+    </div>
+    <button class="onboarding-dismiss" onclick="dismissOnboarding()" aria-label="Dismiss">✕</button>
+  </div>
+</div>
   <div class="home-hero-card">
     <div class="home-hero-bg"></div>
     <div class="home-hero-inner">
@@ -668,6 +687,7 @@
           <label><input type="radio" name="idx-type" value="multi" onchange="idxToggle()"> Multiple sitemaps</label>
           <label><input type="radio" name="idx-type" value="csv" onchange="idxToggle()"> CSV / Excel file</label>
           <label><input type="radio" name="idx-type" value="paste" onchange="idxToggle()"> Paste URLs</label>
+          <label><input type="radio" name="idx-type" value="sf-csv" onchange="idxToggle()"> Screaming Frog CSV</label>
         </div>
       </div>
       <div class="fg-full" id="idx-src-row">
@@ -694,6 +714,15 @@
         <label class="label" for="idx-paste">Paste URLs <span class="u-fw-400 u-text-muted">(one per line, or comma-separated)</span></label>
         <textarea class="input" id="idx-paste" rows="6"
                   placeholder="https://example.com/page1&#10;https://example.com/page2&#10;…"></textarea>
+      </div>
+      <div class="fg-full" id="idx-sf-csv-row" style="display:none">
+        <div class="section-title" style="font-size:13px;margin-bottom:10px">📂 Screaming Frog CSV Import</div>
+        <div class="tool-row">
+          <input type="file" id="idx-sf-csv-file" accept=".csv" class="input" style="flex:1">
+          <input class="input" id="idx-sf-col-name" placeholder="URL column (default: Address)" style="width:220px">
+          <button class="btn btn-primary btn-sm" onclick="loadSFCsv('idx')">Import URLs</button>
+        </div>
+        <div class="u-text-muted u-fs-12 u-mt-6">Screaming Frog exports the 'Address' column by default. The importer will extract all http/https URLs from that column.</div>
       </div>
       <div>
         <label class="label" for="idx-pattern">Filter pattern</label>
@@ -838,6 +867,7 @@
           <label><input type="radio" name="aud-type" value="crawl" onchange="audToggle()"> Crawl from URL</label>
           <label><input type="radio" name="aud-type" value="csv" onchange="audToggle()"> CSV / Excel file</label>
           <label><input type="radio" name="aud-type" value="paste" onchange="audToggle()"> Paste URLs</label>
+          <label><input type="radio" name="aud-type" value="sf-csv" onchange="audToggle()"> Screaming Frog CSV</label>
         </div>
       </div>
       <div class="fg-full" id="aud-src-row">
@@ -864,6 +894,15 @@
         <label class="label" for="aud-paste">Paste URLs <span class="u-fw-400 u-text-muted">(one per line or comma-separated)</span></label>
         <textarea class="input" id="aud-paste" rows="6"
                   placeholder="https://example.com/page1&#10;https://example.com/page2&#10;…"></textarea>
+      </div>
+      <div class="fg-full" id="aud-sf-csv-row" style="display:none">
+        <div class="section-title" style="font-size:13px;margin-bottom:10px">📂 Screaming Frog CSV Import</div>
+        <div class="tool-row">
+          <input type="file" id="aud-sf-csv-file" accept=".csv" class="input" style="flex:1">
+          <input class="input" id="aud-sf-col-name" placeholder="URL column (default: Address)" style="width:220px">
+          <button class="btn btn-primary btn-sm" onclick="loadSFCsv('aud')">Import URLs</button>
+        </div>
+        <div class="u-text-muted u-fs-12 u-mt-6">Screaming Frog exports the 'Address' column by default. The importer will extract all http/https URLs from that column.</div>
       </div>
       <div>
         <label class="label" for="aud-pattern">Filter pattern</label>
@@ -991,7 +1030,11 @@
       <button class="btn btn-primary btn-sm" id="aud-open-btn" onclick="openAudReport()" style="display:none">Open Report ↗</button>
       <a id="aud-dl-btn"  class="btn btn-ghost btn-sm u-no-underline" style="display:none">⬇ XLSX</a>
       <a id="aud-pdf-btn" class="btn btn-ghost btn-sm u-no-underline" style="display:none">⬇ PDF</a>
+      <button class="btn btn-ghost btn-sm" id="aud-issues-summary-btn" onclick="toggleIssuesSummary()" style="display:none">📋 Issues Summary</button>
       <button class="btn btn-ghost btn-sm" onclick="navTo('aud-run')">↻ New Audit</button>
+    </div>
+    <div id="aud-issues-summary-panel" style="display:none;margin-top:12px">
+      <div id="issues-summary-content"></div>
     </div>
 
     <!-- Next Steps — deep analysis shortcuts shown after audit completes -->
@@ -1034,6 +1077,7 @@
       <input class="rep-search u-w-full" id="rep-search" placeholder="🔍  Search reports…" oninput="renderReports()" style="padding-right:32px">
       <button class="u-text-muted u-fs-14" onclick="clearRepSearch()" title="Clear search" id="rep-search-clear" style="display:none" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;line-height:1">✕</button>
     </div>
+    <input class="rep-search" id="rep-project" placeholder="Filter by project…" oninput="renderReports()" style="width:160px">
     <select class="rep-sort" id="rep-sort" onchange="renderReports()" title="Sort reports">
       <option value="newest">↓ Newest</option>
       <option value="oldest">↑ Oldest</option>
@@ -1427,6 +1471,14 @@
         </div>
       </div>
 
+      <div class="settings-row">
+        <div class="settings-info">
+          <div class="s-label">Webhook URL (generic)</div>
+          <div class="s-desc">POST a JSON payload to this URL after each audit or indexing run completes. Useful for CI/CD pipelines and custom integrations.</div>
+        </div>
+        <div class="key-wrap u-w-220"><input class="input" id="cfg-webhook-url" placeholder="https://…/webhook"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+      </div>
+
       <!-- Test notification buttons -->
       <div class="u-mt-14" style="border-top:1px solid var(--c-border);padding-top:12px">
         <div class="s-label u-mb-8">Test Notifications</div>
@@ -1463,31 +1515,56 @@
         <label class="toggle"><input type="checkbox" id="cfg-schedule" onchange="toggleScheduleExpand(this.checked);updateSettingBadges()"><span class="slider"></span></label>
       </div>
       <div class="notif-expand" id="notif-expand-schedule">
-        <div class="form-grid u-gap-8">
-          <div>
-            <label class="label" for="cfg-schedule-interval">Interval</label>
-            <select class="input" id="cfg-schedule-interval">
-              <option value="hourly">Hourly</option>
-              <option value="daily" selected>Daily</option>
-              <option value="weekly">Weekly</option>
-            </select>
+        <!-- Hidden legacy fields kept so existing saveSettings() code still reads them (synced from first schedule entry) -->
+        <input type="hidden" id="cfg-schedule-interval">
+        <input type="hidden" id="cfg-schedule-time">
+        <input type="hidden" id="cfg-schedule-sitemap">
+        <input type="hidden" id="cfg-schedule-limit">
+
+        <!-- ── Schedule List ── -->
+        <div class="u-flex u-items-center u-justify-between u-mb-8">
+          <div class="s-label" style="margin:0">Schedule Entries</div>
+          <button class="btn btn-ghost btn-sm" onclick="scheduleAddRowToggle()">+ Add Schedule</button>
+        </div>
+
+        <!-- Inline add-entry form (hidden by default) -->
+        <div id="schedule-add-form" style="display:none;background:var(--c-bg2);border:1px solid var(--c-border);border-radius:8px;padding:12px;margin-bottom:10px">
+          <div class="form-grid u-gap-8">
+            <div class="fg-full">
+              <label class="label" for="sched-new-sitemap">Sitemap / Domain URL</label>
+              <input class="input" id="sched-new-sitemap" placeholder="https://example.com/sitemap.xml">
+            </div>
+            <div>
+              <label class="label" for="sched-new-interval">Interval</label>
+              <select class="input" id="sched-new-interval">
+                <option value="hourly">Hourly</option>
+                <option value="daily" selected>Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            <div>
+              <label class="label" for="sched-new-time">Time (HH:MM)</label>
+              <input class="input" id="sched-new-time" placeholder="08:00" style="width:100px">
+            </div>
+            <div>
+              <label class="label" for="sched-new-limit">URL Limit</label>
+              <input class="input" id="sched-new-limit" type="number" placeholder="100" style="width:90px" min="1">
+            </div>
           </div>
-          <div>
-            <label class="label" for="cfg-schedule-time">Time (HH:MM)</label>
-            <input class="input" id="cfg-schedule-time" placeholder="08:00" style="width:90px">
-          </div>
-          <div class="fg-full">
-            <label class="label" for="cfg-schedule-sitemap">Sitemap URL</label>
-            <input class="input" id="cfg-schedule-sitemap" placeholder="https://example.com/sitemap.xml">
-          </div>
-          <div>
-            <label class="label" for="cfg-schedule-limit">URL Limit</label>
-            <input class="input" id="cfg-schedule-limit" type="number" placeholder="100" style="width:90px" min="1">
+          <div class="u-flex u-gap-8 u-mt-10">
+            <button class="btn btn-primary btn-sm" onclick="scheduleAddEntry()">Save Entry</button>
+            <button class="btn btn-ghost btn-sm" onclick="scheduleAddRowToggle(false)">Cancel</button>
           </div>
         </div>
+
+        <!-- Schedule entries table -->
+        <div id="schedule-list-wrap">
+          <!-- Populated by renderScheduleList() -->
+        </div>
+
         <div class="cfg-info-box u-mt-10">
           <div class="cfg-info-title">How scheduling works</div>
-          <div class="cfg-info-body">The server checks for scheduled runs on startup and every hour. Results are emailed if Email notifications are enabled. Make sure the server process is kept running (e.g. via a service or screen session).</div>
+          <div class="cfg-info-body">The server checks for scheduled runs on startup and every hour. Results are emailed if Email notifications are enabled. Make sure the server process is kept running (e.g. via a service or screen session).<br><br><strong>Note:</strong> Multiple schedules require server-side support — currently only the first entry is applied to config.</div>
         </div>
       </div>
     </div>
@@ -1518,6 +1595,18 @@
           <div class="s-desc">Collapse sidebar groups by default on load</div>
         </div>
         <label class="toggle"><input type="checkbox" id="cfg-compact-sb"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- ── Team Management ── -->
+    <div class="card" id="settings-team-card">
+      <div class="section-title">👥 Team Management</div>
+      <div id="team-users-list"><div class="u-text-muted u-fs-12">Loading…</div></div>
+      <div class="u-mt-12" style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="input" id="new-user-email" placeholder="username" style="width:160px">
+        <input class="input" type="password" id="new-user-pass" placeholder="password" style="width:130px">
+        <label class="u-flex u-items-center u-gap-6" style="font-size:13px"><input type="checkbox" id="new-user-admin"> Admin</label>
+        <button class="btn btn-primary btn-sm" onclick="createTeamUser()">Add User</button>
       </div>
     </div>
 

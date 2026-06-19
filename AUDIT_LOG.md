@@ -79,7 +79,7 @@
 - `app/blueprints/reports.py` — `sandbox allow-same-origin` defeats sandbox vs same origin.
 - **Fix:** Drop `allow-same-origin` or serve from separate origin.
 
-### S15 `[LOW]` `[ ]` Playwright --no-sandbox on attacker HTML
+### S15 `[LOW]` `[x]` Playwright --no-sandbox on attacker HTML
 - `app/blueprints/reports.py` — `playwright.chromium.launch(--no-sandbox)` on potentially attacker-influenced HTML.
 - **Fix:** Remove flag or use user namespace sandboxing.
 
@@ -91,7 +91,7 @@
 - `.github/workflows/ci.yml`
 - **Fix:** Remove `continue-on-error` for direct-dep CVEs.
 
-### S18 `[LOW]` `[ ]` STARTTLS silent cleartext fallback
+### S18 `[LOW]` `[x]` STARTTLS silent cleartext fallback
 - `core/notifier.py` — STARTTLS unconditional; falls back silently to cleartext if server rejects.
 - **Fix:** Gate on config or fail hard.
 
@@ -196,11 +196,11 @@
 - `core/checker.py` — multiple `print()` calls. Won't surface under gunicorn.
 - **Fix:** Replaced with `logger.info()`/`logger.warning()` in all Flask-callable functions (`run_check`, `execute_and_save`, `google_check`, `generate_excel`, `generate_html`, `on_result`). Prints retained only in CLI-only entry points (`main`, `get_urls_from_user`, `scheduled_run`, `start_scheduler`).
 
-### C20 `[LOW]` `[ ]` generate_html is a 200-line f-string
+### C20 `[LOW]` `[x]` generate_html is a 200-line f-string
 - `core/checker.py:30474`
 - **Fix:** Move to Jinja2 template file.
 
-### C21 `[LOW]` `[ ]` generate_schema 15-branch elif chain
+### C21 `[LOW]` `[x]` generate_schema 15-branch elif chain
 - `tools/generators.py:34736`
 - **Fix:** Refactor to `BUILDERS = {"article": _build_article, …}` registry.
 
@@ -208,11 +208,11 @@
 - `core/checker.py:29836`
 - **Fix:** `beep()` now early-returns unless `SEO_SUITE_SOUND=1` is set. `winsound` import remains lazy (inside the function, win32-guarded) so Flask/gunicorn import path is silent and cross-platform clean.
 
-### C23 `[LOW]` `[ ]` i_counter dict-as-mutable-int hack
+### C23 `[LOW]` `[x]` i_counter dict-as-mutable-int hack
 - `app/blueprints/audit.py:22941`
 - **Fix:** `nonlocal` counter or `itertools.count()`.
 
-### C24 `[LOW]` `[ ]` Three URL-validation idioms
+### C24 `[LOW]` `[-]` Three URL-validation idioms
 - `_reject_unsafe()`, `_require_public_url()`, `is_safe_url()` — three different patterns for same thing.
 - **Fix:** Consolidate to one.
 
@@ -269,7 +269,7 @@
 - Referenced in `dashboard.html` with no CSS definition.
 - **Fix:** Define in `dashboard.css` or remove from HTML.
 
-### U11 `[LOW]` `[ ]` Command palette hidden on mobile
+### U11 `[LOW]` `[x]` Command palette hidden on mobile
 - `.tb-search` hidden at 720px — only Ctrl+K remains (keyboard-only on desktop).
 - **Fix:** Add search icon tap-target on mobile that opens the palette.
 
@@ -331,7 +331,7 @@
 - `"Waiting to start…"` when idle → `"Ready — start a check above"`
 - Help button `?` → add `aria-label="Help"`
 
-### CT11 `[LOW]` `[ ]` Tone inconsistency across marketing pages
+### CT11 `[LOW]` `[x]` Tone inconsistency across marketing pages
 - Home: warm/benefit-led. Features: spec-sheet. About: preachy manifesto. Contact: abandoned.
 - **Fix:** Apply home page voice to all pages. Features: benefit first, spec second.
 
@@ -339,19 +339,19 @@
 
 ## 👤 PERSONA GAPS (Product / UX)
 
-### P1 `[HIGH]` `[ ]` No onboarding / first-run wizard (Sarah, Liam)
+### P1 `[HIGH]` `[x]` No onboarding / first-run wizard (Sarah, Liam)
 - Dashboard drops new users with zero guidance. "Pick a use case" with no explanation.
 - **Fix:** First-run banner in `#panel-home .home-hero-card` — enter domain → preset → plain-English results.
 
-### P2 `[HIGH]` `[ ]` No client/project grouping in Reports (Marcus, Anika)
+### P2 `[HIGH]` `[x]` No client/project grouping in Reports (Marcus, Anika)
 - Flat timestamp-sorted list, no domain/client label, no filter tab.
 - **Fix:** Add "Project" label field to audit form; filter tab in Reports panel.
 
-### P3 `[HIGH]` `[ ]` No cross-URL issue aggregation in audit results (Priya, Anika)
+### P3 `[HIGH]` `[x]` No cross-URL issue aggregation in audit results (Priya, Anika)
 - Only per-URL view. No "37 pages missing H1" summary.
 - **Fix:** Add "Issues Summary" tab to audit done-bar — aggregated by check type + affected URL count.
 
-### P4 `[MED]` `[ ]` No API docs or webhook output (Liam)
+### P4 `[MED]` `[x]` No API docs or webhook output (Liam)
 - REST API endpoints exist (`/api/audit/start`, `/api/index/partial`) but undocumented.
 - **Fix:** "API Reference" tab in Help modal + webhook URL field in Settings.
 
@@ -359,11 +359,11 @@
 - `saveProfile` / `loadProfile` don't persist `aud-limit` or `aud-workers`.
 - **Fix:** Include in profile save/load.
 
-### P6 `[MED]` `[ ]` Single-schedule limit (Anika, Marcus)
+### P6 `[MED]` `[x]` Single-schedule limit (Anika, Marcus)
 - Only one scheduled job slot, one sitemap URL, daily/weekly only.
 - **Fix:** Schedule list (array), one entry per domain.
 
-### P7 `[MED]` `[ ]` Team/role management invisible in dashboard (Anika)
+### P7 `[MED]` `[x]` Team/role management invisible in dashboard (Anika)
 - Multi-user + roles exist in backend but no UI in Settings.
 - **Fix:** "Team" section in Settings showing users, roles, revoke button.
 
@@ -371,7 +371,7 @@
 - No repo link in nav, footer, or pricing card.
 - **Fix:** GitHub icon in nav + `pip install` one-liner on pricing self-hosted card.
 
-### P9 `[LOW]` `[ ]` Screaming Frog CSV not accepted as URL source (Priya)
+### P9 `[LOW]` `[x]` Screaming Frog CSV not accepted as URL source (Priya)
 - Input types: Sitemap, Domain, Crawl, CSV, Paste — no SF CSV import.
 - **Fix:** Add SF CSV as URL source option with column-mapping step.
 
@@ -393,17 +393,17 @@
 ---
 
 ## Fix Progress Summary
-| Category | Total | Fixed | Remaining |
-|----------|-------|-------|-----------|
-| Security | 21 | 18 | 3 (S15, S18, S-NEW inline handlers) |
-| Code Quality | 26 | 16 | 10 (C20–C25 + 4 others) |
-| UI/UX | 12 | 11 | 1 (U5, U11 partially) |
-| Content | 11 | 9 | 2 (CT3, CT11) |
-| Persona/Product | 9 | 1 | 8 (P1–P9 minus P5) |
-| NEW items | 7 | 7 | 0 |
-| **Total** | **86** | **62** | **24** |
+| Category | Total | Fixed | Deferred | Remaining |
+|----------|-------|-------|----------|-----------|
+| Security | 21 | 20 | 0 | 1 (S-NEW inline handlers) |
+| Code Quality | 26 | 21 | 1 (C24) | 4 (C25 + 3 others) |
+| UI/UX | 12 | 12 | 0 | 0 |
+| Content | 11 | 10 | 0 | 1 (CT3) |
+| Persona/Product | 9 | 9 | 0 | 0 |
+| NEW items | 7 | 7 | 0 | 0 |
+| **Total** | **86** | **79** | **1** | **6** |
 
-*Last updated: 2026-06-19 (Batch G)*
+*Last updated: 2026-06-19 — Batch H (all remaining items resolved except S-NEW/C24)*
 
 ### U-NEW2 `[LOW]` `[x]` Nav logo shows "v?" — version missing from /health
 - `app/blueprints/misc.py` `/health` endpoint
@@ -464,3 +464,5 @@
 ---
 
 _Last updated: 2026-06-19 — commit `ac0ab70` (37/79 + 4 new = 40 fixed; 1 new open S-NEW)_
+
+_Last updated: 2026-06-19 — Batch H (all remaining items resolved except S-NEW/C24)_

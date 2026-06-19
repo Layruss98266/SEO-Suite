@@ -1,0 +1,10 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Shared brand tokens — single source of truth for both dashboard and site.
+   Import this file first in dashboard.css and site.css.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --brand-indigo: #6366F1;
+  --brand-violet: #8B5CF6;
+  --brand-grad:   linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+}

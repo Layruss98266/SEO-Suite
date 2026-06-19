@@ -173,7 +173,7 @@ def api_reports_delete(filename):
     deleted = _delete_report_stem(stem)
     if not deleted:
         return api_error("File not found", 404)
-    return jsonify({"deleted": deleted})
+    return jsonify({"ok": True, "deleted": deleted})
 
 
 @bp.route("/api/reports/delete_bulk", methods=["POST"])
@@ -197,6 +197,7 @@ def api_reports_delete_bulk():
             failed.append({"name": name, "error": "not found"})
     return jsonify(
         {
+            "ok": len(failed) == 0,
             "deleted": deleted,
             "failed": failed,
             "deleted_count": len(deleted),
@@ -221,7 +222,7 @@ def api_reports_delete_all():
         if p.stem not in seen:
             seen.add(p.stem)
             deleted += len(_delete_report_stem(p.stem))
-    return jsonify({"deleted_count": deleted})
+    return jsonify({"ok": True, "deleted_count": deleted})
 
 
 # ── Summary + preview ─────────────────────────────────────────────────────────

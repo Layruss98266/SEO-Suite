@@ -212,7 +212,13 @@ def signup():
         if not ok:
             page = SIGNUP_PAGE.replace("__ERROR__", f"<div class='err'>{esc(err)}</div>")
             return page, 400, {"Content-Type": "text/html"}
-        # Auto-login the new account so the first signup isn't locked out.
+        # On cloud hosts, never auto-login: account farming becomes profitable
+        # if a single POST yields a logged-in session.  Force the new account
+        # through a real /login round-trip so the limiter sees both events.
+        # Local/single-tenant installs keep the convenience auto-login.
+        from core.auth import _on_cloud_host
+        if _on_cloud_host():
+            return ("", 302, {"Location": "/login?signed_up=1"})
         identity = authenticate(username, password)
         session.clear()
         session["authed"] = True

@@ -670,16 +670,16 @@
         </div>
       </div>
       <div class="fg-full" id="idx-paste-row" style="display:none">
-        <span class="label">Paste URLs <span class="u-fw-400 u-text-muted">(one per line, or comma-separated)</span></span>
+        <label class="label" for="idx-paste">Paste URLs <span class="u-fw-400 u-text-muted">(one per line, or comma-separated)</span></label>
         <textarea class="input" id="idx-paste" rows="6"
                   placeholder="https://example.com/page1&#10;https://example.com/page2&#10;…"></textarea>
       </div>
       <div>
-        <span class="label">Filter pattern</span>
+        <label class="label" for="idx-pattern">Filter pattern</label>
         <input class="input" id="idx-pattern" placeholder="/category/ or /course/">
       </div>
       <div>
-        <span class="label">URL limit</span>
+        <label class="label" for="idx-limit">URL limit</label>
         <input class="input" type="number" id="idx-limit" value="20" min="1">
       </div>
       <div class="fg-full">
@@ -820,11 +820,11 @@
         </div>
       </div>
       <div class="fg-full" id="aud-src-row">
-        <span class="label" id="aud-lbl">Sitemap URL</span>
+        <label class="label" id="aud-lbl" for="aud-src">Sitemap URL</label>
         <input class="input" id="aud-src" placeholder="https://example.com/sitemap.xml">
       </div>
       <div class="fg-full" id="aud-file-row" style="display:none">
-        <span class="label">Upload CSV / Excel</span>
+        <label class="label" for="aud-file">Upload CSV / Excel</label>
         <div class="dropzone" id="aud-dropzone"
              onclick="document.getElementById('aud-file').click()"
              ondragover="event.preventDefault();this.classList.add('drag')"
@@ -840,28 +840,28 @@
         </div>
       </div>
       <div class="fg-full" id="aud-paste-row" style="display:none">
-        <span class="label">Paste URLs <span class="u-fw-400 u-text-muted">(one per line or comma-separated)</span></span>
+        <label class="label" for="aud-paste">Paste URLs <span class="u-fw-400 u-text-muted">(one per line or comma-separated)</span></label>
         <textarea class="input" id="aud-paste" rows="6"
                   placeholder="https://example.com/page1&#10;https://example.com/page2&#10;…"></textarea>
       </div>
       <div>
-        <span class="label">Filter pattern</span>
+        <label class="label" for="aud-pattern">Filter pattern</label>
         <input class="input" id="aud-pattern" placeholder="/category/">
       </div>
       <div>
-        <span class="label">URL limit</span>
+        <label class="label" for="aud-limit">URL limit</label>
         <input class="input" type="number" id="aud-limit" value="10" min="1">
       </div>
       <div>
-        <span class="label">Parallel workers <span class="u-fw-400 u-text-muted">(1–8)</span></span>
+        <label class="label" for="aud-workers">Parallel workers <span class="u-fw-400 u-text-muted">(1–8)</span></label>
         <input class="input" type="number" id="aud-workers" value="3" min="1" max="8">
       </div>
       <div class="fg-full" id="aud-crawl-row" style="display:none">
-        <span class="label">Crawl depth <span class="u-fw-400 u-text-muted">(how many link levels to follow)</span></span>
+        <label class="label" for="aud-crawl-depth">Crawl depth <span class="u-fw-400 u-text-muted">(how many link levels to follow)</span></label>
         <input class="input" type="number" id="aud-crawl-depth" value="2" min="1" max="4">
       </div>
       <div class="fg-full">
-        <span class="label">Saved profile</span>
+        <label class="label" for="aud-profile">Saved profile</label>
         <div class="u-flex u-gap-8 u-flex-wrap">
           <select class="input u-flex-1" id="aud-profile" onchange="loadProfile(this.value)" style="min-width:160px">
             <option value="">— Select a profile —</option>
@@ -871,7 +871,7 @@
         </div>
       </div>
       <div class="fg-full" id="kw-row" style="display:none">
-        <span class="label">Keywords to track <span class="u-fw-400">(comma-separated, for Rankings)</span></span>
+        <label class="label" for="aud-kw">Keywords to track <span class="u-fw-400">(comma-separated, for Rankings)</span></label>
         <input class="input" id="aud-kw" placeholder="corporate training, leadership training">
       </div>
       <div class="fg-full">
@@ -1047,11 +1047,11 @@
   <div class="card">
     <div class="form-grid">
       <div>
-        <span class="label">Report A (older)</span>
+        <label class="label" for="cmp-a">Report A (older)</label>
         <select class="input" id="cmp-a"><option value="">Choose a report...</option></select>
       </div>
       <div>
-        <span class="label">Report B (newer)</span>
+        <label class="label" for="cmp-b">Report B (newer)</label>
         <select class="input" id="cmp-b"><option value="">Choose a report...</option></select>
       </div>
       <div class="fg-full">
@@ -1314,9 +1314,9 @@
       <div class="u-mt-14" style="border-top:1px solid var(--c-border);padding-top:14px">
         <div class="s-label u-mb-10">Change Password</div>
         <div class="form-grid u-gap-8">
-          <div class="fg-full"><span class="label">New Username</span><input class="input" id="cfg-auth-user" placeholder="admin"></div>
-          <div class="fg-full"><span class="label">New Password</span><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass" placeholder="min 12 characters"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
-          <div class="fg-full"><span class="label">Confirm Password</span><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass2" placeholder="repeat password"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><label class="label" for="cfg-auth-user">New Username</label><input class="input" id="cfg-auth-user" placeholder="admin"></div>
+          <div class="fg-full"><label class="label" for="cfg-auth-pass">New Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass" placeholder="min 12 characters"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><label class="label" for="cfg-auth-pass2">Confirm Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass2" placeholder="repeat password"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
         </div>
         <div class="u-fs-12" id="auth-change-error" style="color:var(--c-red);margin-top:6px;display:none"></div>
         <button class="btn btn-ghost btn-sm u-mt-10" onclick="changeAuthCredentials()">Update Credentials</button>
@@ -1343,8 +1343,8 @@
 
         <div class="s-label u-mb-8">Add User</div>
         <div class="form-grid u-gap-8">
-          <div class="fg-full"><span class="label">Username</span><input class="input" id="new-user-name" placeholder="username"></div>
-          <div class="fg-full"><span class="label">Password</span><div class="key-wrap"><input class="input" type="password" id="new-user-pass" placeholder="min 12 characters"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><label class="label" for="new-user-name">Username</label><input class="input" id="new-user-name" placeholder="username"></div>
+          <div class="fg-full"><label class="label" for="new-user-pass">Password</label><div class="key-wrap"><input class="input" type="password" id="new-user-pass" placeholder="min 12 characters"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
           <div class="fg-full u-flex u-items-center u-gap-8"><input type="checkbox" id="new-user-admin"><span class="label" style="margin:0">Make this user an admin</span></div>
         </div>
         <div class="u-fs-12" id="new-user-error" style="color:var(--c-red);margin-top:6px;display:none"></div>
@@ -1372,7 +1372,7 @@
         <label class="toggle"><input type="checkbox" id="cfg-slack" onchange="toggleNotifExpand('slack',this.checked);updateSettingBadges()"><span class="slider"></span></label>
       </div>
       <div class="notif-expand" id="notif-expand-slack">
-        <span class="label">Slack Webhook URL</span>
+        <label class="label" for="cfg-slack-webhook">Slack Webhook URL</label>
         <input class="input" id="cfg-slack-webhook" placeholder="https://hooks.slack.com/services/…">
       </div>
 
@@ -1384,7 +1384,7 @@
         <label class="toggle"><input type="checkbox" id="cfg-teams" onchange="toggleNotifExpand('teams',this.checked);updateSettingBadges()"><span class="slider"></span></label>
       </div>
       <div class="notif-expand" id="notif-expand-teams">
-        <span class="label">Teams Webhook URL</span>
+        <label class="label" for="cfg-teams-webhook">Teams Webhook URL</label>
         <input class="input" id="cfg-teams-webhook" placeholder="https://outlook.office.com/webhook/…">
       </div>
 
@@ -1397,12 +1397,12 @@
       </div>
       <div class="notif-expand" id="notif-expand-email">
         <div class="form-grid u-gap-8">
-          <div><span class="label">SMTP Host</span><input class="input" id="cfg-smtp-host" placeholder="smtp.gmail.com"></div>
-          <div><span class="label">Port</span><input class="input" id="cfg-smtp-port" placeholder="587" style="width:80px"></div>
-          <div class="fg-full"><span class="label">From Address</span><input class="input" id="cfg-smtp-from" placeholder="you@example.com"></div>
-          <div><span class="label">Username</span><input class="input" id="cfg-smtp-user" placeholder="you@example.com"></div>
-          <div><span class="label">Password</span><div class="key-wrap"><input class="input" type="password" id="cfg-smtp-pass" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
-          <div class="fg-full"><span class="label">Report To</span><input class="input" id="cfg-smtp-to" placeholder="team@example.com"></div>
+          <div><label class="label" for="cfg-smtp-host">SMTP Host</label><input class="input" id="cfg-smtp-host" placeholder="smtp.gmail.com"></div>
+          <div><label class="label" for="cfg-smtp-port">Port</label><input class="input" id="cfg-smtp-port" placeholder="587" style="width:80px"></div>
+          <div class="fg-full"><label class="label" for="cfg-smtp-from">From Address</label><input class="input" id="cfg-smtp-from" placeholder="you@example.com"></div>
+          <div><label class="label" for="cfg-smtp-user">Username</label><input class="input" id="cfg-smtp-user" placeholder="you@example.com"></div>
+          <div><label class="label" for="cfg-smtp-pass">Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-smtp-pass" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><label class="label" for="cfg-smtp-to">Report To</label><input class="input" id="cfg-smtp-to" placeholder="team@example.com"></div>
         </div>
       </div>
 
@@ -1444,7 +1444,7 @@
       <div class="notif-expand" id="notif-expand-schedule">
         <div class="form-grid u-gap-8">
           <div>
-            <span class="label">Interval</span>
+            <label class="label" for="cfg-schedule-interval">Interval</label>
             <select class="input" id="cfg-schedule-interval">
               <option value="hourly">Hourly</option>
               <option value="daily" selected>Daily</option>
@@ -1452,15 +1452,15 @@
             </select>
           </div>
           <div>
-            <span class="label">Time (HH:MM)</span>
+            <label class="label" for="cfg-schedule-time">Time (HH:MM)</label>
             <input class="input" id="cfg-schedule-time" placeholder="08:00" style="width:90px">
           </div>
           <div class="fg-full">
-            <span class="label">Sitemap URL</span>
+            <label class="label" for="cfg-schedule-sitemap">Sitemap URL</label>
             <input class="input" id="cfg-schedule-sitemap" placeholder="https://example.com/sitemap.xml">
           </div>
           <div>
-            <span class="label">URL Limit</span>
+            <label class="label" for="cfg-schedule-limit">URL Limit</label>
             <input class="input" id="cfg-schedule-limit" type="number" placeholder="100" style="width:90px" min="1">
           </div>
         </div>
@@ -1527,16 +1527,16 @@
     <div class="form-grid u-mt-12">
       <!-- URL / Domain / Sitemap input -->
       <div class="fg-full" id="uc-text-row">
-        <span class="label" id="uc-input-label">Page URL</span>
+        <label class="label" id="uc-input-label" for="uc-url">Page URL</label>
         <input class="input" id="uc-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runUseCase()">
       </div>
       <!-- CSV / XLSX file upload -->
       <div class="fg-full" id="uc-file-row" style="display:none">
-        <span class="label">Upload CSV or XLSX <span class="u-fw-400 u-text-muted">(URL column required)</span></span>
+        <label class="label" for="uc-file">Upload CSV or XLSX <span class="u-fw-400 u-text-muted">(URL column required)</span></label>
         <input class="input" type="file" id="uc-file" accept=".csv,.xlsx">
       </div>
       <div class="fg-full" id="uc-keywords-row" style="display:none">
-        <span class="label">Keywords <span class="u-fw-400 u-text-muted">(comma-separated)</span></span>
+        <label class="label" for="uc-keywords">Keywords <span class="u-fw-400 u-text-muted">(comma-separated)</span></label>
         <input class="input" id="uc-keywords" placeholder="seo tools, keyword research">
       </div>
       <div class="fg-full u-flex u-items-center" style="gap:10px">
@@ -1698,7 +1698,7 @@
           <div id="robots-rules"></div>
         </div>
         <div class="fg-full">
-          <span class="label">Sitemap URL <span class="u-fw-400 u-text-muted">(optional)</span></span>
+          <label class="label" for="robots-sitemap">Sitemap URL <span class="u-fw-400 u-text-muted">(optional)</span></label>
           <input class="input" id="robots-sitemap" placeholder="https://example.com/sitemap.xml">
         </div>
         <div class="fg-full">
@@ -1751,11 +1751,11 @@
     <div class="card u-flex-1 u-min-w-300">
       <div class="form-grid">
         <div class="fg-full">
-          <span class="label">URLs <span class="u-fw-400 u-text-muted">(one per line)</span></span>
+          <label class="label" for="sitemap-urls">URLs <span class="u-fw-400 u-text-muted">(one per line)</span></label>
           <textarea class="input" id="sitemap-urls" rows="8" placeholder="https://example.com/&#10;https://example.com/about/&#10;https://example.com/contact/"></textarea>
         </div>
         <div>
-          <span class="label">Changefreq</span>
+          <label class="label" for="sitemap-changefreq">Changefreq</label>
           <select class="input" id="sitemap-changefreq">
             <option value="">— none —</option>
             <option value="always">always</option>
@@ -1768,7 +1768,7 @@
           </select>
         </div>
         <div>
-          <span class="label">Priority</span>
+          <label class="label" for="sitemap-priority">Priority</label>
           <select class="input" id="sitemap-priority">
             <option value="">— none —</option>
             <option value="1.0">1.0 (highest)</option>
@@ -1784,7 +1784,7 @@
           </select>
         </div>
         <div>
-          <span class="label">Last Modified</span>
+          <label class="label" for="sitemap-lastmod">Last Modified</label>
           <input class="input" type="date" id="sitemap-lastmod">
         </div>
         <div class="fg-full">
@@ -1890,23 +1890,23 @@
     <div class="card u-flex-1 u-min-w-300">
       <div class="form-grid">
         <div class="fg-full">
-          <span class="label">Page Title <span class="u-fw-400 u-text-muted" id="meta-title-len"></span></span>
+          <label class="label" for="meta-title">Page Title <span class="u-fw-400 u-text-muted" id="meta-title-len"></span></label>
           <input class="input" id="meta-title" placeholder="My Page Title" oninput="metaLenUpdate()">
         </div>
         <div class="fg-full">
-          <span class="label">Meta Description <span class="u-fw-400 u-text-muted" id="meta-desc-len"></span></span>
+          <label class="label" for="meta-desc">Meta Description <span class="u-fw-400 u-text-muted" id="meta-desc-len"></span></label>
           <textarea class="input" id="meta-desc" rows="3" placeholder="A short description of the page…" oninput="metaLenUpdate()"></textarea>
         </div>
         <div class="fg-full">
-          <span class="label">Keywords <span class="u-fw-400 u-text-muted">(comma-separated)</span></span>
+          <label class="label" for="meta-keywords">Keywords <span class="u-fw-400 u-text-muted">(comma-separated)</span></label>
           <input class="input" id="meta-keywords" placeholder="seo, tools, keyword">
         </div>
         <div class="fg-full">
-          <span class="label">Canonical URL</span>
+          <label class="label" for="meta-canonical">Canonical URL</label>
           <input class="input" id="meta-canonical" placeholder="https://example.com/page/" oninput="updateMetaSerpPreview()">
         </div>
         <div>
-          <span class="label">Robots directive</span>
+          <label class="label" for="meta-robots">Robots directive</label>
           <select class="input" id="meta-robots">
             <option value="">— default (index, follow) —</option>
             <option value="index, follow">index, follow</option>
@@ -1916,7 +1916,7 @@
           </select>
         </div>
         <div>
-          <span class="label">OG Type</span>
+          <label class="label" for="meta-og-type">OG Type</label>
           <select class="input" id="meta-og-type">
             <option value="website">website</option>
             <option value="article">article</option>
@@ -1925,15 +1925,15 @@
           </select>
         </div>
         <div class="fg-full">
-          <span class="label">OG Image URL</span>
+          <label class="label" for="meta-og-image">OG Image URL</label>
           <input class="input" id="meta-og-image" placeholder="https://example.com/og-image.jpg">
         </div>
         <div class="fg-full">
-          <span class="label">OG Site Name</span>
+          <label class="label" for="meta-og-sitename">OG Site Name</label>
           <input class="input" id="meta-og-sitename" placeholder="My Website" oninput="updateMetaSerpPreview()">
         </div>
         <div class="fg-full">
-          <span class="label">Twitter Site Handle <span class="u-fw-400 u-text-muted">(@handle)</span></span>
+          <label class="label" for="meta-tw-site">Twitter Site Handle <span class="u-fw-400 u-text-muted">(@handle)</span></label>
           <input class="input" id="meta-tw-site" placeholder="@mysite">
         </div>
         <div class="fg-full">
@@ -1999,7 +1999,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">Page URL</span>
+        <label class="label" for="serp-url">Page URL</label>
         <input class="input" id="serp-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runSerpPreview()">
       </div>
       <div class="fg-full">
@@ -2090,7 +2090,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URL to check</span>
+        <label class="label" for="redir-url">URL to check</label>
         <input class="input" id="redir-url" placeholder="https://example.com/old-page" onkeydown="if(event.key==='Enter')runRedirectChain()">
       </div>
       <div class="fg-full">
@@ -2135,7 +2135,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URL</span>
+        <label class="label" for="hdrs-url">URL</label>
         <input class="input" id="hdrs-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runHttpHeaders()">
       </div>
       <div class="u-flex u-gap-8" style="align-items:flex-end">
@@ -2182,11 +2182,11 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URL</span>
+        <label class="label" for="kw-url">URL</label>
         <input class="input" id="kw-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runKeywordDensity()">
       </div>
       <div>
-        <span class="label">Top N keywords</span>
+        <label class="label" for="kw-top">Top N keywords</label>
         <input class="input" type="number" id="kw-top" value="20" min="5" max="100" style="width:100px">
       </div>
       <div style="align-self:flex-end">
@@ -2233,7 +2233,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URL</span>
+        <label class="label" for="ratio-url">URL</label>
         <input class="input" id="ratio-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCodeTextRatio()">
       </div>
       <div class="fg-full">
@@ -2281,7 +2281,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URL</span>
+        <label class="label" for="comp-url">URL</label>
         <input class="input" id="comp-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCompression()">
       </div>
       <div class="fg-full">
@@ -2325,7 +2325,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URL to validate</span>
+        <label class="label" for="schema-url">URL to validate</label>
         <input class="input" id="schema-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runSchemaValidation()">
       </div>
       <div class="fg-full">
@@ -2381,14 +2381,14 @@
     <div class="u-fw-700 u-fs-14 u-mb-12">API Key Setup</div>
     <div class="form-grid">
       <div>
-        <span class="label">IndexNow API Key</span>
+        <label class="label" for="inow-key">IndexNow API Key</label>
         <div class="u-flex u-gap-8">
           <input class="input u-flex-1" id="inow-key" placeholder="Paste key or generate one below">
           <button class="btn btn-ghost btn-sm" onclick="indexnowGenerateKey()" title="Generate a new key">Generate</button>
         </div>
       </div>
       <div>
-        <span class="label">Your Hostname</span>
+        <label class="label" for="inow-host">Your Hostname</label>
         <input class="input" id="inow-host" placeholder="example.com">
       </div>
     </div>
@@ -2400,7 +2400,7 @@
     <div class="u-fw-700 u-fs-14 u-mb-12">Submit URLs</div>
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URLs (one per line or comma-separated)</span>
+        <label class="label" for="inow-urls">URLs (one per line or comma-separated)</label>
         <textarea class="input u-resize-v u-fs-13" id="inow-urls" rows="5" placeholder="https://example.com/page-1&#10;https://example.com/page-2" style="font-family:monospace"></textarea>
       </div>
       <div class="fg-full">
@@ -2442,7 +2442,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">Sitemap URL</span>
+        <label class="label" for="smap-url">Sitemap URL</label>
         <input class="input" id="smap-url" placeholder="https://example.com/sitemap.xml" onkeydown="if(event.key==='Enter')runSitemapAudit()">
       </div>
       <div class="fg-full">
@@ -3007,7 +3007,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">URL to test (any page on the site)</span>
+        <label class="label" for="robots-test-url">URL to test (any page on the site)</label>
         <input class="input" id="robots-test-url" placeholder="https://example.com/any-page" onkeydown="if(event.key==='Enter')runRobotsTester()">
       </div>
       <div class="fg-full u-flex u-gap-8">
@@ -3059,7 +3059,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">Page URL to validate</span>
+        <label class="label" for="hreflang-val-url">Page URL to validate</label>
         <input class="input" id="hreflang-val-url" placeholder="https://example.com/en/page" onkeydown="if(event.key==='Enter')runHreflangValidator()">
       </div>
       <div class="fg-full u-flex u-gap-8">
@@ -3103,7 +3103,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">Page URL to scan</span>
+        <label class="label" for="lh-url">Page URL to scan</label>
         <input class="input" id="lh-url" placeholder="https://example.com/about" onkeydown="if(event.key==='Enter')runLinkHealth()">
       </div>
       <div class="fg-full u-flex u-gap-8">
@@ -3146,7 +3146,7 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">Site URL (root domain)</span>
+        <label class="label" for="ci-url">Site URL (root domain)</label>
         <input class="input" id="ci-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCrawlIntel()">
       </div>
       <div class="fg-full u-flex u-gap-8">
@@ -3192,11 +3192,11 @@
   <div class="card">
     <div class="form-grid">
       <div class="fg-full">
-        <span class="label">Page URL</span>
+        <label class="label" for="cs-url">Page URL</label>
         <input class="input" id="cs-url" placeholder="https://example.com/page">
       </div>
       <div class="fg-full">
-        <span class="label">Target keyword</span>
+        <label class="label" for="cs-kw">Target keyword</label>
         <input class="input" id="cs-kw" placeholder="your target keyword" onkeydown="if(event.key==='Enter')runContentSerp()">
       </div>
       <div class="fg-full u-flex u-gap-8">

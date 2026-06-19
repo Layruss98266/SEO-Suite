@@ -5669,17 +5669,17 @@ function addRobotsRule() {
       <button class="btn btn-ghost btn-sm" onclick="this.closest('.robots-rule').remove()">✕ Remove</button>
     </div>
     <div class="form-grid">
-      <div class="fg-full"><span class="label">User-agent</span>
-        <input class="input rr-ua" value="*" placeholder="* or Googlebot">
+      <div class="fg-full"><label class="label" for="rr-ua-${_robotsRuleCount}">User-agent</label>
+        <input id="rr-ua-${_robotsRuleCount}" class="input rr-ua" value="*" placeholder="* or Googlebot">
       </div>
-      <div class="fg-full"><span class="label">Disallow paths <span style="font-weight:400;color:var(--text3)">(one per line)</span></span>
-        <textarea class="input rr-disallow" rows="3" placeholder="/admin/&#10;/private/"></textarea>
+      <div class="fg-full"><label class="label" for="rr-disallow-${_robotsRuleCount}">Disallow paths <span style="font-weight:400;color:var(--text3)">(one per line)</span></label>
+        <textarea id="rr-disallow-${_robotsRuleCount}" class="input rr-disallow" rows="3" placeholder="/admin/&#10;/private/"></textarea>
       </div>
-      <div class="fg-full"><span class="label">Allow paths <span style="font-weight:400;color:var(--text3)">(optional)</span></span>
-        <textarea class="input rr-allow" rows="2" placeholder="/public/"></textarea>
+      <div class="fg-full"><label class="label" for="rr-allow-${_robotsRuleCount}">Allow paths <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+        <textarea id="rr-allow-${_robotsRuleCount}" class="input rr-allow" rows="2" placeholder="/public/"></textarea>
       </div>
-      <div><span class="label">Crawl-delay <span style="font-weight:400;color:var(--text3)">(seconds)</span></span>
-        <input class="input rr-delay" type="number" placeholder="10" min="0">
+      <div><label class="label" for="rr-delay-${_robotsRuleCount}">Crawl-delay <span style="font-weight:400;color:var(--text3)">(seconds)</span></label>
+        <input id="rr-delay-${_robotsRuleCount}" class="input rr-delay" type="number" placeholder="10" min="0">
       </div>
     </div>`;
   document.getElementById('robots-rules').appendChild(div);

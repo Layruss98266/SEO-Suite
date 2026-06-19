@@ -141,8 +141,10 @@ def _save_partial_index_report() -> tuple[str, str]:
 @bp.route("/api/index/run", methods=["POST"])
 @login_required
 def api_index_run():
-    # Quick reject without holding the lock — final atomic check happens below.
-    if _index_status["running"]:
+    # Quick reject — snapshot under lock so we don't read shared dict bare.
+    with _lock:
+        running = _index_status.get("running", False)
+    if running:
         return jsonify({"error": "Already running"}), 400
 
     try:
@@ -339,7 +341,9 @@ def api_index_cancel():
 @bp.route("/api/index/pause", methods=["POST"])
 @login_required
 def api_index_pause():
-    if not _index_status["running"]:
+    with _lock:
+        running = _index_status.get("running", False)
+    if not running:
         return jsonify({"error": "Not running"}), 400
     _index_paused.clear()  # block the worker thread
     _index_queue.put({"type": "paused"})
@@ -366,7 +370,9 @@ def api_index_errors():
 @bp.route("/api/index/retry", methods=["POST"])
 @login_required
 def api_index_retry():
-    if _index_status["running"]:
+    with _lock:
+        running = _index_status.get("running", False)
+    if running:
         return jsonify({"error": "Already running"}), 400
 
     error_urls = [

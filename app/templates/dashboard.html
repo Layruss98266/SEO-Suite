@@ -161,13 +161,13 @@
 
 <!-- ═══ HELP MODAL ═════════════════════════════════════════════════════════ -->
 <div class="modal-mask" id="help-mask" onclick="closeHelp()"></div>
-<div class="modal" id="help-modal">
+<div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
   <div class="modal-head">
     <div>
-      <div class="modal-title">SEO Suite · Help & Reference</div>
+      <div class="modal-title" id="help-modal-title">SEO Suite · Help & Reference</div>
       <div class="modal-sub">Everything you can do here · keyboard shortcuts · setup hints</div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeHelp()">✕</button>
+    <button class="btn btn-ghost btn-sm" onclick="closeHelp()" aria-label="Close">✕</button>
   </div>
   <div class="modal-tabs">
     <button class="modal-tab active" data-tab="overview" onclick="helpTab('overview',this)">Overview</button>
@@ -182,13 +182,13 @@
 
 <!-- ═══ AI CTR OPTIMIZER MODAL ═════════════════════════════════════════════ -->
 <div class="modal-mask" id="ai-opt-mask" onclick="closeAiOptModal()"></div>
-<div class="modal" id="ai-opt-modal" style="max-width:800px;width:90%">
+<div class="modal" id="ai-opt-modal" style="max-width:800px;width:90%" role="dialog" aria-modal="true" aria-labelledby="ai-opt-modal-title">
   <div class="modal-head">
     <div>
-      <div class="modal-title">🤖 AI Snippet Optimizer</div>
+      <div class="modal-title" id="ai-opt-modal-title">🤖 AI Snippet Optimizer</div>
       <div class="modal-sub" id="ai-opt-url-subtitle" style="word-break:break-all"></div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeAiOptModal()">✕</button>
+    <button class="btn btn-ghost btn-sm" onclick="closeAiOptModal()" aria-label="Close">✕</button>
   </div>
   <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
     <!-- Live Meta tags vs Top queries -->
@@ -214,13 +214,13 @@
 
 <!-- ═══ CANNIBALIZATION VISUALIZER MODAL ═════════════════════════════════════ -->
 <div class="modal-mask" id="cannibal-mask" onclick="closeCannibalModal()"></div>
-<div class="modal" id="cannibal-modal" style="max-width:850px;width:95%">
+<div class="modal" id="cannibal-modal" style="max-width:850px;width:95%" role="dialog" aria-modal="true" aria-labelledby="cannibal-modal-title">
   <div class="modal-head">
     <div>
-      <div class="modal-title">⚔️ Cannibalization Merger & Visualizer</div>
+      <div class="modal-title" id="cannibal-modal-title">⚔️ Cannibalization Merger & Visualizer</div>
       <div class="modal-sub">Side-by-side URL comparison and remediation snippets for query: <strong id="cannibal-query-title" style="color:var(--c-yellow)"></strong></div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeCannibalModal()">✕</button>
+    <button class="btn btn-ghost btn-sm" onclick="closeCannibalModal()" aria-label="Close">✕</button>
   </div>
   <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
     <!-- Side by side table -->
@@ -3346,7 +3346,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     Home
   </button>
-  <button class="mobile-nav-btn" id="mnav-uc" onclick="navTo('use-cases');mnavActive('mnav-uc')" aria-label="Run">
+  <button class="mobile-nav-btn" id="mnav-uc" onclick="navTo('uc-runner');mnavActive('mnav-uc')" aria-label="Run">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
     Run
   </button>

@@ -151,6 +151,15 @@ _lockout_lock = threading.Lock()
 def _record_failed_login(username: str) -> None:
     now = time.monotonic()
     with _lockout_lock:
+        # Cap dict size to prevent unbounded memory growth from unique-username spam.
+        if len(_failed_attempts) > 10000:
+            # Clear the oldest 5000 entries (popitem removes in LIFO order for
+            # regular dicts in CPython 3.7+; clearing oldest is best-effort here).
+            for _ in range(5000):
+                try:
+                    _failed_attempts.popitem()
+                except KeyError:
+                    break
         attempts = _failed_attempts.setdefault(username, [])
         attempts.append(now)
         _failed_attempts[username] = [t for t in attempts if now - t < _LOCKOUT_WINDOW]

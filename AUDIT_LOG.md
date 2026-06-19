@@ -28,12 +28,12 @@
 - **Issue:** Everything outside it (incl. `/api/users`, `/api/auth/totp/disable`, `/api/auth/me/delete`) bypasses CSRF. `SameSite=Lax` alone does not protect same-origin script-injected POSTs.
 - **Fix:** Deny-by-default; explicitly exempt only declared public APIs.
 
-### S3 `[HIGH]` `[ ]` TOTP endpoint brute-forceable
+### S3 `[HIGH]` `[x]` TOTP endpoint brute-forceable
 - `app/blueprints/auth_views.py` `/login/totp` POST
 - **Issue:** No rate limit, no lockout, `_record_failed_login` not called on bad TOTP. 10⁶ search space, unlimited attempts.
 - **Fix:** `@limiter.limit("5 per minute")` + call `_record_failed_login` on TOTP failure.
 
-### S4 `[HIGH]` `[ ]` Admin user mgmt unthrottled
+### S4 `[HIGH]` `[x]` Admin user mgmt unthrottled
 - `app/blueprints/auth_views.py` `/api/users` create + DELETE
 - **Fix:** `@limiter.limit("30 per minute")`
 
@@ -62,7 +62,7 @@
 - `core/auth.py` — misses `RAILWAY_ENVIRONMENT`, `HEROKU_APP_NAME`, `DYNO`, `K_SERVICE`
 - **Fix:** Mirror `_CLOUD_ENV_SIGNALS` list from `server.py`.
 
-### S11 `[MED]` `[ ]` CI actions still tag-pinned — L-9 regression
+### S11 `[MED]` `[x]` CI actions still tag-pinned — L-9 regression
 - `.github/workflows/ci.yml` — uses `@v4`, `@v5` tags, NOT 40-char SHA
 - **Issue:** Commit `14d112b` claims L-9 hash-pinning is "complete" — it is not. Doc/commit drift.
 - **Fix:** Re-pin every action to full SHA digest.
@@ -86,7 +86,7 @@
 - `app/blueprints/auth_views.py` — whitespace / unicode not stripped before regex validation.
 - **Fix:** Tighten to `r"^/[A-Za-z0-9/_\-?=&%.+#]*$"` and strip/normalize first.
 
-### S17 `[LOW]` `[ ]` pip-audit continue-on-error — CVEs don't block
+### S17 `[LOW]` `[x]` pip-audit continue-on-error — CVEs don't block
 - `.github/workflows/ci.yml`
 - **Fix:** Remove `continue-on-error` for direct-dep CVEs.
 
@@ -94,7 +94,7 @@
 - `core/notifier.py` — STARTTLS unconditional; falls back silently to cleartext if server rejects.
 - **Fix:** Gate on config or fail hard.
 
-### S19 `[LOW]` `[ ]` _failed_attempts unbounded in-memory dict
+### S19 `[LOW]` `[x]` _failed_attempts unbounded in-memory dict
 - `core/auth.py` — spam unique usernames → unbounded memory growth.
 - **Fix:** Use a TTL cache or cap max size.
 
@@ -106,12 +106,12 @@
 
 ## 🐛 CODE QUALITY
 
-### C1 `[CRIT]` `[ ]` ThreadPoolExecutor cancellation broken
+### C1 `[CRIT]` `[x]` ThreadPoolExecutor cancellation broken
 - `app/blueprints/audit.py:2913`
 - **Issue:** `f.cancel()` + `break` from `as_completed` doesn't stop in-flight futures. `ThreadPoolExecutor.__exit__` blocks until all submitted tasks finish; `cancel()` only works on not-yet-started tasks.
 - **Fix:** `_ex.shutdown(wait=False, cancel_futures=True)` (Python 3.9+) + check cancel flag inside `_audit_one`.
 
-### C2 `[CRIT]` `[ ]` _index_status read without lock
+### C2 `[CRIT]` `[x]` _index_status read without lock
 - `app/blueprints/indexing.py:18162, 18144, 18171` + `audit.py:22803, 23075`
 - **Issue:** Routes read `_index_status["running"]` without `_lock` while worker thread writes to it. Race condition.
 - **Fix:** Wrap reads in `with _lock:` or snapshot before use.
@@ -121,7 +121,7 @@
 - **Issue:** `f"GSC Error: {e}"` leaks cred path / quota details into report HTML.
 - **Fix:** Generic `"GSC check failed"` + `logger.exception(e)`.
 
-### C4 `[HIGH]` `[ ]` Two CFG sources of truth
+### C4 `[HIGH]` `[x]` Two CFG sources of truth
 - `app.state.CFG` and `core.checker.CFG` manually synced in `settings.py:18451-18452`.
 - **Fix:** Remove `_checker_mod.CFG` reference; always read from `app.state.CFG` directly.
 
@@ -140,7 +140,7 @@
 - **Issue:** `sum(len(a["issues"]) ...)` → KeyError if partial audit lacks `issues`. Silently skipped by outer try/except.
 - **Fix:** `a.get("issues", [])` (consistent with line 22787).
 
-### C8 `[HIGH]` `[ ]` CLI input() in Flask import path
+### C8 `[HIGH]` `[x]` CLI input() in Flask import path
 - `core/checker.py:30055`
 - **Issue:** `input()` prompt inside module imported by every Flask route. Dead + confusing in web context.
 - **Fix:** Move CLI helpers to `core/cli.py`.
@@ -164,7 +164,7 @@
 - **Issue:** `[f.result() for f in [ex.submit(fn) for fn in fns]]` — collects in submit order; slow first future blocks all.
 - **Fix:** Use `executor.map()` or `as_completed`.
 
-### C13 `[MED]` `[ ]` save_progress called per-URL — O(N²) disk writes
+### C13 `[MED]` `[x]` save_progress called per-URL — O(N²) disk writes
 - `core/checker.py:30774`
 - **Issue:** Full JSON serialise + `os.replace` on every single URL. 500 URLs = ~500 full writes.
 - **Fix:** Batch every N URLs (e.g. 10) or write only on completion.
@@ -223,7 +223,7 @@
 
 ## 🎨 UI / UX
 
-### U1 `[CRIT]` `[ ]` 4 undefined CSS variables — silent rendering failures
+### U1 `[CRIT]` `[x]` 4 undefined CSS variables — silent rendering failures
 - `app/static/css/dashboard.css` + `app/templates/dashboard.html`
 - **Variables:** `--surface-1`, `--bg-2`, `--c-surface2`, `--c-border2`
 - **Issue:** Used throughout but never defined in `:root` or `body.dark`. Silently inherit `initial` (transparent/0) in all themes.
@@ -246,16 +246,16 @@
 - `#6366f1` in both `app/static/css/site.css` and `app/static/css/dashboard.css`
 - **Fix:** Single `tokens.css` imported by both, or ensure both files reference the same CSS var.
 
-### U6 `[MED]` `[ ]` Mobile bottom nav dead link
+### U6 `[MED]` `[x]` Mobile bottom nav dead link
 - `app/templates/dashboard.html` — `navTo('use-cases')` references non-existent panel. All use-case panels are under `sbg-usecases`.
 - **Fix:** Correct `navTo()` call to match actual panel id.
 
-### U7 `[MED]` `[ ]` Modal missing ARIA roles
+### U7 `[MED]` `[x]` Modal missing ARIA roles
 - `app/templates/dashboard.html`
 - **Issue:** No `role="dialog"`, `aria-modal="true"` on modals. Close buttons lack `aria-label="Close"`.
 - **Fix:** Add ARIA attributes to all modal instances.
 
-### U8 `[MED]` `[ ]` features.html no H2 groupings — flat 17-card grid
+### U8 `[MED]` `[x]` features.html no H2 groupings — flat 17-card grid
 - `app/templates/site/features.html`
 - **Issue:** 17 cards in undifferentiated flat grid. No semantic structure. No scanning hierarchy.
 - **Fix:** Group into 4–5 categories with H2 section headers.
@@ -264,7 +264,7 @@
 - `dashboard.css` — `--c-blue` defined twice, `.c-purple` defined twice with different values.
 - **Fix:** Deduplicate.
 
-### U10 `[LOW]` `[ ]` active-tab-btn class undefined
+### U10 `[LOW]` `[x]` active-tab-btn class undefined
 - Referenced in `dashboard.html` with no CSS definition.
 - **Fix:** Define in `dashboard.css` or remove from HTML.
 
@@ -299,7 +299,7 @@
 - **Issue:** "Open the dashboard" + "Create account" both styled `btn-ghost` identically.
 - **Fix:** One primary (`btn-primary`) + one secondary (`btn-ghost`).
 
-### CT5 `[MED]` `[ ]` Pricing tier 2 label confusing
+### CT5 `[MED]` `[x]` Pricing tier 2 label confusing
 - `app/templates/site/pricing.html`
 - **Current:** "Bring your own keys / API / usage" — no price shown.
 - **Fix:** "API-Connected" + "~$0–$10/mo depending on API tier"
@@ -354,7 +354,7 @@
 - REST API endpoints exist (`/api/audit/start`, `/api/index/partial`) but undocumented.
 - **Fix:** "API Reference" tab in Help modal + webhook URL field in Settings.
 
-### P5 `[MED]` `[ ]` URL limit resets to 10 every run (Anika)
+### P5 `[MED]` `[x]` URL limit resets to 10 every run (Anika)
 - `saveProfile` / `loadProfile` don't persist `aud-limit` or `aud-workers`.
 - **Fix:** Include in profile save/load.
 
@@ -394,11 +394,11 @@
 ## Fix Progress Summary
 | Category | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| Security | 20 | 2 | 18 |
-| Code Quality | 25 | 6 | 19 |
-| UI/UX | 12 | 3 | 9 |
-| Content | 11 | 6 | 5 |
-| Persona/Product | 9 | 0 | 9 |
-| **Total** | **77** | **17** | **60** |
+| Security | 20 | 7 | 13 |
+| Code Quality | 25 | 11 | 14 |
+| UI/UX | 12 | 8 | 4 |
+| Content | 11 | 7 | 4 |
+| Persona/Product | 9 | 1 | 8 |
+| **Total** | **77** | **34** | **43** |
 
-_Last updated: 2026-06-19 — commit `afa21e9`_
+_Last updated: 2026-06-19 — commit `3312fc4` + second batch_

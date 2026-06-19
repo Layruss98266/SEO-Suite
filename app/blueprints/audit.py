@@ -113,7 +113,9 @@ def _save_partial_audit_report() -> tuple[str, str]:
 @bp.route("/api/audit/run", methods=["POST"])
 @login_required
 def api_audit_run():
-    if _audit_status["running"]:
+    with _lock:
+        running = _audit_status.get("running", False)
+    if running:
         return jsonify({"error": "Already running"}), 400
 
     try:
@@ -223,8 +225,7 @@ def api_audit_run():
                 fut_to_url = {_ex.submit(_audit_one, u): u for u in urls}
                 for fut in _ac(fut_to_url):
                     if _audit_cancel.is_set():
-                        for f in fut_to_url:
-                            f.cancel()
+                        _ex.shutdown(wait=False, cancel_futures=True)
                         break
                     url = fut_to_url[fut]
                     try:
@@ -385,7 +386,9 @@ def api_audit_cancel():
 @bp.route("/api/audit/pause", methods=["POST"])
 @login_required
 def api_audit_pause():
-    if not _audit_status["running"]:
+    with _lock:
+        running = _audit_status.get("running", False)
+    if not running:
         return jsonify({"error": "Not running"}), 400
     _audit_paused.clear()
     _audit_queue.put({"type": "paused"})

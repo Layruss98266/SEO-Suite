@@ -176,7 +176,7 @@ def api_settings():
         refreshed = load_config()
         state.CFG.clear()
         state.CFG.update(refreshed)
-        _checker_mod.CFG = state.CFG
+        # checker.py reads CFG lazily via app.state at call time — no manual sync needed
         _audit_mod.CFG = state.CFG
         resp = {"message": "Settings saved ✓"}
         if rejected:

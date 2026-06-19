@@ -3469,7 +3469,8 @@ function saveProfile(){
     use_cases: [...selectedUC],
     tasks: flatTasks,
     keywords: document.getElementById('aud-kw').value,
-    limit: +document.getElementById('aud-limit').value||10,
+    limit: document.getElementById('aud-limit')?.value || '50',
+    workers: document.getElementById('aud-workers')?.value || '3',
   };
   fetch('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
     .then(r=>r.json()).then(d=>{
@@ -3495,7 +3496,8 @@ function loadProfile(name){
       });
     }
     if(p.keywords) document.getElementById('aud-kw').value=p.keywords;
-    if(p.limit) document.getElementById('aud-limit').value=p.limit;
+    if(p.limit) { const el=document.getElementById('aud-limit'); if(el) el.value=p.limit; }
+    if(p.workers) { const el=document.getElementById('aud-workers'); if(el) el.value=p.workers; }
     renderUCSelector();
     document.getElementById('kw-row').style.display=selectedUC.has('rankings')?'block':'none';
     toast(`Loaded profile "${name}"`,'info');

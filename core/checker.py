@@ -130,18 +130,38 @@ def load_config() -> dict:
 
     return cfg
 
+def _get_cfg() -> dict:
+    """Return the live config dict.
+
+    Prefers ``app.state.CFG`` (kept up-to-date by the settings save handler)
+    so that config changes made via the web UI take effect immediately without
+    restarting the process.  Falls back to ``load_config()`` when running as a
+    standalone CLI (no Flask app present).
+    """
+    try:
+        from app.state import CFG as _app_cfg
+        return _app_cfg
+    except ImportError:
+        return load_config()
+
+
+# Module-level alias kept for backward-compatibility with any import that does
+# ``from core.checker import CFG``.  Callers inside this module use _get_cfg().
 CFG = load_config()
 
 def _t(key: str, default: Any) -> Any:
-    """Read a value from CFG['timings'], falling back to default."""
-    return CFG.get("timings", {}).get(key, default)
+    """Read a value from the live config's 'timings', falling back to default."""
+    return _get_cfg().get("timings", {}).get(key, default)
 
 # ── Beep ──────────────────────────────────────────────────────────────────────
 def beep() -> None:
-    try:
-        import winsound
-        for _ in range(3): winsound.Beep(1000, 400); time.sleep(0.2)
-    except Exception:
+    if sys.platform == "win32":
+        try:
+            import winsound
+            for _ in range(3): winsound.Beep(1000, 400); time.sleep(0.2)
+        except Exception:
+            print("\a\a\a")
+    else:
         print("\a\a\a")
 
 
@@ -360,6 +380,8 @@ def load_from_csv_excel(file_path: str) -> list[str]:
     return safe_urls
 
 def get_urls_from_user() -> list[str]:
+    if not sys.stdin.isatty():
+        raise RuntimeError("CLI input not available in web context")
     print(f"\n{BOLD}How do you want to provide URLs?{RESET}")
     print("  1. Sitemap URL")
     print("  2. Multiple sitemap URLs (comma-separated)")
@@ -409,8 +431,8 @@ def get_url_type(url: str) -> str:
     return seg.replace("-", " ").title() if seg else "Other"
 
 def get_priority_score(url: str) -> str:
-    high = CFG.get("priority", {}).get("high_value_patterns", ["/category/", "/course/"])
-    low  = CFG.get("priority", {}).get("low_value_patterns",  ["/tag/", "/author/"])
+    high = _get_cfg().get("priority", {}).get("high_value_patterns", ["/category/", "/course/"])
+    low  = _get_cfg().get("priority", {}).get("low_value_patterns",  ["/tag/", "/author/"])
     depth = get_crawl_depth(url)
     if any(p in url for p in high):        return "High"
     if any(p in url for p in low):         return "Low"
@@ -504,7 +526,7 @@ def build_gsc_service() -> Any | None:
     try:
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
-        creds_file = CFG.get("gsc", {}).get("credentials_file", "gsc_credentials.json")
+        creds_file = _get_cfg().get("gsc", {}).get("credentials_file", "gsc_credentials.json")
         creds = service_account.Credentials.from_service_account_file(
             creds_file,
             scopes=["https://www.googleapis.com/auth/webmasters.readonly"]
@@ -1023,7 +1045,7 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
     # for URLs GSC can't answer (properties the service account doesn't own) or
     # when GSC isn't set up at all. `use_gsc=None` means "auto-detect from config".
     if use_gsc is None:
-        use_gsc = bool(CFG.get("gsc", {}).get("enabled"))
+        use_gsc = bool(_get_cfg().get("gsc", {}).get("enabled"))
     gsc_service = build_gsc_service() if use_gsc else None
     if use_gsc and gsc_service is None:
         use_gsc = False  # GSC requested but unavailable — fall back to browser
@@ -1045,6 +1067,7 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
     all_rows: list     = []
     current_results    = dict(saved)
     failed_urls: list  = []
+    _save_counter      = [0]  # mutable counter for batching progress writes
 
     # Seed resumed results (only URLs in this run)
     for url in urls:
@@ -1060,8 +1083,8 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
                          "url_type": get_url_type(url), "checked_at": "resumed"})
 
     # gsc_service was already resolved at the top of run_check (GSC-first logic).
-    proxy_list     = CFG.get("proxies", [])
-    n_parallel     = min(CFG.get("parallel_tabs", 1), len(remaining)) if remaining else 1
+    proxy_list     = _get_cfg().get("proxies", [])
+    n_parallel     = min(_get_cfg().get("parallel_tabs", 1), len(remaining)) if remaining else 1
     delay_state    = {"base": _t("delay_base_secs", 3.0), "count": 0}
 
     _result_lock = threading.Lock()
@@ -1083,8 +1106,10 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
             num = len(all_rows) + 1
             all_rows.append({"num": num, "url": url, "status": status, "priority": priority,
                              "depth": depth, "url_type": url_type, "checked_at": ts})
-            # Merge into full saved file so URLs outside this run's limit are preserved
-            save_progress(pf, {**full_saved, **current_results})
+            # Batch disk writes: persist every 10 URLs to avoid N² I/O on large sitemaps
+            _save_counter[0] += 1
+            if _save_counter[0] % 10 == 0:
+                save_progress(pf, {**full_saved, **current_results})
 
         if progress_cb:
             progress_cb(num, len(urls), url, status)
@@ -1171,7 +1196,9 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
                                     counts[status] = counts.get(status, 0) + 1
                                     row["status"] = status
                                     current_results[url] = status
-                                    save_progress(pf, {**full_saved, **current_results})
+                                    _save_counter[0] += 1
+                                    if _save_counter[0] % 10 == 0:
+                                        save_progress(pf, {**full_saved, **current_results})
                                     break
                             with _print_lock:
                                 print(f"  [retry] {url} → {status}")
@@ -1197,7 +1224,7 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
 # ══════════════════════════════════════════════════════════════════════════════
 
 def scheduled_run():
-    cfg  = CFG.get("schedule", {})
+    cfg  = _get_cfg().get("schedule", {})
     surl = cfg.get("sitemap_url", "")
     if not surl:
         print(f"{RED}[SCHEDULED] No sitemap_url in config — skipping run{RESET}")
@@ -1210,7 +1237,7 @@ def scheduled_run():
 def start_scheduler():
     if not HAS_SCHEDULE:
         print(f"{RED}schedule not installed{RESET}"); return
-    cfg      = CFG.get("schedule", {})
+    cfg      = _get_cfg().get("schedule", {})
     interval = cfg.get("interval", "daily")
     t        = cfg.get("time", "08:00")
     if interval == "daily":
@@ -1319,12 +1346,12 @@ def main():
         except ValueError: remaining = remaining[:10]
 
     # Options
-    use_gsc  = CFG.get("gsc", {}).get("enabled") and input("Use GSC API? (y/n): ").strip().lower() == "y"
+    use_gsc  = _get_cfg().get("gsc", {}).get("enabled") and input("Use GSC API? (y/n): ").strip().lower() == "y"
     quiet    = input("Show only Not Indexed? (y/n): ").strip().lower() == "y"
     headless = input("Run browser in background? (y/n): ").strip().lower() == "y"
 
     # Schedule
-    if CFG.get("schedule", {}).get("enabled"):
+    if _get_cfg().get("schedule", {}).get("enabled"):
         if input("Run on schedule instead? (y/n): ").strip().lower() == "y":
             start_scheduler(); return
 

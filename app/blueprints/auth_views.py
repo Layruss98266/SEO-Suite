@@ -371,7 +371,8 @@ def login_totp():
 
         if not ok:
             # Record failure in the audit log so brute-force attempts are visible.
-            from core.auth import _record_attempt
+            from core.auth import _record_attempt, _record_failed_login
+            _record_failed_login(pending_username)
             _record_attempt(
                 pending_username, success=False,
                 ip=request.remote_addr,
@@ -1084,6 +1085,8 @@ def register(app, limiter) -> None:
     app.register_blueprint(bp)
     limiter.limit("5 per minute")(app.view_functions["auth_views.login"])
     limiter.limit("10 per minute")(app.view_functions["auth_views.signup"])
+    limiter.limit("5 per minute")(app.view_functions["auth_views.login_totp"])
+    limiter.limit("30 per minute")(app.view_functions["auth_views.api_users_create"])
     limiter.limit("5 per 10 minute")(app.view_functions["auth_views.api_request_password_reset"])
     limiter.limit("10 per minute")(app.view_functions["auth_views.api_reset_password"])
     limiter.limit("10 per minute")(app.view_functions["auth_views.api_verify_email"])

@@ -159,183 +159,216 @@ def api_audit_run():
     current_cfg = load_config()
     cfg_with_kw = {**current_cfg, "track_keywords": keywords}
 
-    def run():
-        try:
-            # Fetch URLs inside the thread — keeps the HTTP response fast.
-            if input_type == "sitemap":
-                urls = fetch_sitemap_urls(raw)
-            elif input_type == "domain":
-                urls = fetch_from_domain(raw)
-            elif input_type == "crawl":
-                urls = crawl_site(
-                    raw,
-                    max_pages=limit,
-                    max_depth=_int(data, "crawl_depth", 2, 1, 20),
-                )
-            elif input_type in ("paste", "list"):
-                urls = _safe_public_url_list(raw)
-            else:  # csv / xlsx — raw is the uploaded file path
-                safe = _safe_upload_path(raw)
-                if safe is None:
-                    _audit_queue.put(
-                        {
-                            "type": "error",
-                            "message": "CSV path must point to an uploaded file in data/uploads/",
-                        }
-                    )
-                    return
-                urls = load_from_csv_excel(str(safe))
+    record_audit_event("started")
+    threading.Thread(
+        target=_run_audit_thread,
+        kwargs={
+            "input_type": input_type,
+            "raw": raw,
+            "limit": limit,
+            "pattern": pattern,
+            "use_cases": use_cases,
+            "tasks": tasks,
+            "workers": workers,
+            "current_cfg": current_cfg,
+            "cfg_with_kw": cfg_with_kw,
+            "extra_int_data": data,
+        },
+        daemon=True,
+    ).start()
+    return jsonify({"total": estimated_total, "started": True, "workers": workers})
 
-            urls = filter_urls(urls, pattern)[:limit]
-            if not urls:
+
+def _run_audit_thread(
+    *,
+    input_type: str,
+    raw: str,
+    limit: int,
+    pattern: str,
+    use_cases,
+    tasks,
+    workers: int,
+    current_cfg: dict,
+    cfg_with_kw: dict,
+    extra_int_data: dict,
+) -> None:
+    """Background worker for /api/audit/run.
+
+    Extracted from the route handler so the audit pipeline is testable in
+    isolation and so the closure over request-scope locals is explicit.
+    """
+    try:
+        # Fetch URLs inside the thread — keeps the HTTP response fast.
+        if input_type == "sitemap":
+            urls = fetch_sitemap_urls(raw)
+        elif input_type == "domain":
+            urls = fetch_from_domain(raw)
+        elif input_type == "crawl":
+            urls = crawl_site(
+                raw,
+                max_pages=limit,
+                max_depth=_int(extra_int_data, "crawl_depth", 2, 1, 20),
+            )
+        elif input_type in ("paste", "list"):
+            urls = _safe_public_url_list(raw)
+        else:  # csv / xlsx — raw is the uploaded file path
+            safe = _safe_upload_path(raw)
+            if safe is None:
                 _audit_queue.put(
                     {
                         "type": "error",
-                        "message": "No URLs found — check your sitemap URL or filter pattern",
+                        "message": "CSV path must point to an uploaded file in data/uploads/",
                     }
                 )
                 return
+            urls = load_from_csv_excel(str(safe))
 
-            with _lock:
-                _audit_status["total"] = len(urls)
-
-            from tools.phase3 import audit_site as p3_site
-
-            gsc_service = (
-                build_gsc_service() if current_cfg.get("gsc", {}).get("enabled") else None
-            )
-            audits = []
-            p3_site_data = []
-
-            if gsc_service and urls:
-                _p = urlparse(urls[0])
-                site_url = f"{_p.scheme}://{_p.netloc}/" if _p.netloc else ""
-                p3_site_data = p3_site(gsc_service, site_url, urls[:5])
-
-            # Monotonic completion counter for live progress payloads.
-            # itertools.count() is thread-safe under CPython's GIL for next()
-            # and avoids the dict-as-mutable-int hack we used previously.
-            i_counter = itertools.count(1)
-
-            def _audit_one(u):
-                if _audit_cancel.is_set():
-                    return None
-                _audit_paused.wait()
-                if _audit_cancel.is_set():
-                    return None
-                return audit_single_url(
-                    u, cfg_with_kw, gsc_service, use_cases=use_cases, tasks=tasks
-                )
-
-            with ThreadPoolExecutor(max_workers=workers) as _ex:
-                fut_to_url = {_ex.submit(_audit_one, u): u for u in urls}
-                for fut in _ac(fut_to_url):
-                    if _audit_cancel.is_set():
-                        _ex.shutdown(wait=False, cancel_futures=True)
-                        break
-                    url = fut_to_url[fut]
-                    try:
-                        audit = fut.result()
-                    except Exception as ex:
-                        logger.error("audit error %s: %s", url, ex)
-                        audit = None
-                    if audit is None:
-                        continue
-                    audits.append(audit)
-                    with _lock:
-                        # Bounded live state — past MAX_AUDIT_RESULTS new
-                        # entries stop accumulating to keep memory flat on
-                        # huge sitemaps.
-                        if len(_audit_partial) < MAX_AUDIT_RESULTS:
-                            _audit_partial.append(
-                                {
-                                    "url": url,
-                                    "score": audit.get("score", 0),
-                                    "issues": len(audit.get("issues", [])),
-                                    "warnings": len(audit.get("warnings", [])),
-                                }
-                            )
-                        if len(_audit_full_results) < MAX_AUDIT_RESULTS:
-                            _audit_full_results.append(audit)
-                    i = next(i_counter)
-                    # Slim per-result payload — drawer needs tool/status/message/value.
-                    slim_results = [
-                        {
-                            "tool": r.get("tool"),
-                            "status": r.get("status"),
-                            "message": r.get("message", ""),
-                            "value": r.get("value"),
-                            "details": r.get("details") or {},
-                        }
-                        for r in audit.get("results", [])
-                    ]
-                    _audit_queue.put(
-                        {
-                            "type": "progress",
-                            "num": i,
-                            "total": len(urls),
-                            "url": url,
-                            "score": audit.get("score", 0),
-                            "issues": len(audit.get("issues", [])),
-                            "warnings": len(audit.get("warnings", [])),
-                            "results": slim_results,
-                            "counts": audit.get("counts", {}),
-                        }
-                    )
-                    with _lock:
-                        _audit_status["done"] = i
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            html_path = REPORTS_DIR / f"seo_audit_{timestamp}.html"
-            excel_path = REPORTS_DIR / f"seo_audit_{timestamp}.xlsx"
-            _json_path = REPORTS_DIR / f"seo_audit_{timestamp}.json"
-
-            # Write HTML first — it is the primary file. JSON and Excel are
-            # companions; they must not be written before HTML so a crash
-            # between writes cannot leave orphaned sidecars without a matching
-            # HTML.
-            html_content = generate_html_report(audits, p3_site_data, timestamp)
-            html_path.write_text(html_content, encoding="utf-8")
-
-            xlsx_ok = False
-            try:
-                generate_excel_report(audits, excel_path)
-                xlsx_ok = True
-            except Exception as _xe:
-                logger.error("Excel report failed (non-fatal): %s", _xe)
-
-            try:
-                _sidecar = {
-                    "avg_score": round(sum(a["score"] for a in audits) / len(audits))
-                    if audits
-                    else 0,
-                    "total_issues": sum(len(a.get("issues", [])) for a in audits),
-                    "total_warnings": sum(len(a.get("warnings", [])) for a in audits),
-                    "urls": len(audits),
-                }
-                _json_path.write_text(json.dumps(_sidecar), encoding="utf-8")
-            except Exception as _je:
-                logger.warning("JSON sidecar write failed: %s", _je)
-
+        urls = filter_urls(urls, pattern)[:limit]
+        if not urls:
             _audit_queue.put(
                 {
-                    "type": "done",
-                    "report": str(html_path),
-                    "xlsx": str(excel_path) if xlsx_ok else "",
+                    "type": "error",
+                    "message": "No URLs found — check your sitemap URL or filter pattern",
                 }
             )
-            record_audit_event("completed")
-        except Exception as e:
-            logger.error("Audit thread error: %s", e, exc_info=True)
-            _audit_queue.put({"type": "error", "message": str(e)})
-            record_audit_event("error")
-        finally:
-            with _lock:
-                _audit_status["running"] = False
+            return
 
-    record_audit_event("started")
-    threading.Thread(target=run, daemon=True).start()
-    return jsonify({"total": estimated_total, "started": True, "workers": workers})
+        with _lock:
+            _audit_status["total"] = len(urls)
+
+        from tools.phase3 import audit_site as p3_site
+
+        gsc_service = (
+            build_gsc_service() if current_cfg.get("gsc", {}).get("enabled") else None
+        )
+        audits = []
+        p3_site_data = []
+
+        if gsc_service and urls:
+            _p = urlparse(urls[0])
+            site_url = f"{_p.scheme}://{_p.netloc}/" if _p.netloc else ""
+            p3_site_data = p3_site(gsc_service, site_url, urls[:5])
+
+        # Monotonic completion counter for live progress payloads.
+        # itertools.count() is thread-safe under CPython's GIL for next()
+        # and avoids the dict-as-mutable-int hack we used previously.
+        i_counter = itertools.count(1)
+
+        def _audit_one(u):
+            if _audit_cancel.is_set():
+                return None
+            _audit_paused.wait()
+            if _audit_cancel.is_set():
+                return None
+            return audit_single_url(
+                u, cfg_with_kw, gsc_service, use_cases=use_cases, tasks=tasks
+            )
+
+        with ThreadPoolExecutor(max_workers=workers) as _ex:
+            fut_to_url = {_ex.submit(_audit_one, u): u for u in urls}
+            for fut in _ac(fut_to_url):
+                if _audit_cancel.is_set():
+                    _ex.shutdown(wait=False, cancel_futures=True)
+                    break
+                url = fut_to_url[fut]
+                try:
+                    audit = fut.result()
+                except Exception as ex:
+                    logger.error("audit error %s: %s", url, ex)
+                    audit = None
+                if audit is None:
+                    continue
+                audits.append(audit)
+                with _lock:
+                    # Bounded live state — past MAX_AUDIT_RESULTS new
+                    # entries stop accumulating to keep memory flat on
+                    # huge sitemaps.
+                    if len(_audit_partial) < MAX_AUDIT_RESULTS:
+                        _audit_partial.append(
+                            {
+                                "url": url,
+                                "score": audit.get("score", 0),
+                                "issues": len(audit.get("issues", [])),
+                                "warnings": len(audit.get("warnings", [])),
+                            }
+                        )
+                    if len(_audit_full_results) < MAX_AUDIT_RESULTS:
+                        _audit_full_results.append(audit)
+                i = next(i_counter)
+                # Slim per-result payload — drawer needs tool/status/message/value.
+                slim_results = [
+                    {
+                        "tool": r.get("tool"),
+                        "status": r.get("status"),
+                        "message": r.get("message", ""),
+                        "value": r.get("value"),
+                        "details": r.get("details") or {},
+                    }
+                    for r in audit.get("results", [])
+                ]
+                _audit_queue.put(
+                    {
+                        "type": "progress",
+                        "num": i,
+                        "total": len(urls),
+                        "url": url,
+                        "score": audit.get("score", 0),
+                        "issues": len(audit.get("issues", [])),
+                        "warnings": len(audit.get("warnings", [])),
+                        "results": slim_results,
+                        "counts": audit.get("counts", {}),
+                    }
+                )
+                with _lock:
+                    _audit_status["done"] = i
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        html_path = REPORTS_DIR / f"seo_audit_{timestamp}.html"
+        excel_path = REPORTS_DIR / f"seo_audit_{timestamp}.xlsx"
+        _json_path = REPORTS_DIR / f"seo_audit_{timestamp}.json"
+
+        # Write HTML first — it is the primary file. JSON and Excel are
+        # companions; they must not be written before HTML so a crash
+        # between writes cannot leave orphaned sidecars without a matching
+        # HTML.
+        html_content = generate_html_report(audits, p3_site_data, timestamp)
+        html_path.write_text(html_content, encoding="utf-8")
+
+        xlsx_ok = False
+        try:
+            generate_excel_report(audits, excel_path)
+            xlsx_ok = True
+        except Exception as _xe:
+            logger.error("Excel report failed (non-fatal): %s", _xe)
+
+        try:
+            _sidecar = {
+                "avg_score": round(sum(a["score"] for a in audits) / len(audits))
+                if audits
+                else 0,
+                "total_issues": sum(len(a.get("issues", [])) for a in audits),
+                "total_warnings": sum(len(a.get("warnings", [])) for a in audits),
+                "urls": len(audits),
+            }
+            _json_path.write_text(json.dumps(_sidecar), encoding="utf-8")
+        except Exception as _je:
+            logger.warning("JSON sidecar write failed: %s", _je)
+
+        _audit_queue.put(
+            {
+                "type": "done",
+                "report": str(html_path),
+                "xlsx": str(excel_path) if xlsx_ok else "",
+            }
+        )
+        record_audit_event("completed")
+    except Exception as e:
+        logger.error("Audit thread error: %s", e, exc_info=True)
+        _audit_queue.put({"type": "error", "message": str(e)})
+        record_audit_event("error")
+    finally:
+        with _lock:
+            _audit_status["running"] = False
 
 
 # ── SSE stream ────────────────────────────────────────────────────────────────

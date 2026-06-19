@@ -67,8 +67,9 @@
 - **Issue:** Commit `14d112b` claims L-9 hash-pinning is "complete" — it is not. Doc/commit drift.
 - **Fix:** Re-pin every action to full SHA digest.
 
-### S12 `[LOW]` `[ ]` Dockerfile base image tag-pinned not digest
+### S12 `[LOW]` `[x]` Dockerfile base image tag-pinned not digest
 - **Fix:** Add `@sha256:…` to base image.
+- **Resolved 2026-06-19:** `Dockerfile` now pins `mcr.microsoft.com/playwright/python:v1.48.0-jammy@sha256:b4bedaaee2a9d1ca83dc30ec8cae65105151dbe7ba41be0154cee6a6a7cdc669`. Refresh instructions documented in the Dockerfile header.
 
 ### S13 `[LOW]` `[ ]` flask-limiter memory:// is per-worker
 - `app/server.py` — multi-worker deploy = independent rate-limit buckets per worker.

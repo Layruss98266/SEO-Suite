@@ -1,7 +1,20 @@
 # SEO Suite — production image.
 # Based on the official Playwright Python image so the indexing feature's
 # Chromium browser is available out of the box.
-FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy
+#
+# Base image is pinned by SHA256 digest (S12) so rebuilds are reproducible
+# and protected against tag-mutation supply-chain attacks. The tag is kept
+# in the reference for human readability; the digest is what Docker resolves.
+#
+# To refresh the digest after a deliberate base-image upgrade, run:
+#   docker pull mcr.microsoft.com/playwright/python:<new-tag>
+#   docker inspect --format='{{index .RepoDigests 0}}' \
+#     mcr.microsoft.com/playwright/python:<new-tag>
+# or, without Docker installed:
+#   curl -sI -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
+#     https://mcr.microsoft.com/v2/playwright/python/manifests/<new-tag> \
+#     | grep -i docker-content-digest
+FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy@sha256:b4bedaaee2a9d1ca83dc30ec8cae65105151dbe7ba41be0154cee6a6a7cdc669
 
 WORKDIR /app
 

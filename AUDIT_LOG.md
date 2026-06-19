@@ -395,12 +395,12 @@
 | Category | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
 | Security | 20 | 7 | 13 |
-| Code Quality | 25 | 11 | 14 |
+| Code Quality | 25 | 12 | 13 |
 | UI/UX | 12 | 8 | 4 |
 | Content | 11 | 7 | 4 |
 | Persona/Product | 9 | 1 | 8 |
 | UI/UX + NEW | 13 | 9 | 4 |
-| **Total** | **78** | **36** | **42** |
+| **Total** | **79** | **37** | **42** |
 
 ### U-NEW2 `[LOW]` `[x]` Nav logo shows "v?" — version missing from /health
 - `app/blueprints/misc.py` `/health` endpoint
@@ -408,6 +408,12 @@
 - **Fix:** Added `"version": VERSION` to `/health` response.
 - **Commit:** `506941d`
 
+### C-NEW1 `[HIGH]` `[x]` generate_sitemap crashes on plain-string URL entries
+- `tools/generators.py` `generate_sitemap()` ~L765
+- **Issue:** `AttributeError: 'str' object has no attribute 'get'` when the `urls` list contains plain strings instead of dicts. `entry.get("url")` fails on a str.
+- **Fix:** Added `if isinstance(entry, str): entry = {"url": entry}` guard before the `.get()` call.
+- **Commit:** `7593a1f`
+
 ---
 
-_Last updated: 2026-06-19 — commit `506941d` (35/77 + 1 new = 36 fixed)_
+_Last updated: 2026-06-19 — commit `7593a1f` (36/78 + 1 new = 37 fixed)_

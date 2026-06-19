@@ -6460,3 +6460,210 @@ function clearContentSerp() {
   _clearVal('cs-url', 'cs-kw');
   _hide('cs-result', 'cs-error');
 }
+
+
+// ── Tool: Page Type Detector ─────────────────────────────────────────────────
+async function runPageType() {
+  const url = document.getElementById('pt-url').value.trim();
+  if (!url) { toast('Enter a URL first', 'warn'); return; }
+  const btn = document.getElementById('pt-btn');
+  const errEl = document.getElementById('pt-error');
+  const resEl = document.getElementById('pt-result');
+  resEl.style.display = 'none';
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Detecting…';
+  try {
+    const r = await fetch('/api/tools/page_type', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed');
+    renderPageType(d);
+  } catch(e) {
+    errEl.textContent = '✖ ' + e.message;
+    errEl.style.display = '';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Detect Page Type';
+  }
+}
+function renderPageType(d) {
+  const iconMap = { course:'🎓', blog:'📝', product:'🛒', generic:'📄' };
+  const icon = iconMap[d.type] || '📄';
+  const conf = Math.round((d.confidence || 0) * 100);
+  const confColor = conf >= 70 ? 'var(--success)' : conf >= 40 ? 'var(--warn)' : 'var(--danger)';
+  const signals = (d.signals || []).map(s => `<li style="padding:4px 0;font-size:13px;color:var(--text2)">• ${escTool(typeof s === 'string' ? s : (s.msg || JSON.stringify(s)))}</li>`).join('');
+  document.getElementById('pt-result').innerHTML = `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
+        <div style="font-size:56px;line-height:1">${icon}</div>
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--c-muted);letter-spacing:.08em">Detected page type</div>
+          <div style="font-size:24px;font-weight:800;text-transform:capitalize;margin-top:2px">${escTool(d.type || 'unknown')}</div>
+          <div style="word-break:break-all;font-size:12px;color:var(--text3);margin-top:4px">${escTool(d.url || '')}</div>
+        </div>
+      </div>
+      <div style="margin:14px 0">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span style="color:var(--text2)">Confidence</span>
+          <span style="font-weight:700">${conf}%</span>
+        </div>
+        <div style="height:10px;border-radius:5px;background:var(--surface3);overflow:hidden">
+          <div style="height:100%;width:${conf}%;background:${confColor};transition:width .3s"></div>
+        </div>
+      </div>
+      ${signals ? `<div style="margin-top:16px">
+        <div class="card-title" style="font-size:12px;margin-bottom:6px">Signals</div>
+        <ul style="list-style:none;padding:0;margin:0">${signals}</ul>
+      </div>` : ''}
+    </div>`;
+  document.getElementById('pt-result').style.display = '';
+}
+
+// ── Tool: Course / Blog Audit (shared renderer) ──────────────────────────────
+function _renderAuditChecklist(d, mountId, label) {
+  const score = d.score ?? 0;
+  const scoreColor = score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warn)' : 'var(--danger)';
+  const passes  = d.passes   ?? (d.counts && d.counts.pass)   ?? 0;
+  const warns   = d.warnings ?? (d.counts && d.counts.warn)   ?? 0;
+  const fails   = d.fails    ?? (d.counts && d.counts.fail)   ?? 0;
+  const results = d.results || [];
+  const rowsHtml = results.map(r => {
+    const lvl = (r.level || r.status || 'info').toLowerCase();
+    const icon = lvl === 'pass' || lvl === 'ok' ? '✅' : lvl === 'warn' || lvl === 'warning' ? '⚠️' : lvl === 'fail' || lvl === 'error' ? '❌' : 'ℹ️';
+    return `<div class="uc-check-row" style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--c-border2);align-items:flex-start">
+      <span style="flex-shrink:0;font-size:16px">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${escTool(r.name || r.check || '—')}</div>
+        ${r.msg || r.message ? `<div style="font-size:12px;color:var(--text3);margin-top:2px">${escTool(r.msg || r.message)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById(mountId).innerHTML = `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
+        <div style="width:88px;height:88px;border-radius:50%;background:conic-gradient(${scoreColor} ${score*3.6}deg, var(--surface3) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <div style="width:70px;height:70px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800">${score}</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700">${escTool(label)} Score</div>
+          <div style="word-break:break-all;font-size:12px;color:var(--text3);margin-top:2px">${escTool(d.url || '')}</div>
+          <div style="display:flex;gap:14px;margin-top:8px;font-size:12px">
+            <span style="color:var(--success-d);font-weight:600">✅ ${passes} pass</span>
+            <span style="color:var(--warn-d);font-weight:600">⚠️ ${warns} warn</span>
+            <span style="color:var(--danger-d);font-weight:600">❌ ${fails} fail</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-title" style="font-size:12px;margin-bottom:4px">Checks</div>
+      <div>${rowsHtml || '<div class="empty u-p-16">No checks returned</div>'}</div>
+    </div>`;
+}
+
+async function runCourseAudit() {
+  const url = document.getElementById('ca-url').value.trim();
+  if (!url) { toast('Enter a URL first', 'warn'); return; }
+  const btn = document.getElementById('ca-btn');
+  const errEl = document.getElementById('ca-error');
+  const resEl = document.getElementById('ca-result');
+  resEl.style.display = 'none'; errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Auditing…';
+  try {
+    const r = await fetch('/api/tools/course_audit', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed');
+    _renderAuditChecklist(d, 'ca-result', 'Course Audit');
+    resEl.style.display = '';
+  } catch(e) {
+    errEl.textContent = '✖ ' + e.message;
+    errEl.style.display = '';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run Course Audit';
+  }
+}
+
+async function runBlogAudit() {
+  const url = document.getElementById('ba-url').value.trim();
+  if (!url) { toast('Enter a URL first', 'warn'); return; }
+  const btn = document.getElementById('ba-btn');
+  const errEl = document.getElementById('ba-error');
+  const resEl = document.getElementById('ba-result');
+  resEl.style.display = 'none'; errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Auditing…';
+  try {
+    const r = await fetch('/api/tools/blog_audit', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed');
+    _renderAuditChecklist(d, 'ba-result', 'Blog Audit');
+    resEl.style.display = '';
+  } catch(e) {
+    errEl.textContent = '✖ ' + e.message;
+    errEl.style.display = '';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run Blog Audit';
+  }
+}
+
+// ── Tool: Cross-URL Duplicate Scan ───────────────────────────────────────────
+async function runDuplicateScan() {
+  const raw = document.getElementById('ds-urls').value;
+  const urls = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (!urls.length) { toast('Enter at least one URL', 'warn'); return; }
+  if (urls.length > 100) { toast('Maximum 100 URLs allowed', 'warn'); return; }
+  const btn = document.getElementById('ds-btn');
+  const errEl = document.getElementById('ds-error');
+  const resEl = document.getElementById('ds-result');
+  resEl.style.display = 'none'; errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = `Scanning ${urls.length} URLs…`;
+  try {
+    const r = await fetch('/api/tools/duplicate_scan', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({urls})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed');
+    renderDuplicateScan(d);
+    resEl.style.display = '';
+  } catch(e) {
+    errEl.textContent = '✖ ' + e.message;
+    errEl.style.display = '';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Scan for Duplicates';
+  }
+}
+function renderDuplicateScan(d) {
+  const s = d.summary || {};
+  const dupTitles = s.duplicate_titles ?? s.titles ?? 0;
+  const dupDescs  = s.duplicate_descriptions ?? s.descriptions ?? 0;
+  const dupH1s    = s.duplicate_h1s ?? s.h1s ?? 0;
+  const typeIcons = { title:'📌', description:'📃', h1:'🔠' };
+  const groups = d.groups || [];
+  const groupsHtml = groups.length ? groups.map(g => {
+    const type = (g.type || '').toLowerCase();
+    const icon = typeIcons[type] || '🔁';
+    const urls = (g.urls || []).map(u => `<li style="font-size:12px;word-break:break-all;padding:2px 0"><a href="${escTool(u)}" target="_blank" rel="noopener noreferrer" style="color:var(--c-link)">${escTool(u)}</a></li>`).join('');
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:20px">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--c-muted);letter-spacing:.08em">Duplicate ${escTool(g.type || '')} · ${(g.urls || []).length} URLs</div>
+          <div style="font-size:14px;font-weight:600;word-break:break-word;margin-top:2px">${escTool(g.value || '(empty)')}</div>
+        </div>
+      </div>
+      <ul style="list-style:none;padding:0;margin:0">${urls}</ul>
+    </div>`;
+  }).join('') : '<div class="empty u-p-24">✅ No duplicates found</div>';
+  document.getElementById('ds-result').innerHTML = `
+    <div class="card u-mb-16">
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--c-muted)">Scanned</div><div style="font-size:20px;font-weight:800">${d.scanned ?? 0}</div></div>
+        <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--c-muted)">Failed</div><div style="font-size:20px;font-weight:800;color:${(d.failed||0)>0?'var(--danger)':'var(--text)'}">${d.failed ?? 0}</div></div>
+        <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--c-muted)">Duplicate titles</div><div style="font-size:20px;font-weight:800">${dupTitles}</div></div>
+        <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--c-muted)">Duplicate descriptions</div><div style="font-size:20px;font-weight:800">${dupDescs}</div></div>
+        <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--c-muted)">Duplicate H1s</div><div style="font-size:20px;font-weight:800">${dupH1s}</div></div>
+      </div>
+    </div>
+    ${groupsHtml}`;
+}

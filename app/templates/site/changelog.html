@@ -1,0 +1,32 @@
+{% extends "site/base.html" %}
+{% block title %}Changelog · SEO Suite{% endblock %}
+{% block description %}Release notes and version history for SEO Suite. Pulled from CHANGELOG.md, or from the git log on GitHub.{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding:90px 0 30px">
+  <div class="container">
+    <span class="eyebrow reveal">Changelog</span>
+    <h1 class="reveal">What's <span class="grad-text">new.</span></h1>
+    <p class="lead reveal" style="margin:22px auto 0">Currently on version <strong>{{ version }}</strong>.</p>
+  </div>
+</section>
+
+<section style="padding-top:10px">
+  <div class="container" style="max-width:760px">
+    {% if changelog_html %}
+      <div class="card reveal">
+        {{ changelog_html | safe }}
+      </div>
+    {% else %}
+      <div class="card reveal">
+        <h2>No CHANGELOG.md in this build</h2>
+        <p>This repository doesn't ship a <code>CHANGELOG.md</code> file yet. You can read the full version history from the git log on GitHub.</p>
+        <p style="margin-top:14px">
+          <a class="btn btn-primary" href="https://github.com/Surya8991/SEO-Suite/commits/main" rel="noopener" target="_blank">View commit history on GitHub →</a>
+        </p>
+        <p style="margin-top:14px;color:var(--text-3);font-size:14px">For a tidy tagged release view, see the <a href="https://github.com/Surya8991/SEO-Suite/releases" rel="noopener" target="_blank">Releases page</a>.</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

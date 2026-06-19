@@ -1,0 +1,66 @@
+{% extends "site/base.html" %}
+{% block title %}Self-hosted SEO: what you control vs SaaS · SEO Suite Blog{% endblock %}
+{% block description %}Self-hosted SEO vs SaaS in 2026: who owns your audit data, what per-URL pricing really costs, why bring-your-own API keys matter, and where SaaS still wins.{% endblock %}
+{% block og_title %}Self-hosted SEO: what you control vs SaaS{% endblock %}
+{% block og_desc_inner %}A practical breakdown of self-hosted SEO vs SaaS — data ownership, pricing, privacy, and the cases where SaaS still wins.{% endblock %}
+{% block twitter_title %}Self-hosted SEO vs SaaS{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding:90px 0 30px">
+  <div class="container" style="max-width:760px">
+    <span class="eyebrow reveal">Strategy</span>
+    <h1 class="reveal">Self-hosted SEO: <span class="grad-text">what you control vs SaaS.</span></h1>
+    <p class="lead reveal" style="margin:22px auto 0">Who owns your audit data, what per-URL pricing actually costs over a year, and why bring-your-own API keys quietly change the maths.</p>
+  </div>
+</section>
+
+<section style="padding-top:10px">
+  <div class="container" style="max-width:760px">
+    <article class="card reveal">
+      <p style="color:var(--text-3);font-size:13px">Published 2026-06-19 · 9 min read</p>
+
+      <p>Most SEO tooling in 2026 is SaaS. You pay a monthly fee, the vendor crawls your site from their cloud, and your audit history lives in their database. That model is fine right up until the moment it isn't — until the contract renews, the per-URL price climbs, an API quota changes, or someone on legal asks where your client data is being stored. Self-hosted SEO is the other path. Here's what each one actually gives you.</p>
+
+      <h2>1. Who owns the audit data</h2>
+      <p>On SaaS, the vendor does. Your crawl results, your keyword rankings, your competitor reports — all sit in their database under their account. You can export, but you usually can't take the historical raw data with you when the contract ends. Some platforms cap how far back you can pull.</p>
+      <p>On a self-hosted stack, the data sits in a database on your host. You can back it up, replicate it, drop it into a data warehouse, or delete it. There is no "data residency" question, because the data lives wherever you decided to put the server.</p>
+
+      <h2>2. The real cost of per-URL pricing</h2>
+      <p>Per-URL or per-project pricing is the line that quietly kills SaaS budgets. A small agency auditing 20 client sites a month, 5,000 URLs each, can clear six figures of crawl credits a year on the higher tiers. The marginal cost of crawling one more page is non-zero on SaaS; on self-hosted, it's whatever your VM bill is — usually a flat $5 to $40 a month for a server that can handle multiple seven-figure crawls if you're patient.</p>
+      <p>That doesn't make SaaS a rip-off. It means the spend curves are different shapes. SaaS is predictable at low volume and brutal at scale; self-hosted has a steeper setup cost and then flattens almost completely.</p>
+
+      <h2>3. Bring your own API keys</h2>
+      <p>Most "expensive" parts of SEO aren't the crawl — they're the third-party data sources. Search rankings from SerpAPI or DataForSEO, backlink data from Moz, PageSpeed insights, AI-generated meta from Groq or OpenAI. SaaS platforms bundle these and mark them up.</p>
+      <p>A self-hosted suite typically asks you to bring your own API keys. You pay the provider directly, at the provider's wholesale price, and your tool just calls the API on your behalf. If you already have a Moz or SerpAPI subscription, you don't pay twice. If you stop needing a source, you turn off that key — no plan downgrade required.</p>
+
+      <h2>4. Privacy and compliance</h2>
+      <p>If you audit client sites under NDA, run staging environments behind auth, or operate in a regulated industry (health, finance, government), every external SaaS is one more vendor on your DPA list. Self-hosting collapses that — the tool runs inside your network perimeter, the data never leaves, and your compliance story is just "we run it ourselves on our existing infrastructure".</p>
+      <p>For independent SEOs and small agencies, this matters less for compliance and more for trust: clients increasingly ask where their data is stored.</p>
+
+      <h2>5. Where SaaS still wins</h2>
+      <p>This isn't a one-sided argument. SaaS still wins on:</p>
+      <ul>
+        <li><strong>Zero setup.</strong> Sign up, paste a URL, get a report. No VM, no Docker, no upgrades.</li>
+        <li><strong>Aggregated datasets.</strong> Ahrefs and Semrush have crawled the open web for years. You can't replicate their backlink index by self-hosting; you can only query it via their API.</li>
+        <li><strong>Polish and onboarding.</strong> Big SaaS teams spend serious money on UX, docs, and support. A self-hosted tool will always feel a bit more raw at the edges.</li>
+        <li><strong>You don't want to be on-call for it.</strong> If the tool goes down at 2am, on SaaS it's their problem. On self-hosted, it's yours.</li>
+      </ul>
+
+      <h2>How to decide</h2>
+      <p>A rough rule that holds up:</p>
+      <ul>
+        <li><strong>Solo marketer, occasional audits:</strong> a free SaaS tier or a desktop tool is fine. Don't run a server you don't need.</li>
+        <li><strong>In-house team, recurring audits, sensitive data:</strong> self-hosted pays back fast on both privacy and cost.</li>
+        <li><strong>Agency with many small clients:</strong> usually a hybrid — self-hosted for the crawl and recurring tracking, SaaS for the aggregated backlink and keyword databases you can't replicate.</li>
+      </ul>
+
+      <p>The right question isn't "self-hosted vs SaaS" — it's "which parts of my SEO workflow do I need to own, and which parts am I happy to rent?" Answer that and the tooling falls out for free.</p>
+
+      <p style="margin-top:24px">
+        <a class="btn btn-primary" href="/app">Open the dashboard →</a>
+        <a class="btn btn-ghost" href="/blog" style="margin-left:8px">Back to blog</a>
+      </p>
+    </article>
+  </div>
+</section>
+{% endblock %}

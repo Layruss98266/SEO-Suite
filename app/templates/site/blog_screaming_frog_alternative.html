@@ -1,0 +1,63 @@
+{% extends "site/base.html" %}
+{% block title %}Free Screaming Frog alternatives in 2026 · SEO Suite Blog{% endblock %}
+{% block description %}Honest comparison of free Screaming Frog alternatives in 2026: SEO Suite, the Screaming Frog free tier, and open-source crawlers. Pros, cons, and when to pick each.{% endblock %}
+{% block og_title %}Free Screaming Frog alternatives in 2026{% endblock %}
+{% block og_desc_inner %}Where the free Screaming Frog tier stops, where open-source crawlers shine, and where a self-hosted suite fits in.{% endblock %}
+{% block twitter_title %}Free Screaming Frog alternatives in 2026{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding:90px 0 30px">
+  <div class="container" style="max-width:760px">
+    <span class="eyebrow reveal">Tools</span>
+    <h1 class="reveal">Free Screaming Frog alternatives <span class="grad-text">in 2026.</span></h1>
+    <p class="lead reveal" style="margin:22px auto 0">An honest look at where the free Screaming Frog tier still wins, where open-source crawlers have caught up, and where a self-hosted suite fits.</p>
+  </div>
+</section>
+
+<section style="padding-top:10px">
+  <div class="container" style="max-width:760px">
+    <article class="card reveal">
+      <p style="color:var(--text-3);font-size:13px">Published 2026-06-19 · 8 min read</p>
+
+      <p>Screaming Frog is the default desktop SEO crawler for a reason: it's fast, it handles weird sites, and the UI is dense in the way SEOs like. The free tier still does the job for small sites, but the 500-URL cap and lack of scheduling push most working teams onto the £239/year licence or onto something else entirely. In 2026 there are real alternatives. Here's how they actually compare.</p>
+
+      <h2>What the free Screaming Frog tier gives you</h2>
+      <p>The free version of Screaming Frog SEO Spider is generous for what it is. You get the full desktop app, real JavaScript rendering, response code auditing, redirect chains, duplicate content checks, and basic structured data validation — capped at 500 URLs per crawl. For a single landing page audit or a small marketing site, that's enough.</p>
+      <p>Where it runs out of room: no scheduling, no API integrations, no Search Console pull, no exportable historical comparisons, no custom extraction, no robots.txt testing at scale. Most of the genuinely useful features sit behind the paid licence.</p>
+
+      <h2>Open-source crawlers worth knowing</h2>
+      <p>The open-source crawler space has matured. A short tour:</p>
+      <ul>
+        <li><strong>Scrapy</strong> — Python framework, not an SEO tool. Infinitely flexible if you can write the spider yourself. Steep ramp for anyone who isn't already a developer.</li>
+        <li><strong>SiteOne Crawler</strong> — free desktop crawler with a clean UI, response code auditing, and accessibility checks. Solid free pick if you want one binary, no setup.</li>
+        <li><strong>Lighthouse CI</strong> — runs Lighthouse against a list of URLs in your pipeline. Excellent for Core Web Vitals regression tracking, not a general crawler.</li>
+        <li><strong>Common Crawl + custom scripts</strong> — only useful at corpus scale; overkill for almost every team.</li>
+      </ul>
+      <p>The pattern: each open-source tool nails one slice of the audit and leaves the rest of the workflow to you and your spreadsheet.</p>
+
+      <h2>Where a self-hosted SEO suite fits</h2>
+      <p>A self-hosted suite — like the one this site ships — is a different shape of tool. Instead of one crawler, it bundles the crawl alongside indexation checks, Core Web Vitals pulls, schema generation, Search Console insights, and ranking tracking, behind a single dashboard you run on your own host. The trade-offs versus Screaming Frog:</p>
+      <ul>
+        <li><strong>Pros:</strong> no URL cap, scheduling and notifications baked in, direct API integrations (Search Console, PageSpeed, Moz, SerpAPI, DataForSEO, Bing Webmaster, IndexNow), reports and history stored in your own database, multi-user with TOTP, runs on a tiny VM.</li>
+        <li><strong>Cons:</strong> you run the host. The desktop UX of Screaming Frog is more polished for one-off ad-hoc crawls; a web dashboard is better for scheduled, repeatable work.</li>
+      </ul>
+
+      <h2>How to pick</h2>
+      <p>Three practical questions sort this out fast:</p>
+      <ol>
+        <li><strong>Is the audit a one-off, under 500 URLs?</strong> Use the free Screaming Frog desktop tier. You'll be done in twenty minutes.</li>
+        <li><strong>Do you need recurring audits, history, and Search Console data, but you don't want to pay a SaaS?</strong> A self-hosted suite is the right shape. You spend an hour on setup and get back a tool that doesn't expire.</li>
+        <li><strong>Do you need a paid power-user desktop tool with custom extraction and JS rendering at scale?</strong> The licensed Screaming Frog is still excellent at this and worth the £239 if it pays for itself in a single client.</li>
+      </ol>
+
+      <h2>The honest take</h2>
+      <p>There is no single "best free Screaming Frog alternative" in 2026 — there are good tools shaped for different jobs. If you want one desktop binary for occasional spot-checks, the free Screaming Frog tier still wins. If you want a recurring, multi-source SEO workflow without the per-seat SaaS bill, a self-hosted suite is the most honest answer. Try both. The one you actually open every Monday is the one to keep.</p>
+
+      <p style="margin-top:24px">
+        <a class="btn btn-primary" href="/app">Open the dashboard →</a>
+        <a class="btn btn-ghost" href="/blog" style="margin-left:8px">Back to blog</a>
+      </p>
+    </article>
+  </div>
+</section>
+{% endblock %}

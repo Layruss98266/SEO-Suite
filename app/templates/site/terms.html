@@ -1,0 +1,40 @@
+{% extends "site/base.html" %}
+{% block title %}Terms · SEO Suite{% endblock %}
+{% block description %}Terms of use for SEO Suite — MIT licensed, no warranty, you're responsible for what you audit.{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding:90px 0 30px">
+  <div class="container">
+    <span class="eyebrow reveal">Terms</span>
+    <h1 class="reveal">Plain English <span class="grad-text">terms of use.</span></h1>
+    <p class="lead reveal" style="margin:22px auto 0">Open source, MIT licensed. Use it, fork it, ship it — at your own risk.</p>
+  </div>
+</section>
+
+<section style="padding-top:10px">
+  <div class="container" style="max-width:760px">
+    <p style="color:var(--text-3);font-size:13px">Last updated: 2026-06-19</p>
+
+    <h2>Licence</h2>
+    <p>SEO Suite is released under the <strong>MIT Licence</strong>. See the <code>LICENSE</code> file in the repository for the full text. In short: you can use, copy, modify, and distribute the software, including for commercial use, as long as the copyright notice and licence stay intact.</p>
+
+    <h2>No warranty</h2>
+    <p>The software is provided "as is", without warranty of any kind, express or implied. The authors are not liable for any claim, damages, lost data, missed rankings, or any other harm arising from use of the software. If a check returns wrong data, an export breaks, or an audit takes down a staging site you forgot to whitelist, that's on the operator.</p>
+
+    <h2>Your responsibility</h2>
+    <p>You are responsible for what you audit and how. That means:</p>
+    <ul>
+      <li>Only crawl sites you own or have written permission to scan</li>
+      <li>Respect <code>robots.txt</code>, rate limits, and terms of any third-party API you connect (Google, Moz, SerpAPI, DataForSEO, Bing, Groq, etc.)</li>
+      <li>Keep your own API keys, credentials, and TOTP secrets safe</li>
+      <li>Follow the laws of your jurisdiction around scraping, data collection, and privacy</li>
+    </ul>
+
+    <h2>Third-party services</h2>
+    <p>The app connects to external APIs you opt into. Each one has its own terms — when you supply an API key, you agree to that provider's terms for the requests made with your key.</p>
+
+    <h2>Changes</h2>
+    <p>These terms can change as the project evolves. Material updates land in the git history of the <a href="/changelog">changelog</a> with a new "last updated" date here.</p>
+  </div>
+</section>
+{% endblock %}

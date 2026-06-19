@@ -1,0 +1,44 @@
+{% extends "site/base.html" %}
+{% block title %}Privacy · SEO Suite{% endblock %}
+{% block description %}Privacy policy for the self-hosted SEO Suite. Your audit data stays on your machine — nothing leaves the host.{% endblock %}
+
+{% block content %}
+<section class="hero" style="padding:90px 0 30px">
+  <div class="container">
+    <span class="eyebrow reveal">Privacy</span>
+    <h1 class="reveal">Your data <span class="grad-text">stays on your machine.</span></h1>
+    <p class="lead reveal" style="margin:22px auto 0">SEO Suite is self-hosted. We don't run a server you send data to — you run the server.</p>
+  </div>
+</section>
+
+<section style="padding-top:10px">
+  <div class="container" style="max-width:760px">
+    <p style="color:var(--text-3);font-size:13px">Last updated: 2026-06-19</p>
+
+    <h2>What the tool stores</h2>
+    <p>When you self-host SEO Suite, everything is written to the database and filesystem on your host. That includes:</p>
+    <ul>
+      <li>Audit results, crawl logs, and exported reports</li>
+      <li>User accounts (email, hashed password, TOTP secrets, backup codes)</li>
+      <li>Login attempts and session records for security monitoring</li>
+      <li>API keys you enter for third-party services (Search Console, PageSpeed, Moz, SerpAPI, DataForSEO, Bing, Groq)</li>
+      <li>Site configuration and notification preferences</li>
+    </ul>
+
+    <h2>What leaves the host</h2>
+    <p>Nothing, unless you ask for it. The app calls third-party APIs (Google, Moz, SerpAPI, etc.) only when you trigger a check that needs them, and only with the API keys you supply. Audit findings, account data, and reports never get sent to us.</p>
+
+    <h2>Marketing site analytics</h2>
+    <p>This marketing site does not run third-party analytics, ad pixels, or tracking scripts. The only external request from any public page is the GitHub stars badge from shields.io.</p>
+
+    <h2>Cookies</h2>
+    <p>The app sets a session cookie when you log in so you stay signed in across page loads. No tracking cookies.</p>
+
+    <h2>Data retention &amp; deletion</h2>
+    <p>You own the data. Delete your account from inside the app to wipe your records, or drop the database and report directory at the OS level. The GDPR self-service export and one-click account deletion are built into the dashboard.</p>
+
+    <h2>Contact</h2>
+    <p>Privacy questions or a disclosure to report? Email <a href="mailto:security@example.com">security@example.com</a> (replace with the address you publish for your deployment).</p>
+  </div>
+</section>
+{% endblock %}

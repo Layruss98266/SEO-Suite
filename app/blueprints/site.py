@@ -10,10 +10,15 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
+from pathlib import Path
 
 from flask import Blueprint, jsonify, render_template, request
+from markupsafe import escape
 
 from core.version import VERSION
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_CHANGELOG_PATH = _REPO_ROOT / "CHANGELOG.md"
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +50,56 @@ def site_blog():
     return render_template("site/blog.html", active="blog", **_site_ctx())
 
 
+@bp.route("/blog/screaming-frog-alternative")
+def site_blog_screaming_frog():
+    return render_template(
+        "site/blog_screaming_frog_alternative.html",
+        active="blog",
+        **_site_ctx(),
+    )
+
+
+@bp.route("/blog/self-hosted-seo-guide")
+def site_blog_self_hosted_guide():
+    return render_template(
+        "site/blog_self_hosted_seo_guide.html",
+        active="blog",
+        **_site_ctx(),
+    )
+
+
 @bp.route("/about")
 def site_about():
     return render_template("site/about.html", active="about", **_site_ctx())
+
+
+@bp.route("/privacy")
+def site_privacy():
+    return render_template("site/privacy.html", active="privacy", **_site_ctx())
+
+
+@bp.route("/terms")
+def site_terms():
+    return render_template("site/terms.html", active="terms", **_site_ctx())
+
+
+@bp.route("/changelog")
+def site_changelog():
+    changelog_html = None
+    if _CHANGELOG_PATH.is_file():
+        try:
+            raw = _CHANGELOG_PATH.read_text(encoding="utf-8")
+            # Minimal escape-then-wrap render so we don't pull in a markdown dep
+            # for a single static page. Keeps line breaks and headings readable.
+            changelog_html = f"<pre style='white-space:pre-wrap;font-family:inherit;margin:0'>{escape(raw)}</pre>"
+        except OSError:
+            logger.warning("Could not read CHANGELOG.md", exc_info=True)
+    return render_template(
+        "site/changelog.html",
+        active="changelog",
+        changelog_html=changelog_html,
+        **_site_ctx(),
+    )
 
 
 @bp.route("/contact", methods=["GET", "POST"])

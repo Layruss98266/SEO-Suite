@@ -545,7 +545,7 @@ def sitemap_validate(sitemap_url: str) -> dict:
         try:
             from lxml import etree as lxml_et
 
-            parser = lxml_et.XMLParser(recover=True)
+            parser = lxml_et.XMLParser(recover=True, resolve_entities=False, no_network=True, huge_tree=False)
             root_lxml = lxml_et.fromstring(resp.content, parser=parser)
             urls = [
                 loc.text.strip()

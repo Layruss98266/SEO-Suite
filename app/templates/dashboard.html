@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 
 <!-- ═══ TOP BAR ════════════════════════════════════════════════════════════ -->
 <header class="topbar">
@@ -63,7 +64,7 @@
   <div class="tb-user" id="tb-user" style="display:none">
     <div class="tb-user-avatar" id="tb-user-avatar">👤</div>
     <span class="tb-user-name" id="tb-user-name"></span>
-    <button class="tb-user-logout" id="tb-user-logout" onclick="doLogout()" title="Sign out">↩ Logout</button>
+    <button class="tb-user-logout" id="tb-user-logout" onclick="doLogout()" title="Sign out">Sign out</button>
   </div>
 </header>
 
@@ -526,7 +527,7 @@
 <div class="sb-mask" id="sb-mask" onclick="toggleSidebar()"></div>
 
 <!-- Main -->
-<div class="main">
+<div class="main" id="main-content">
 
 <!-- ═══ HOME ═══════════════════════════════════════════════════════════════ -->
 <div class="panel active" id="panel-home">
@@ -705,7 +706,7 @@
   <div class="live-header">
     <div>
       <div class="page-title">Indexing Progress</div>
-      <div class="page-sub" id="idx-live-sub">Waiting to start…</div>
+      <div class="page-sub" id="idx-live-sub">Ready — start a check above</div>
     </div>
     <button class="notif-btn" id="idx-notif-btn" onclick="toggleNotif('idx')" title="Enable desktop notification on completion">🔔</button>
   </div>
@@ -799,7 +800,7 @@
   <div class="card">
     <div class="section-title">Use cases <span style="color:var(--text3);font-weight:400">(click to toggle)</span></div>
     <div class="uc-grid" id="uc-selector"></div>
-    <div style="margin-top:12px;font-size:12px;color:var(--text3)" id="uc-summary">0 selected</div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text3)" id="uc-summary">Select at least one use case to continue</div>
   </div>
   <div class="card">
     <div class="section-title">URL source</div>
@@ -906,7 +907,7 @@
   <div class="live-header">
     <div>
       <div class="page-title">Audit Progress</div>
-      <div class="page-sub" id="aud-live-sub">Waiting to start…</div>
+      <div class="page-sub" id="aud-live-sub">Ready — start a check above</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="worker-util" id="aud-worker-util" style="display:none">
@@ -3376,7 +3377,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/chart.min.js"></script>
 <script src="/static/js/dashboard.js"></script>
 </body>
 </html>

@@ -5,11 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}SEO Suite · Professional SEO Platform{% endblock %}</title>
 <meta name="description" content="{% block description %}Audit, index, and optimize your site with SEO Suite, a self-hosted platform for technical SEO audits, indexation checks, schema generators, and Search Console insights.{% endblock %}">
+<link rel="canonical" href="{{ request.url }}">
+<meta property="og:title" content="{% block og_title %}SEO Suite — Self-Hosted Technical SEO{% endblock %}">
+<meta property="og:description" content="{% block og_description %}{% block og_desc_inner %}Run technical SEO audits free. No SaaS fees, no data leaks.{% endblock %}{% endblock %}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ request.url }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{% block twitter_title %}SEO Suite{% endblock %}">
+<meta name="twitter:description" content="{{ self.og_description() }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;850&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 
 <header class="nav" id="nav">
   <div class="container nav-inner">
@@ -37,7 +46,7 @@
   </div>
 </header>
 
-<main>
+<main id="main-content">
 {% block content %}{% endblock %}
 </main>
 

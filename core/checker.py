@@ -193,7 +193,7 @@ def fetch_sitemap_urls(sitemap_url: str, _depth: int = 0, _seen: set | None = No
     except ET.ParseError:
         try:
             from lxml import etree as _lxml_et
-            _parser = _lxml_et.XMLParser(recover=True)
+            _parser = _lxml_et.XMLParser(recover=True, resolve_entities=False, no_network=True, huge_tree=False)
             root = _lxml_et.fromstring(content, _parser)
             ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
             children_lxml = root.findall("{http://www.sitemaps.org/schemas/sitemap/0.9}sitemap/{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
@@ -497,7 +497,8 @@ def gsc_check_url(url: str, service, site_url: str = None) -> str:
         verdict = resp.get("urlInspectionResult", {}).get("indexStatusResult", {}).get("verdict", "")
         return "Indexed" if verdict == "PASS" else "Not Indexed"
     except Exception as e:
-        return f"GSC Error: {e}"
+        logger.error("GSC check failed for %s: %s", url, e)
+        return "GSC check failed"
 
 def build_gsc_service() -> Any | None:
     try:
@@ -1101,7 +1102,7 @@ def run_check(urls: list[str], use_gsc: bool | None = None, headless: bool = Fal
         gsc_deferred: list[tuple[str, str]] = []
         for url in iterator:
             status = gsc_check_url(url, gsc_service)
-            if status.startswith("GSC Error"):
+            if status == "GSC check failed":
                 gsc_deferred.append((url, status))
             else:
                 on_result(url, status)

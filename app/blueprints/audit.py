@@ -303,8 +303,8 @@ def api_audit_run():
                     "avg_score": round(sum(a["score"] for a in audits) / len(audits))
                     if audits
                     else 0,
-                    "total_issues": sum(len(a["issues"]) for a in audits),
-                    "total_warnings": sum(len(a["warnings"]) for a in audits),
+                    "total_issues": sum(len(a.get("issues", [])) for a in audits),
+                    "total_warnings": sum(len(a.get("warnings", [])) for a in audits),
                     "urls": len(audits),
                 }
                 _json_path.write_text(json.dumps(_sidecar), encoding="utf-8")

@@ -162,7 +162,7 @@ class SitemapParser:
                          parser_inst: SitemapParser | None = None) -> list[str]:
         try:
             from lxml import etree as _lxml
-            parser = _lxml.XMLParser(recover=True)
+            parser = _lxml.XMLParser(recover=True, resolve_entities=False, no_network=True, huge_tree=False)
             root = _lxml.fromstring(content, parser)
             ns_uri = "http://www.sitemaps.org/schemas/sitemap/0.9"
             children = root.findall(f"{{{ns_uri}}}sitemap/{{{ns_uri}}}loc")

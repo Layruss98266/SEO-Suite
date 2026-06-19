@@ -17,7 +17,7 @@ import logging
 import re
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 
 from app.state import (
     REPORTS_DIR,
@@ -134,7 +134,9 @@ def api_reports():
 @login_required
 def api_open(filename):
     """Serve a report HTML inline (for in-browser viewing)."""
-    base = filename.rsplit(".", 1)[0] + ".html"
+    if not filename.endswith(".html"):
+        return "Only HTML reports can be opened inline", 400
+    base = filename
     safe = _safe_report_path(base, (".html",))
     if safe is None or not safe.is_file():
         return "Report not found", 404
@@ -153,20 +155,7 @@ def api_download(filename):
     safe = _safe_report_path(filename, (".xlsx", ".csv", ".html", ".json", ".pdf"))
     if safe is None or not safe.is_file():
         return "Not found", 404
-    if filename.endswith(".xlsx"):
-        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    elif filename.endswith(".pdf"):
-        mime = "application/pdf"
-    elif filename.endswith(".json"):
-        mime = "application/json"
-    elif filename.endswith(".html"):
-        mime = "text/html"
-    else:
-        mime = "text/csv"
-    return safe.read_bytes(), 200, {
-        "Content-Type": mime,
-        "Content-Disposition": f'attachment; filename="{safe.name}"',
-    }
+    return send_file(str(safe), as_attachment=True, download_name=safe.name)
 
 
 # ── Delete ────────────────────────────────────────────────────────────────────

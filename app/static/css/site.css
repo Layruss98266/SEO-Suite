@@ -225,3 +225,17 @@ h3 { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
   .footer-grid { grid-template-columns: 1fr; }
   .nav-cta .btn-ghost { display: none; }
 }
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--brand, #6366f1);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 0 0 6px 0;
+  z-index: 9999;
+  font-size: 14px;
+  text-decoration: none;
+  transition: top .15s;
+}
+.skip-link:focus { top: 0; }

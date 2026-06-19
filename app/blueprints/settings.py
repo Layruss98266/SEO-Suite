@@ -168,7 +168,7 @@ def api_settings():
         err = _validate_settings(filtered)
         if err:
             return jsonify({"error": err}), 400
-        existing = json.loads(state.CONFIG_PATH.read_text()) if state.CONFIG_PATH.exists() else {}
+        existing = json.loads(state.CONFIG_PATH.read_text(encoding="utf-8")) if state.CONFIG_PATH.exists() else {}
         merged = _merge_settings(filtered, existing)
         state.CONFIG_PATH.write_text(json.dumps(merged, indent=2))
         # Refresh in-process globals so the next run uses the saved values.
@@ -183,7 +183,7 @@ def api_settings():
             resp["rejected_keys"] = rejected
         return jsonify(resp)
 
-    raw = json.loads(state.CONFIG_PATH.read_text()) if state.CONFIG_PATH.exists() else {}
+    raw = json.loads(state.CONFIG_PATH.read_text(encoding="utf-8")) if state.CONFIG_PATH.exists() else {}
     return jsonify(_mask_settings(raw))
 
 
@@ -205,7 +205,7 @@ def api_settings_test(provider):
 def _load_profiles() -> dict:
     if PROFILES_PATH.exists():
         try:
-            return json.loads(PROFILES_PATH.read_text())
+            return json.loads(PROFILES_PATH.read_text(encoding="utf-8"))
         except Exception:
             pass
     return {}

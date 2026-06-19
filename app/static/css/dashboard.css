@@ -517,7 +517,6 @@ body{
 .c-blue{color:var(--c-blue)}
 .c-purple{color:var(--c-purple)}
 .c-amber{color:var(--warn)}
-.c-purple{color:var(--purple)}
 .c-sky{color:var(--sky)}
 
 /* ═══ BUTTONS ═══════════════════════════════════════════════════════════════ */
@@ -2605,3 +2604,17 @@ body.dark .home-strip-item-ai{background:rgba(99,102,241,.1);border-color:rgba(9
 .tc-name{font-size:14px;font-weight:700;margin-bottom:4px;color:var(--text)}
 .tc-desc{font-size:12px;color:var(--text2);line-height:1.5}
 .tool-card:hover .tc-name{color:var(--primary)}
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--brand, #6366f1);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 0 0 6px 0;
+  z-index: 9999;
+  font-size: 14px;
+  text-decoration: none;
+  transition: top .15s;
+}
+.skip-link:focus { top: 0; }

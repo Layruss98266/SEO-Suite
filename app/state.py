@@ -57,8 +57,8 @@ PROFILES_PATH = DATA_DIR / "profiles.json"
 for _d in (DATA_DIR, REPORTS_DIR, UPLOAD_DIR):
     try:
         _d.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        pass
+    except OSError as _e:
+        logger.error("Failed to create directory %s: %s", _d, _e)
 
 # CFG is populated lazily by _init_cfg() (called from app/server.py at
 # startup) and refreshed in the /api/settings POST handler. Starting with

@@ -58,7 +58,7 @@ class NotificationService:
             msg["From"] = cfg["from"]
             msg["To"] = ", ".join(cfg["to"])
             msg.attach(MIMEText(html_body, "html"))
-            with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"]) as s:
+            with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=10) as s:
                 s.starttls()
                 s.login(cfg["username"], cfg["password"])
                 s.sendmail(cfg["from"], cfg["to"], msg.as_string())
@@ -86,7 +86,7 @@ class NotificationService:
             msg["From"] = cfg["from"]
             msg["To"] = recipient
             msg.attach(MIMEText(html_body, "html"))
-            with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"]) as s:
+            with smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=10) as s:
                 s.starttls()
                 s.login(cfg["username"], cfg["password"])
                 s.sendmail(cfg["from"], [recipient], msg.as_string())

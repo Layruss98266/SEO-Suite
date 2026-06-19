@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import csv as _csv
 import io as _io
+import itertools
 import json
 import logging
 import queue
@@ -28,6 +29,7 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, Response, jsonify, request
 
+from app.blueprints import api_error
 from app.metrics import record_audit_event
 from app.state import (
     CFG,
@@ -116,22 +118,22 @@ def api_audit_run():
     with _lock:
         running = _audit_status.get("running", False)
     if running:
-        return jsonify({"error": "Already running"}), 400
+        return api_error("Already running", 400)
 
     try:
         data = request.get_json(force=True) or {}
     except Exception:
-        return jsonify({"error": "Invalid JSON in request body"}), 400
+        return api_error("Invalid JSON in request body", 400)
 
     input_type = data.get("input_type", "sitemap")
     raw = data.get("input", "").strip()
     if not raw:
-        return jsonify({"error": "No URL or sitemap provided"}), 400
+        return api_error("No URL or sitemap provided", 400)
     if input_type in ("sitemap", "domain", "crawl"):
         raw = _norm_url(raw)
         ok, reason = is_safe_url(raw)
         if not ok:
-            return jsonify({"error": f"URL refused: {reason}"}), 400
+            return api_error(f"URL refused: {reason}", 400)
     pattern = data.get("pattern", "")
     limit = _int(data, "limit", 10, 1, 500)
     keywords = data.get("keywords", [])
@@ -146,7 +148,7 @@ def api_audit_run():
     # event for the active run, preventing it from being cancelled.
     with _lock:
         if _audit_status["running"]:
-            return jsonify({"error": "Already running"}), 400
+            return api_error("Already running", 400)
         _audit_partial.clear()
         _audit_full_results.clear()
         _audit_cancel.clear()
@@ -209,7 +211,10 @@ def api_audit_run():
                 site_url = f"{_p.scheme}://{_p.netloc}/" if _p.netloc else ""
                 p3_site_data = p3_site(gsc_service, site_url, urls[:5])
 
-            i_counter = {"n": 0}
+            # Monotonic completion counter for live progress payloads.
+            # itertools.count() is thread-safe under CPython's GIL for next()
+            # and avoids the dict-as-mutable-int hack we used previously.
+            i_counter = itertools.count(1)
 
             def _audit_one(u):
                 if _audit_cancel.is_set():
@@ -251,8 +256,7 @@ def api_audit_run():
                             )
                         if len(_audit_full_results) < MAX_AUDIT_RESULTS:
                             _audit_full_results.append(audit)
-                    i_counter["n"] += 1
-                    i = i_counter["n"]
+                    i = next(i_counter)
                     # Slim per-result payload — drawer needs tool/status/message/value.
                     slim_results = [
                         {
@@ -340,7 +344,7 @@ def api_audit_stream():
     """Long-lived SSE stream of audit progress (rate-limit-exempt via register)."""
     sub = _subscribe(_audit_subscribers)
     if sub is None:
-        return jsonify({"error": "Too many concurrent SSE connections"}), 503
+        return api_error("Too many concurrent SSE connections", 503)
 
     def gen():
         try:
@@ -389,7 +393,7 @@ def api_audit_pause():
     with _lock:
         running = _audit_status.get("running", False)
     if not running:
-        return jsonify({"error": "Not running"}), 400
+        return api_error("Not running", 400)
     _audit_paused.clear()
     _audit_queue.put({"type": "paused"})
     return jsonify({"paused": True})
@@ -410,7 +414,7 @@ def api_audit_partial():
     with _lock:
         rows = list(_audit_partial)
     if not rows:
-        return jsonify({"error": "No results yet"}), 404
+        return api_error("No results yet", 404)
     buf = _io.StringIO()
     w = _csv.writer(buf)
     header = ["URL", "Score", "Issues", "Warnings"]
@@ -477,9 +481,7 @@ def api_audit_single_phase(phase_num: int):
                 sitemap_validate,
                 schema_check,
             ]
-            with ThreadPoolExecutor(max_workers=6) as ex:
-                futs = [ex.submit(fn, url) for fn in fns]
-                results = [f.result() for f in futs]
+            results = run_phase(fns, lambda fn: fn(url), max_workers=6)
 
         elif phase_num == 2:
             api_key = CFG.get("pagespeed_api_key", "")
@@ -524,8 +526,7 @@ def api_audit_single_phase(phase_num: int):
                 lambda: coverage_errors(svc, site_url),
                 lambda: sitemaps_status(svc, site_url),
             ]
-            with ThreadPoolExecutor(max_workers=3) as ex:
-                results = [f.result() for f in [ex.submit(fn) for fn in fns]]
+            results = run_fns_parallel(fns, max_workers=3)
 
         elif phase_num == 4:
             from tools.phase4 import backlink_check, domain_authority, keyword_rank_tracker

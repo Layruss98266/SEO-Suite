@@ -18,7 +18,7 @@ from __future__ import annotations
 import ipaddress
 import socket
 from html import escape as _html_escape
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlsplit
 
 import requests
 import urllib3.util.connection as _urllib3_conn
@@ -36,6 +36,36 @@ def esc(value) -> str:
 
 PRIVATE_HOSTNAMES = {"localhost", "localhost.localdomain"}
 _METADATA_HOSTS = {"169.254.169.254", "metadata.google.internal", "metadata"}
+
+
+def is_valid_http_url(url: str) -> bool:
+    """Cheap structural check: is *url* a syntactically valid http(s) URL?
+
+    Returns True only when:
+      * input is a non-empty string with no whitespace, newlines, or control chars
+      * scheme is http or https
+      * netloc (host[:port]) is non-empty
+
+    This is a fast, no-DNS, no-SSRF sanity gate. It is the single source of
+    truth for "does this look like a URL we'd consider fetching" and is the
+    first check inside `validate_public_url` (which then layers on SSRF rules).
+    """
+    if not url or not isinstance(url, str):
+        return False
+    # Reject newlines, tabs, spaces, and any ASCII control char (0x00–0x1F, 0x7F).
+    # urlsplit happily accepts whitespace, which can smuggle header-injection
+    # payloads ("https://example.com/\r\nHost: evil") into downstream requests.
+    if any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F for ch in url):
+        return False
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    if parts.scheme not in ("http", "https"):
+        return False
+    if not parts.netloc:
+        return False
+    return True
 
 
 def _reject_private_ip(ip) -> None:
@@ -63,9 +93,10 @@ def validate_public_url(url: str, *, allow_empty_path: bool = True) -> str:
     if not isinstance(url, str) or not url.strip():
         raise ValueError("URL is required")
     url = url.strip()
+    # Single source of truth for the scheme+netloc+no-control-chars sanity check.
+    if not is_valid_http_url(url):
+        raise ValueError("URL must start with http:// or https:// and contain no whitespace")
     parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError("URL must start with http:// or https://")
     if not allow_empty_path and not parsed.path:
         raise ValueError("URL path is required")
 

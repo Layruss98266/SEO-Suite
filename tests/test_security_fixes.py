@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from core.security import esc, is_safe_url
+from core.security import esc, is_safe_url, is_valid_http_url
 
 
 # ── 1. XSS regression ────────────────────────────────────────────────────────
@@ -71,6 +71,25 @@ def test_audit_report_escapes_malicious_url():
 def test_is_safe_url(url, expected_ok):
     ok, reason = is_safe_url(url)
     assert ok is expected_ok, f"{url!r} → ok={ok}, reason={reason}"
+
+
+@pytest.mark.parametrize("url,expected", [
+    ("https://example.com", True),
+    ("http://example.com/path", True),
+    ("https://example.com:8080/x?q=1", True),
+    ("", False),
+    (None, False),
+    ("ftp://example.com", False),
+    ("javascript:alert(1)", False),
+    ("example.com", False),
+    ("https://", False),
+    ("https://example.com/\r\nHost: evil", False),
+    ("https://example.com/ a", False),
+    ("  https://example.com  ", False),
+    ("https://example.com/\x00", False),
+])
+def test_is_valid_http_url(url, expected):
+    assert is_valid_http_url(url) is expected
 
 
 # ── 3. Cancel race ───────────────────────────────────────────────────────────

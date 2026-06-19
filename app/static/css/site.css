@@ -7,7 +7,7 @@
   /* Brand */
   --brand:        #6366F1;   /* indigo  */
   --brand-2:      #8B5CF6;   /* violet  */
-  --brand-grad:   linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  --brand-grad:   linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%);
   --brand-soft:   rgba(99, 102, 241, .14);
 
   /* Surfaces */
@@ -57,8 +57,8 @@ body::before, body::after {
   content: ''; position: fixed; border-radius: 50%; pointer-events: none;
   filter: blur(110px); opacity: .18; z-index: 0;
 }
-body::before { width: 620px; height: 620px; background: radial-gradient(circle, #6366F1, transparent 70%); top: -260px; left: -180px; }
-body::after  { width: 520px; height: 520px; background: radial-gradient(circle, #8B5CF6, transparent 70%); top: 30%; right: -200px; }
+body::before { width: 620px; height: 620px; background: radial-gradient(circle, var(--brand), transparent 70%); top: -260px; left: -180px; }
+body::after  { width: 520px; height: 520px; background: radial-gradient(circle, var(--brand-2), transparent 70%); top: 30%; right: -200px; }
 
 /* ── Navbar ──────────────────────────────────────────────────────────────── */
 .nav {
@@ -229,7 +229,7 @@ h3 { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
   position: absolute;
   top: -40px;
   left: 0;
-  background: var(--brand, #6366f1);
+  background: var(--brand);
   color: #fff;
   padding: 8px 16px;
   border-radius: 0 0 6px 0;

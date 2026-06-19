@@ -396,11 +396,11 @@ function toggleSidebar(){
     localStorage.setItem('seo-sb-collapsed', collapsed?'1':'0');
   }
 }
-if(localStorage.getItem('seo-sb-collapsed')==='1' && window.innerWidth>720){
-  document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded',()=>{
+  if(localStorage.getItem('seo-sb-collapsed')==='1' && window.innerWidth>720){
     document.getElementById('sidebar')?.classList.add('collapsed');
-  });
-}
+  }
+});
 
 // ── Top-bar jump-to search (Ctrl+K) ───────────────────────────────────────────
 let _tbResults=[], _tbResultIdx=-1;

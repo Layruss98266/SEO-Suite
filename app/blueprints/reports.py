@@ -428,7 +428,13 @@ def api_reports_pdf(filename):
 
         abs_uri = html_path.resolve().as_uri()
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(args=["--disable-javascript", "--no-sandbox"])
+            # SECURITY (S15): Do NOT add --no-sandbox here. Reports contain
+            # user-influenced HTML (audit results), so the Chromium renderer
+            # sandbox is the last line of defense against a renderer 0-day.
+            # The container running this service MUST run as a non-root user
+            # (e.g. `pwuser` in the official Playwright image); root + sandbox
+            # is what forces people to reach for --no-sandbox.
+            browser = pw.chromium.launch(args=["--disable-javascript"])
             page = browser.new_page()
             page.goto(abs_uri, wait_until="networkidle", timeout=30000)
             pdf_bytes = page.pdf(format="A4", print_background=True)

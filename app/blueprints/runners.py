@@ -53,7 +53,9 @@ def _run_usecase_for_url(url: str, use_case: str, cfg: dict, keywords: str = "")
         if isinstance(audit, dict)
         else calc_seo_score(checks)
     )
-    return {
+    from tools.issue_scoring import score_issues
+
+    payload = {
         "ok": True,
         "url": url,
         "use_case": use_case,
@@ -63,6 +65,12 @@ def _run_usecase_for_url(url: str, use_case: str, cfg: dict, keywords: str = "")
         "fails": sum(1 for r in checks if r.get("status") == "fail"),
         "results": checks,
     }
+    # Annotate with impact/effort/priority so the SPA can render a
+    # "fix-next" panel without re-implementing scoring client-side.
+    scored = score_issues(payload)
+    payload["scored_issues"] = scored.get("scored_issues", [])
+    payload["summary"] = scored.get("summary", {})
+    return payload
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────

@@ -32,6 +32,7 @@ from flask import Blueprint, Response, jsonify, request
 from app.blueprints import api_error
 from app.metrics import record_audit_event
 from tools._phase_runner import run_fns_parallel, run_phase
+from tools.issue_scoring import score_issues
 from app.state import (
     CFG,
     MAX_AUDIT_RESULTS,
@@ -278,6 +279,15 @@ def _run_audit_thread(
                     audit = None
                 if audit is None:
                     continue
+                # Annotate with impact/effort/priority scoring so the
+                # SPA + saved reports both surface a "fix-next" list
+                # without re-implementing scoring client-side.
+                try:
+                    _scored = score_issues(audit)
+                    audit["scored_issues"] = _scored.get("scored_issues", [])
+                    audit["summary"] = _scored.get("summary", {})
+                except Exception as _se:
+                    logger.warning("issue scoring failed for %s: %s", url, _se)
                 audits.append(audit)
                 with _lock:
                     # Bounded live state — past MAX_AUDIT_RESULTS new
@@ -317,6 +327,8 @@ def _run_audit_thread(
                         "warnings": len(audit.get("warnings", [])),
                         "results": slim_results,
                         "counts": audit.get("counts", {}),
+                        "scored_issues": audit.get("scored_issues", []),
+                        "summary": audit.get("summary", {}),
                     }
                 )
                 with _lock:

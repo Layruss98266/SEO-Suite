@@ -155,14 +155,22 @@ def _t(key: str, default: Any) -> Any:
 
 # ── Beep ──────────────────────────────────────────────────────────────────────
 def beep() -> None:
+    # Sound is opt-in: set SEO_SUITE_SOUND=1 to enable. Avoids audible side-effects
+    # under Flask/gunicorn and keeps the import path cross-platform clean.
+    if os.environ.get("SEO_SUITE_SOUND") != "1":
+        return
     if sys.platform == "win32":
         try:
             import winsound
-            for _ in range(3): winsound.Beep(1000, 400); time.sleep(0.2)
+            for _ in range(3):
+                winsound.Beep(1000, 400)
+                time.sleep(0.2)
         except Exception:
-            print("\a\a\a")
+            sys.stdout.write("\a\a\a")
+            sys.stdout.flush()
     else:
-        print("\a\a\a")
+        sys.stdout.write("\a\a\a")
+        sys.stdout.flush()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -508,19 +516,87 @@ def save_history(counts: dict, total: int, timestamp: str):
 # GSC API CHECK
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Token-bucket rate limiter sized to GSC URL Inspection quota.
+# GSC default per-property quota is ~600 QPM (~10 QPS) and 2000/day. We stay
+# comfortably under that with 6 QPS sustained and a burst of 30 to absorb
+# short spikes, so a 100-URL batch no longer slams the API and gets 429-ed.
+_GSC_QPS = 6.0
+_GSC_BURST = 30
+
+
+class _RateLimiter:
+    """Simple thread-safe token bucket. Acquire() blocks until a token is free."""
+
+    def __init__(self, rate_per_sec: float, burst: int) -> None:
+        self._rate = float(rate_per_sec)
+        self._capacity = float(burst)
+        self._tokens = float(burst)
+        self._last = time.monotonic()
+        self._lock = threading.Lock()
+
+    def acquire(self) -> None:
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                # Refill tokens based on elapsed wall-clock time.
+                self._tokens = min(
+                    self._capacity,
+                    self._tokens + (now - self._last) * self._rate,
+                )
+                self._last = now
+                if self._tokens >= 1.0:
+                    self._tokens -= 1.0
+                    return
+                # Not enough — compute sleep outside the lock.
+                wait = (1.0 - self._tokens) / self._rate
+            time.sleep(wait)
+
+
+_gsc_limiter = _RateLimiter(_GSC_QPS, _GSC_BURST)
+
+
 def gsc_check_url(url: str, service, site_url: str = None) -> str:
+    # Lazy import — googleapiclient is optional and not present in audit-only envs.
     try:
-        if not site_url:
-            parsed = urlparse(url)
-            site_url = f"{parsed.scheme}://{parsed.netloc}/"
-        resp = service.urlInspectionResult().inspect(
-            body={"inspectionUrl": url, "siteUrl": site_url}
-        ).execute()
-        verdict = resp.get("urlInspectionResult", {}).get("indexStatusResult", {}).get("verdict", "")
-        return "Indexed" if verdict == "PASS" else "Not Indexed"
-    except Exception as e:
-        logger.error("GSC check failed for %s: %s", url, e)
-        return "GSC check failed"
+        from googleapiclient.errors import HttpError as _HttpError
+    except ImportError:
+        _HttpError = ()  # type: ignore[assignment]
+
+    if not site_url:
+        parsed = urlparse(url)
+        site_url = f"{parsed.scheme}://{parsed.netloc}/"
+
+    # 3 retries with exponential backoff + jitter on 429 / 5xx: 1s, 2s, 4s base.
+    max_attempts = 4
+    for attempt in range(max_attempts):
+        # Throttle every attempt — retry traffic counts against quota too.
+        _gsc_limiter.acquire()
+        try:
+            resp = service.urlInspectionResult().inspect(
+                body={"inspectionUrl": url, "siteUrl": site_url}
+            ).execute()
+            verdict = resp.get("urlInspectionResult", {}).get("indexStatusResult", {}).get("verdict", "")
+            return "Indexed" if verdict == "PASS" else "Not Indexed"
+        except Exception as e:  # noqa: BLE001 — re-classified below
+            status = getattr(getattr(e, "resp", None), "status", None)
+            is_http = _HttpError and isinstance(e, _HttpError)
+            retryable = bool(is_http and status is not None and (status == 429 or 500 <= status < 600))
+            if retryable and attempt < max_attempts - 1:
+                backoff = (2 ** attempt) + random.uniform(0.0, 1.0)
+                # Do not log the exception message — it can include credential
+                # paths or quota project ids. Log status code only (C3 fix).
+                logger.warning(
+                    "GSC transient error (status=%s) for %s — retrying in %.2fs (attempt %d/%d)",
+                    status, url, backoff, attempt + 1, max_attempts - 1,
+                )
+                time.sleep(backoff)
+                continue
+            # Final failure (or non-retryable). Preserve C3: do not leak exception
+            # text (it may contain credential paths). Log via logger.exception so
+            # the traceback lands in server logs but not in the returned verdict.
+            logger.exception("GSC check failed for %s", url)
+            return "GSC check failed"
+    return "GSC check failed"
 
 def build_gsc_service() -> Any | None:
     try:
@@ -587,7 +663,7 @@ def google_check(page, url: str, delay_state: dict) -> str:
         if "detected unusual traffic" in html.lower() or "captcha" in html.lower():
             beep()
             with _print_lock:
-                print(f"\n{YELLOW}⚠  CAPTCHA — solve it in the browser window{RESET}\n")
+                logger.warning("CAPTCHA detected — solve it in the browser window")
             delay_state["base"] = min(delay_state["base"] + 3, _delay_max)
             time.sleep(_t("captcha_wait_secs", 60))
             page.goto(search_url, wait_until="domcontentloaded", timeout=_page_timeout)
@@ -602,7 +678,7 @@ def google_check(page, url: str, delay_state: dict) -> str:
                 _t("rate_limit_break_max_secs", 25),
             )
             with _print_lock:
-                print(f"\n  {CYAN}Break {wait:.0f}s to avoid rate limiting…{RESET}\n")
+                logger.info("Break %.0fs to avoid rate limiting", wait)
             time.sleep(wait)
 
         html_lower = html.lower()
@@ -763,7 +839,7 @@ def check_parallel(urls: list[str], n: int, proxy_list: list, headless: bool, de
 
 def generate_excel(rows: list[dict], path: Path, type_summary: dict):
     if not HAS_XLSX:
-        print(f"  {YELLOW}openpyxl not installed — skipping Excel{RESET}"); return
+        logger.warning("openpyxl not installed — skipping Excel"); return
     wb = openpyxl.Workbook()
     ws = wb.active; ws.title = "Results"
     HDR  = PatternFill("solid", fgColor="1F4E79")
@@ -798,7 +874,7 @@ def generate_excel(rows: list[dict], path: Path, type_summary: dict):
     for col in "ABCDE": ws2.column_dimensions[col].width = 22
 
     wb.save(path)
-    print(f"  Excel  → {BOLD}{path}{RESET}")
+    logger.info("Excel report written: %s", path)
 
 
 def generate_html(rows: list[dict], path: Path, counts: dict, type_summary: dict, compare: dict | None, history: list[dict]) -> None:
@@ -995,7 +1071,7 @@ function filterRows(type,btn){{
 </html>"""
 
     path.write_text(html, encoding="utf-8")
-    print(f"  HTML   → {BOLD}{path}{RESET}")
+    logger.info("HTML report written: %s", path)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

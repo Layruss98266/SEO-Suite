@@ -33,6 +33,7 @@ import os
 
 from flask import Blueprint, jsonify, request
 
+from app.blueprints import api_error
 from app.state import (
     CFG,
     _check_public_url,
@@ -75,6 +76,21 @@ def api_redirect_chain():
     from tools.quick_tools import redirect_chain
 
     return jsonify(redirect_chain(url))
+
+
+@bp.route("/api/tools/course_audit", methods=["POST"])
+@login_required
+def api_course_audit():
+    """Run the generic course-page audit on a single URL."""
+    data = request.get_json(force=True) or {}
+    url = _norm_url((data.get("url") or "").strip())
+    if not url:
+        return jsonify({"ok": False, "error": "url required"}), 400
+    if (rej := _reject_unsafe(url)):
+        return rej
+    from tools.course_audit import audit_course_page
+
+    return jsonify(audit_course_page(url))
 
 
 @bp.route("/api/tools/http_headers", methods=["POST"])
@@ -132,6 +148,38 @@ def api_compression():
     from tools.quick_tools import compression_headers
 
     return jsonify(compression_headers(url))
+
+
+@bp.route("/api/tools/page_type", methods=["POST"])
+@login_required
+def api_page_type():
+    """Auto-detect whether a URL is a course / blog / product / generic page."""
+    data = request.get_json(force=True) or {}
+    url = _norm_url((data.get("url") or "").strip())
+    if not url:
+        return api_error("url required", 400)
+    if (rej := _reject_unsafe(url)):
+        return rej
+    from tools.page_type import detect_page_type
+
+    return jsonify(detect_page_type(url))
+
+
+@bp.route("/api/tools/duplicate_scan", methods=["POST"])
+@login_required
+def api_duplicate_scan():
+    """Scan a batch of URLs and group any title / meta-description / H1
+    shared across 2+ pages. Caps input at 100 URLs per call."""
+    data = request.get_json(force=True) or {}
+    urls = data.get("urls") or []
+    if not isinstance(urls, list) or not urls:
+        return api_error("urls list required", 400)
+    urls = [_norm_url(u.strip()) for u in urls if isinstance(u, str) and u.strip()][:100]
+    if not urls:
+        return api_error("no valid urls after normalisation", 400)
+    from tools.duplicate_detector import scan_duplicates
+
+    return jsonify(scan_duplicates(urls))
 
 
 # ─── IndexNow ────────────────────────────────────────────────────────────────

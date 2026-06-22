@@ -970,7 +970,7 @@ input:focus::placeholder{color:#5C6480}
     <div class="card-title">Welcome back</div>
     <div class="card-sub">Sign in to access your SEO dashboard</div>
 
-    <form method="post" action="/login" id="lf" onsubmit="onSub(this)">
+    <form method="post" action="/login" id="lf" data-loading-text="Signing in…">
       <div class="field">
         <label for="un">Username</label>
         <div class="input-wrap">
@@ -989,7 +989,7 @@ input:focus::placeholder{color:#5C6480}
           </span>
           <input id="pw" name="password" type="password" autocomplete="current-password"
                  placeholder="••••••••" required>
-          <button type="button" class="pw-toggle" onclick="togglePw()" title="Show / hide password" id="pw-eye">
+          <button type="button" class="pw-toggle" data-pw-toggle="pw" title="Show / hide password" id="pw-eye">
             <svg id="pw-eye-open" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
@@ -1018,20 +1018,8 @@ input:focus::placeholder{color:#5C6480}
   </div>
 </div>
 
-<script>
-function togglePw(){
-  var i=document.getElementById('pw');
-  var open=i.type==='password';
-  i.type=open?'text':'password';
-  document.getElementById('pw-eye').style.color=open?'#6366f1':'';
-}
-function onSub(f){
-  var b=document.getElementById('sub-btn');
-  b.classList.add('loading');
-  b.innerHTML='<svg viewBox="0 0 24 24" style="animation:spin .7s linear infinite"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Signing in…';
-}
-</script>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<script src="/static/js/auth-pages.js" defer></script>
 </body>
 </html>"""
 
@@ -1056,7 +1044,7 @@ SIGNUP_PAGE = LOGIN_PAGE.split("</head>")[0] + """</head>
     <div class="card-title">Create your account</div>
     <div class="card-sub">Sign up to access your SEO dashboard</div>
 
-    <form method="post" action="/signup" id="sf" onsubmit="onSub(this)">
+    <form method="post" action="/signup" id="sf" data-loading-text="Creating…">
       <div class="field">
         <label for="un">Username</label>
         <div class="input-wrap">
@@ -1075,7 +1063,7 @@ SIGNUP_PAGE = LOGIN_PAGE.split("</head>")[0] + """</head>
           </span>
           <input id="pw" name="password" type="password" autocomplete="new-password"
                  placeholder="min 12 characters" required minlength="12">
-          <button type="button" class="pw-toggle" onclick="togglePw('pw')" title="Show / hide password">
+          <button type="button" class="pw-toggle" data-pw-toggle="pw" title="Show / hide password">
             <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
@@ -1111,17 +1099,7 @@ SIGNUP_PAGE = LOGIN_PAGE.split("</head>")[0] + """</head>
   </div>
 </div>
 
-<script>
-function togglePw(id){
-  var i=document.getElementById(id);
-  i.type = i.type==='password' ? 'text' : 'password';
-}
-function onSub(f){
-  var b=document.getElementById('sub-btn');
-  b.classList.add('loading');
-  b.innerHTML='<svg viewBox="0 0 24 24" style="animation:spin .7s linear infinite"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Creating…';
-}
-</script>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<script src="/static/js/auth-pages.js" defer></script>
 </body>
 </html>"""

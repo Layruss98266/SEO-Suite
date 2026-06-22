@@ -144,11 +144,13 @@ def api_open(filename):
     from flask import make_response
     response = make_response(safe.read_text(encoding="utf-8"), 200)
     response.headers["Content-Type"] = "text/html"
-    # Sandbox the report iframe.  Explicitly omit `allow-same-origin` so
-    # the document is treated as an opaque origin — cannot read cookies,
-    # localStorage, or call back to the app.  `allow-downloads` keeps the
-    # Save-As menu working for embedded report exports.
-    response.headers["Content-Security-Policy"] = "sandbox allow-downloads"
+    # Sandbox the report. Explicitly omit `allow-same-origin` so the
+    # document is treated as an opaque origin — cannot read cookies,
+    # localStorage, or call back to the app. `allow-scripts` lets the
+    # bundled charts (Chart.js) + filter buttons run; without it the
+    # report renders as a static, unusable wall. `allow-downloads` keeps
+    # the Save-As menu working for embedded report exports.
+    response.headers["Content-Security-Policy"] = "sandbox allow-scripts allow-downloads"
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 

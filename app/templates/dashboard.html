@@ -702,9 +702,7 @@
         <label class="label" for="idx-file">Upload CSV / Excel</label>
         <div class="dropzone" id="idx-dropzone"
              data-action="clickIdxFile"
-             ondragover="event.preventDefault();this.classList.add('drag')"
-             ondragleave="this.classList.remove('drag')"
-             ondrop="idxFileDrop(event)">
+             data-drop-action="idxFileDrop">
           <input type="file" id="idx-file" accept=".csv,.xlsx,.xls,.tsv,.txt"
                  style="display:none" data-change-action="idxFileChange">
           <div class="dz-icon">📂</div>
@@ -882,9 +880,7 @@
         <label class="label" for="aud-file">Upload CSV / Excel</label>
         <div class="dropzone" id="aud-dropzone"
              data-action="clickAudFile"
-             ondragover="event.preventDefault();this.classList.add('drag')"
-             ondragleave="this.classList.remove('drag')"
-             ondrop="audFileDrop(event)">
+             data-drop-action="audFileDrop">
           <input type="file" id="aud-file" accept=".csv,.xlsx,.xls,.tsv,.txt"
                  style="display:none" data-change-action="audFileChange">
           <div class="dz-icon">📂</div>

@@ -7337,6 +7337,26 @@ document.addEventListener('input', function _delegatedInput(e) {
   }
 });
 
+// --- S-NEW: drag-and-drop delegation for [data-drop-action] -----------------
+document.addEventListener('dragover', function(e){
+  var el = e.target.closest('[data-drop-action]');
+  if (!el) return;
+  e.preventDefault();
+  el.classList.add('drag');
+});
+document.addEventListener('dragleave', function(e){
+  var el = e.target.closest('[data-drop-action]');
+  if (el) el.classList.remove('drag');
+});
+document.addEventListener('drop', function(e){
+  var el = e.target.closest('[data-drop-action]');
+  if (!el) return;
+  e.preventDefault();
+  el.classList.remove('drag');
+  var fn = el.dataset.dropAction;
+  if (typeof window[fn] === 'function') window[fn](e);
+});
+
 // --- S-NEW: hide images with data-hide-on-error when load fails -------------
 document.addEventListener('error', function(e){
   var t = e.target;

@@ -1,7 +1,7 @@
 # SEO Suite — Master Project Log
 
 > **ACCOUNT-SWITCH PROOF. Read every section before touching any code.**
-> Last updated: 2026-06-22 (Session 61). Current VERSION: **2.6.6**
+> Last updated: 2026-06-22 (Session 61). Current VERSION: **2.6.7**
 
 ---
 
@@ -9,7 +9,7 @@
 
 ```
 1. cd "C:\Users\Surya L\Desktop\AI Agents\SEO Suite"
-2. Verify version:  python -c "from core.version import VERSION; print(VERSION)"  → 2.6.6
+2. Verify version:  python -c "from core.version import VERSION; print(VERSION)"  → 2.6.7
 3. Verify checks:   python -c "from core.seo_audit import TASKS; [print(k,len(v)) for k,v in TASKS.items()]"
    crawlability=12, on_page=11, site_health=12, performance=10, technical_seo=35
    search_console=7, authority=8, rankings=5
@@ -77,7 +77,7 @@ www_redirect_check, http2_check, render_blocking_check, image_optimization_check
 
 ## Order of Execution (Phases)
 
-> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → v2.6.2 → v2.6.3 → v2.6.4 → v2.6.5 → **v2.6.6** ← current
+> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → v2.6.2 → v2.6.3 → v2.6.4 → v2.6.5 → v2.6.6 → **v2.6.7** ← current
 
 ### PHASE 1 — Initial Build ✅ COMPLETE (v1.0)
 Flask app, blueprint split, SQLite auth, Playwright, SSE streaming, Docker/Render/Fly deploy, `/metrics` endpoint, OpenAPI spec, initial SEO audit checks.
@@ -171,7 +171,7 @@ Completed full inline onclick migration (355 → 0), phase1.py check correctness
 | `core/checker.py` | Main audit orchestrator — runs phases, saves progress, GSC integration |
 | `core/auth.py` | `login_required`, `admin_required`, cloud detection, `_failed_attempts` TTL cache |
 | `core/db.py` | SQLite helpers — users, sessions, login history, TOTP |
-| `core/version.py` | Single source of truth: `VERSION = "2.6.6"` |
+| `core/version.py` | Single source of truth: `VERSION = "2.6.7"` |
 | `core/notifier.py` | SMTP/Slack/Teams notifications |
 | `app/middleware.py` | CSP headers, CSRF deny-by-default |
 | `app/state.py` | `CFG` dict, `_check_public_url()`, `require_public_url` decorator |
@@ -377,6 +377,16 @@ if resp is None or soup is None:
 **Cause:** Both branches added inline-onclick that's now invalid (post v2.6.5 CSP lock).
 **Fix:** Resolve conflicts → IMMEDIATELY grep for any remaining `on<event>=` in HTML+JS innerHTML → fix all → `node --check app/static/js/dashboard.js` → tests → commit.
 
+### 15. "Login page button broken / password eye doesn't toggle / no spinner"
+**Symptom:** Form still submits (native HTML) but `togglePw()` or `onSub()` doesn't fire. Console shows CSP violation on `<script>` block.
+**Cause:** `core/auth.py` `LOGIN_PAGE` / `SIGNUP_PAGE` had inline `<script>` blocks — also blocked by `script-src 'self'`. **Inline `<script>` tags are blocked too**, not just `on<event>` attributes.
+**Fix:** Move JS to external file (e.g. `app/static/js/auth-pages.js`), reference with `<script src="/static/js/auth-pages.js" defer>`. Use `data-*` attrs + `addEventListener` for wiring. Already done in v2.6.7 for login/signup. Same rule for any future Python-generated HTML page served by the app.
+
+### 16. "Inline handlers in HTML reports (downloadable audit/indexing files)"
+**Symptom:** Confusion about whether to fix `onclick` in `core/templates/indexing_report.html` or audit HTML generated in `core/seo_audit.py` / `core/report_generator.py`.
+**Cause:** These are NOT served as live app pages — they're saved-to-disk HTML files opened via `/api/open/<file>` which sets `Content-Security-Policy: sandbox allow-scripts allow-downloads`. The `sandbox` directive creates an opaque-origin iframe; **its CSP does NOT enforce script-src**, so inline `<script>` and `onclick` work fine.
+**Fix:** **DO NOT migrate** these to `data-action` unless you also want to ship dashboard.js with each report. The sandbox is the intentional CSP relaxation for untrusted-content preview. If you ever change the `/api/open` route's CSP, audit ALL report templates first.
+
 ---
 
 ## Open Items Backlog
@@ -447,7 +457,7 @@ if resp is None or soup is None:
 | 58 | 2026-06-22 | v2.6.2 | Fixed all audit findings P1–P5: soup deepcopy (CRITICAL), 66→0 test failures (auth lockout root cause = SQLite _failed_attempts persistence), phase1.py correctness (image_alt, ttfb, schema, content_freshness, robots), generators.py (PostalAddress, hreflang x-default header, sitemap ISO 8601), WEIGHTS+_SCORE_TABLE Batch I gaps, task ID collision gsc_crawl_inspection, schema_type allowlist. |
 | 59 | 2026-06-22 | v2.6.3 | Remaining audit items + Phase 0 path anchoring: removed non-standard meta name="title", review schema deprecation warning, jobposting remote fields (jobLocationType + applicantLocationRequirements), product Offer url, robots.txt Sitemap URL validation, dead "h1" key from _SCORE_TABLE, _REQUIRES_MSG improvement, __all__ in seo_audit, SEO_SUITE_DATA_DIR respected in checker.py + seo_audit.py, body-size guard (200 KB) on 5 generator routes. |
 | 60 | 2026-06-22 | v2.6.4 | S-NEW complete: all 355 inline onclick handlers migrated to data-action event delegation (scripts/migrate_onclick.py idempotent, 140+ delegation cases). phase1.py: 5xx retry, mixed-proto redirect detection, HTTP Link header canonical fallback, pagination param exclusion in url_structure, CJK-aware meta description pixel widths, hreflang lang_verification field. reports.py: ok key on 3 object-returning routes. tools.py: 200 KB body guard + 30/min rate limit via register(app,limiter). dashboard.css: --brand token. 578/578 tests. |
-| 61 | 2026-06-22 | v2.6.5–6 | Full CSP lockdown — `script-src 'self'` (no unsafe-inline). Post-merge cleanup of remaining ~70 inline event handlers (onclick/onchange/oninput/onkeydown/onerror) that came back from Batch H merge or were in JS-generated innerHTML. New change/input/keydown delegation listeners. data-hide-on-error pattern for img fallback. Added "Common Issues & Fixes" section to PROJECT_LOG (14 entries) so future sessions can self-diagnose. Pushed to Render. |
+| 61 | 2026-06-22 | v2.6.5–7 | Full CSP lockdown — `script-src 'self'` (no unsafe-inline). Three-wave cleanup: (a) JS-innerHTML onclick/onchange, (b) post-merge dashboard.html onclick/onchange/oninput/onkeydown/onerror, (c) drag-drop + form-submit + auth pages. Migrated inline `<script>` in `core/auth.py` LOGIN_PAGE/SIGNUP_PAGE to external `app/static/js/auth-pages.js` with `data-pw-toggle` / `data-loading-text` attrs. TOTP backup-code reveal converted to native `<details>`. `/api/open/` CSP relaxed to `sandbox allow-scripts allow-downloads` so saved reports render. Added "Common Issues & Fixes" section to PROJECT_LOG (16 entries). Final state: 0 inline event handlers in any live-served HTML, 0 inline `<script>` blocks. |
 
 ---
 

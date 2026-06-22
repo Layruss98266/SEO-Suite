@@ -483,10 +483,9 @@ def _totp_challenge_html(error_html: str) -> str:
       {error_html}
     </form>
     <hr class="divider">
-    <div class="hint">
-      Lost your phone? <a href="#" onclick="document.getElementById('bk').style.display='block';return false" style="color:#8B5CF6">Use a backup code</a>
-    </div>
-    <form id="bk" method="post" action="/login/totp" style="display:none;margin-top:12px">
+    <details style="margin-top:8px">
+      <summary class="hint" style="cursor:pointer;color:#8B5CF6">Lost your phone? Use a backup code</summary>
+    <form id="bk" method="post" action="/login/totp" style="margin-top:12px">
       <input type="hidden" name="_csrf_token" value="{csrf}">
       <input type="hidden" name="use_backup" value="1">
       <div class="field">
@@ -495,6 +494,7 @@ def _totp_challenge_html(error_html: str) -> str:
       </div>
       <button class="btn" type="submit">Use backup code</button>
     </form>
+    </details>
   </div>
 </div>
 </body>

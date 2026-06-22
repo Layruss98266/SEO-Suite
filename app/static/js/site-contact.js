@@ -29,3 +29,11 @@ async function submitContact(e) {
   }
   return false;
 }
+
+// Delegation: bind any <form data-submit-action="submitContact"> automatically.
+document.addEventListener('submit', function(e){
+  var f = e.target.closest('form[data-submit-action]');
+  if (!f) return;
+  var fn = f.dataset.submitAction;
+  if (typeof window[fn] === 'function') window[fn](e);
+});

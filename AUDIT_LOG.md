@@ -495,4 +495,36 @@
 
 ---
 
-_Last updated: 2026-06-22 — Batch H + check reorganization. VERSION 2.5.1._
+### I-NEW1 `[FEAT]` `[x]` Batch I — 10 new checks across 4 use cases (VERSION 2.6.0)
+
+#### crawlability (+2, 10 → 12)
+- `url_structure_check` — URL length, uppercase chars, param count, session params, slug quality (hyphens vs underscores, long numeric IDs)
+- `canonical_loop_check` — traces canonical chain up to 5 hops; detects loops and self-referencing canonicals
+
+#### on_page (+3, 8 → 11)
+- `viewport_check` — detects missing/incorrect `<meta name="viewport">` tag (mobile rendering)
+- `lang_check` — detects missing `lang` attribute on `<html>` element (accessibility + hreflang dependency)
+- `content_freshness_check` — checks `Last-Modified` header + `article:modified_time`, `article:published_time`, `<time datetime>` in-page signals
+
+#### site_health (+3, 9 → 12)
+- `dns_health_check` — already implemented in `tools/phase1.py`; wired into site_health dispatch (was never connected before)
+- `www_redirect_check` — tests `www` ↔ non-www variant; detects duplicate content or missing redirect consolidation
+- `http2_check` — detects HTTP/2 support via httpx (already in requirements); warns if still on HTTP/1.1
+
+#### performance (+2, 8 → 10, no API needed)
+- `render_blocking_check` — counts render-blocking `<script>` (no async/defer) and `<link rel=stylesheet>` in `<head>`
+- `image_optimization_check` — checks lazy loading ratio, WebP/AVIF usage, missing width/height dimensions (CLS risk)
+
+#### technical_seo
+- Updated composite: crawlability(12) + on_page(11) + site_health(12) = **35 checks** (was 27)
+
+#### Files changed
+- `tools/phase1.py` — 9 new functions + TOOLS registry updated
+- `core/seo_audit.py` — TASKS dict (all 5 entries), 4 dispatch blocks updated; performance block now runs basic checks before API-gated checks
+- `app/static/js/dashboard.js` — TASK_DEFS (5 entries), UC_INFO (5 entries — checks arrays, descs, tips)
+- `core/version.py` — 2.5.1 → 2.6.0
+- `agents.md` — check registry table updated
+
+---
+
+_Last updated: 2026-06-22 — Batch I: 10 new checks. VERSION 2.6.0._

@@ -104,37 +104,47 @@ TASKS = {
         {"id": "meta_robots",      "label": "Meta robots / noindex"},
         {"id": "hreflang",         "label": "Hreflang tags"},
         {"id": "ttfb",             "label": "TTFB (response time)"},
+        {"id": "url_structure",    "label": "URL structure"},
+        {"id": "canonical_loop",   "label": "Canonical loop / chain"},
     ],
     "on_page": [
-        {"id": "title",            "label": "Title tag"},
-        {"id": "meta_description", "label": "Meta description"},
-        {"id": "headings",         "label": "Headings (H1–H3)"},
-        {"id": "image_alt",        "label": "Image alt text"},
-        {"id": "word_count",       "label": "Word count"},
-        {"id": "readability",      "label": "Readability"},
-        {"id": "schema",           "label": "Schema markup"},
-        {"id": "og_tags",          "label": "Open Graph / Twitter cards"},
+        {"id": "title",             "label": "Title tag"},
+        {"id": "meta_description",  "label": "Meta description"},
+        {"id": "headings",          "label": "Headings (H1–H3)"},
+        {"id": "image_alt",         "label": "Image alt text"},
+        {"id": "word_count",        "label": "Word count"},
+        {"id": "readability",       "label": "Readability"},
+        {"id": "schema",            "label": "Schema markup"},
+        {"id": "og_tags",           "label": "Open Graph / Twitter cards"},
+        {"id": "viewport",          "label": "Viewport meta tag"},
+        {"id": "lang_attr",         "label": "HTML lang attribute"},
+        {"id": "content_freshness", "label": "Content freshness"},
     ],
     "site_health": [
-        {"id": "ssl",                "label": "SSL / TLS grade"},
-        {"id": "domain_age",         "label": "Domain age & expiry"},
-        {"id": "mixed_content",      "label": "Mixed content (HTTP on HTTPS)"},
-        {"id": "https_enforcement",  "label": "HTTPS enforcement"},
-        {"id": "security_headers",   "label": "Security headers"},
-        {"id": "spf",                "label": "SPF record"},
-        {"id": "dmarc",              "label": "DMARC policy"},
-        {"id": "mx_records",         "label": "MX records"},
-        {"id": "favicon",            "label": "Favicon"},
+        {"id": "ssl",               "label": "SSL / TLS grade"},
+        {"id": "domain_age",        "label": "Domain age & expiry"},
+        {"id": "mixed_content",     "label": "Mixed content (HTTP on HTTPS)"},
+        {"id": "https_enforcement", "label": "HTTPS enforcement"},
+        {"id": "security_headers",  "label": "Security headers"},
+        {"id": "spf",               "label": "SPF record"},
+        {"id": "dmarc",             "label": "DMARC policy"},
+        {"id": "mx_records",        "label": "MX records"},
+        {"id": "favicon",           "label": "Favicon"},
+        {"id": "dns_health",        "label": "DNS health"},
+        {"id": "www_redirect",      "label": "www / non-www redirect"},
+        {"id": "http2",             "label": "HTTP/2 support"},
     ],
     "performance": [
-        {"id": "pagespeed_mobile",  "label": "PageSpeed — Mobile"},
-        {"id": "pagespeed_desktop", "label": "PageSpeed — Desktop"},
-        {"id": "mobile",            "label": "Mobile vs Desktop gap"},
-        {"id": "crawlability",      "label": "GSC URL inspection"},
-        {"id": "lcp",               "label": "LCP — Largest Contentful Paint"},
-        {"id": "cls",               "label": "CLS — Cumulative Layout Shift"},
-        {"id": "fcp",               "label": "FCP — First Contentful Paint"},
-        {"id": "inp",               "label": "INP — Interaction to Next Paint"},
+        {"id": "render_blocking",    "label": "Render-blocking resources"},
+        {"id": "image_optimization", "label": "Image optimization"},
+        {"id": "pagespeed_mobile",   "label": "PageSpeed — Mobile"},
+        {"id": "pagespeed_desktop",  "label": "PageSpeed — Desktop"},
+        {"id": "mobile",             "label": "Mobile vs Desktop gap"},
+        {"id": "crawlability",       "label": "GSC URL inspection"},
+        {"id": "lcp",                "label": "LCP — Largest Contentful Paint"},
+        {"id": "cls",                "label": "CLS — Cumulative Layout Shift"},
+        {"id": "fcp",                "label": "FCP — First Contentful Paint"},
+        {"id": "inp",                "label": "INP — Interaction to Next Paint"},
     ],
     "search_console": [
         {"id": "clicks_impressions", "label": "Clicks & impressions"},
@@ -163,7 +173,7 @@ TASKS = {
         {"id": "traffic_share",  "label": "Estimated traffic share"},
     ],
     "technical_seo": [
-        # crawlability (10)
+        # crawlability (12)
         {"id": "robots",            "label": "robots.txt"},
         {"id": "http_status",       "label": "HTTP status"},
         {"id": "redirect",          "label": "Redirects"},
@@ -174,7 +184,9 @@ TASKS = {
         {"id": "meta_robots",       "label": "Meta robots / noindex"},
         {"id": "hreflang",          "label": "Hreflang tags"},
         {"id": "ttfb",              "label": "TTFB (response time)"},
-        # on_page (8)
+        {"id": "url_structure",     "label": "URL structure"},
+        {"id": "canonical_loop",    "label": "Canonical loop / chain"},
+        # on_page (11)
         {"id": "title",             "label": "Title tag"},
         {"id": "meta_description",  "label": "Meta description"},
         {"id": "headings",          "label": "Headings (H1–H3)"},
@@ -183,7 +195,10 @@ TASKS = {
         {"id": "readability",       "label": "Readability"},
         {"id": "schema",            "label": "Schema markup"},
         {"id": "og_tags",           "label": "Open Graph / Twitter cards"},
-        # site_health (9)
+        {"id": "viewport",          "label": "Viewport meta tag"},
+        {"id": "lang_attr",         "label": "HTML lang attribute"},
+        {"id": "content_freshness", "label": "Content freshness"},
+        # site_health (12)
         {"id": "ssl",               "label": "SSL / TLS grade"},
         {"id": "domain_age",        "label": "Domain age & expiry"},
         {"id": "mixed_content",     "label": "Mixed content"},
@@ -193,6 +208,9 @@ TASKS = {
         {"id": "dmarc",             "label": "DMARC policy"},
         {"id": "mx_records",        "label": "MX records"},
         {"id": "favicon",           "label": "Favicon"},
+        {"id": "dns_health",        "label": "DNS health"},
+        {"id": "www_redirect",      "label": "www / non-www redirect"},
+        {"id": "http2",             "label": "HTTP/2 support"},
     ],
 }
 
@@ -438,6 +456,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         from tools.phase1 import (
             broken_link_check,
             canonical_check,
+            canonical_loop_check,
             hreflang_check,
             http_status_check,
             internal_links_check,
@@ -446,18 +465,21 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
             robots_check,
             sitemap_validate,
             ttfb_check,
+            url_structure_check,
         )
         crawl_fns = [
-            (robots_check,         "robots"),
-            (http_status_check,    "http_status"),
-            (redirect_check,       "redirect"),
-            (broken_link_check,    "broken_links"),
-            (internal_links_check, "internal_links"),
-            (sitemap_validate,     "sitemap"),
-            (canonical_check,      "canonical"),
-            (meta_robots_check,    "meta_robots"),
-            (hreflang_check,       "hreflang"),
-            (ttfb_check,           "ttfb"),
+            (robots_check,          "robots"),
+            (http_status_check,     "http_status"),
+            (redirect_check,        "redirect"),
+            (broken_link_check,     "broken_links"),
+            (internal_links_check,  "internal_links"),
+            (sitemap_validate,      "sitemap"),
+            (canonical_check,       "canonical"),
+            (meta_robots_check,     "meta_robots"),
+            (hreflang_check,        "hreflang"),
+            (ttfb_check,            "ttfb"),
+            (url_structure_check,   "url_structure"),
+            (canonical_loop_check,  "canonical_loop"),
         ]
         crawl_fns = [(fn, tid) for fn, tid in crawl_fns if _keep(tid)]
         if crawl_fns:
@@ -467,24 +489,30 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
 
     if "on_page" in active:
         from tools.phase1 import (
+            content_freshness_check,
             heading_check,
             image_alt_check,
+            lang_check,
             meta_description_check,
             og_check,
             readability_check,
             schema_check,
             title_check,
+            viewport_check,
             word_count_check,
         )
         onpage_fns = [
-            (title_check,            "title"),
-            (meta_description_check, "meta_description"),
-            (heading_check,          "headings"),
-            (image_alt_check,        "image_alt"),
-            (word_count_check,       "word_count"),
-            (readability_check,      "readability"),
-            (schema_check,           "schema"),
-            (og_check,               "og_tags"),
+            (title_check,             "title"),
+            (meta_description_check,  "meta_description"),
+            (heading_check,           "headings"),
+            (image_alt_check,         "image_alt"),
+            (word_count_check,        "word_count"),
+            (readability_check,       "readability"),
+            (schema_check,            "schema"),
+            (og_check,                "og_tags"),
+            (viewport_check,          "viewport"),
+            (lang_check,              "lang_attr"),
+            (content_freshness_check, "content_freshness"),
         ]
         onpage_fns = [(fn, tid) for fn, tid in onpage_fns if _keep(tid)]
         if onpage_fns:
@@ -495,25 +523,31 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
     if "site_health" in active:
         from tools.phase1 import (
             dmarc_check,
+            dns_health_check,
             domain_age_check,
             favicon_check,
+            http2_check,
             https_enforcement_check,
             mixed_content_check,
             mx_records_check,
             security_headers_check,
             spf_check,
             ssl_check,
+            www_redirect_check,
         )
         sh_fns = [
-            (ssl_check,                "ssl"),
-            (domain_age_check,         "domain_age"),
-            (mixed_content_check,      "mixed_content"),
-            (https_enforcement_check,  "https_enforcement"),
-            (security_headers_check,   "security_headers"),
-            (spf_check,                "spf"),
-            (dmarc_check,              "dmarc"),
-            (mx_records_check,         "mx_records"),
-            (favicon_check,            "favicon"),
+            (ssl_check,               "ssl"),
+            (domain_age_check,        "domain_age"),
+            (mixed_content_check,     "mixed_content"),
+            (https_enforcement_check, "https_enforcement"),
+            (security_headers_check,  "security_headers"),
+            (spf_check,               "spf"),
+            (dmarc_check,             "dmarc"),
+            (mx_records_check,        "mx_records"),
+            (favicon_check,           "favicon"),
+            (dns_health_check,        "dns_health"),
+            (www_redirect_check,      "www_redirect"),
+            (http2_check,             "http2"),
         ]
         sh_fns = [(fn, tid) for fn, tid in sh_fns if _keep(tid)]
         if sh_fns:
@@ -522,6 +556,16 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
                 all_results += _collect(futs)
 
     if "performance" in active:
+        from tools.phase1 import image_optimization_check, render_blocking_check
+        basic_perf_fns = [
+            (render_blocking_check,    "render_blocking"),
+            (image_optimization_check, "image_optimization"),
+        ]
+        basic_perf_fns = [(fn, tid) for fn, tid in basic_perf_fns if _keep(tid)]
+        if basic_perf_fns:
+            with ThreadPoolExecutor(max_workers=len(basic_perf_fns)) as ex:
+                futs = [ex.submit(fn, url) for fn, _ in basic_perf_fns]
+                all_results += _collect(futs)
         from tools.phase2 import extract_cwv
         api_key  = cfg.get("pagespeed_api_key", "")
         _parsed  = urlparse(url)

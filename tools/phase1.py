@@ -1196,6 +1196,269 @@ def mx_records_check(url: str) -> dict:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Batch I — New checks
+# ══════════════════════════════════════════════════════════════════════════════
+
+def viewport_check(url: str) -> dict:
+    """Check for mobile viewport meta tag."""
+    try:
+        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        vp = soup.find("meta", attrs={"name": "viewport"})
+        if vp:
+            content = vp.get("content", "")
+            has_width = "width=device-width" in content
+            s = "pass" if has_width else "warning"
+            msg = (f"Viewport: {content}" if has_width
+                   else f"Viewport missing width=device-width — current: {content}")
+            return result(url, "viewport", s, {"content": content}, msg,
+                          {"has_width_device": has_width})
+        return result(url, "viewport", "fail", None,
+                      'Missing <meta name="viewport"> — mobile rendering undefined',
+                      {"found": False})
+    except (requests.RequestException, OSError, ValueError) as exc:
+        return result(url, "viewport", "error", None, str(exc))
+
+
+def lang_check(url: str) -> dict:
+    """Check for html lang attribute."""
+    try:
+        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        html_tag = soup.find("html")
+        lang = html_tag.get("lang", "").strip() if html_tag else ""
+        if lang:
+            return result(url, "lang_attr", "pass", lang,
+                          f'HTML lang attribute set: "{lang}"',
+                          {"lang": lang})
+        return result(url, "lang_attr", "fail", None,
+                      "Missing lang attribute on <html> tag — affects accessibility and hreflang",
+                      {"found": False})
+    except (requests.RequestException, OSError, ValueError) as exc:
+        return result(url, "lang_attr", "error", None, str(exc))
+
+
+def content_freshness_check(url: str) -> dict:
+    """Check content freshness signals (Last-Modified header + in-page date meta)."""
+    try:
+        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
+        last_modified = resp.headers.get("Last-Modified") or resp.headers.get("last-modified")
+        soup = BeautifulSoup(resp.text, "html.parser")
+        date_signals = [
+            ("meta[property='article:modified_time']", "content"),
+            ("meta[property='article:published_time']", "content"),
+            ("time[datetime]", "datetime"),
+            ("meta[name='date']", "content"),
+        ]
+        visible_date = None
+        for selector, attr in date_signals:
+            el = soup.select_one(selector)
+            if el and el.get(attr):
+                visible_date = el.get(attr)
+                break
+        has_signal = bool(last_modified or visible_date)
+        if last_modified:
+            msg = f"Last-Modified: {last_modified}"
+        elif visible_date:
+            msg = f"Published/modified date found: {visible_date[:40]}"
+        else:
+            msg = "No freshness signals — add Last-Modified header or article:modified_time meta"
+        return result(url, "content_freshness", "pass" if has_signal else "warning",
+                      last_modified or visible_date, msg,
+                      {"last_modified": last_modified, "visible_date": visible_date})
+    except (requests.RequestException, OSError, ValueError) as exc:
+        return result(url, "content_freshness", "error", None, str(exc))
+
+
+def url_structure_check(url: str) -> dict:
+    """Check URL structure quality: length, casing, params, slug cleanliness."""
+    import re
+    from urllib.parse import parse_qs
+    issues = []
+    parsed = urlparse(url)
+    path = parsed.path
+    params = parse_qs(parsed.query)
+    if len(url) > 115:
+        issues.append(f"URL length {len(url)} chars (target < 115)")
+    if any(c.isupper() for c in path):
+        issues.append("Uppercase letters in path")
+    if len(params) > 3:
+        issues.append(f"{len(params)} query params (crawl budget risk)")
+    session_params = {"sid", "sessionid", "session_id", "phpsessid", "jsessionid"}
+    found_session = session_params & {p.lower() for p in params}
+    if found_session:
+        issues.append(f"Session params in URL: {', '.join(sorted(found_session))}")
+    slug_parts = [p for p in path.split("/") if p]
+    if slug_parts:
+        last_slug = slug_parts[-1]
+        if re.search(r"\d{8,}", last_slug):
+            issues.append("Long numeric ID in slug (consider readable slug)")
+        if "_" in last_slug and "-" not in last_slug:
+            issues.append("Underscores in URL slug (prefer hyphens)")
+    s = "fail" if len(issues) > 2 else "warning" if issues else "pass"
+    msg = "; ".join(issues) if issues else f"Clean URL structure ({len(url)} chars)"
+    return result(url, "url_structure", s, {"issues": len(issues)}, msg,
+                  {"issues": issues, "length": len(url), "params_count": len(params)})
+
+
+def canonical_loop_check(url: str) -> dict:
+    """Detect canonical redirect chains and loops."""
+    MAX_HOPS = 5
+    visited = [url]
+    current = url
+    try:
+        for _ in range(MAX_HOPS):
+            resp = safe_requests_get(current, timeout=10, headers=HEADERS)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            tag = soup.find("link", rel="canonical")
+            if not tag or not tag.get("href"):
+                return result(url, "canonical_loop", "pass", None,
+                              "No canonical chain detected", {"hops": visited})
+            canon_url = tag["href"].strip()
+            if not canon_url.startswith("http"):
+                canon_url = urljoin(current, canon_url)
+            if canon_url == current:
+                if len(visited) == 1:
+                    return result(url, "canonical_loop", "pass", canon_url,
+                                  "Self-referencing canonical (correct)", {})
+                chain = " → ".join(visited + [canon_url])
+                return result(url, "canonical_loop", "warning", None,
+                              f"Canonical chain ({len(visited)} hops): {chain}",
+                              {"chain": visited + [canon_url]})
+            if canon_url in visited:
+                chain = " → ".join(visited + [canon_url])
+                return result(url, "canonical_loop", "fail", None,
+                              f"Canonical loop detected: {chain}",
+                              {"loop": visited + [canon_url]})
+            visited.append(canon_url)
+            current = canon_url
+        chain = " → ".join(visited)
+        return result(url, "canonical_loop", "warning", None,
+                      f"Canonical chain > {MAX_HOPS} hops: {chain}",
+                      {"chain": visited})
+    except (requests.RequestException, OSError, ValueError) as exc:
+        return result(url, "canonical_loop", "error", None, str(exc))
+
+
+def www_redirect_check(url: str) -> dict:
+    """Check www / non-www redirect consistency."""
+    parsed = urlparse(url)
+    domain = parsed.netloc
+    scheme = parsed.scheme
+    has_www = domain.startswith("www.")
+    alt_domain = domain[4:] if has_www else f"www.{domain}"
+    alt_url = f"{scheme}://{alt_domain}/"
+    try:
+        resp = safe_requests_get(alt_url, timeout=10, headers=HEADERS)
+        final_netloc = urlparse(resp.url).netloc
+        is_consolidated = final_netloc == domain
+        if is_consolidated:
+            return result(url, "www_redirect", "pass", resp.url,
+                          f"Consistent redirect: {alt_url} → {resp.url}",
+                          {"tested_url": alt_url, "final_url": resp.url})
+        if final_netloc == alt_domain:
+            return result(url, "www_redirect", "warning", resp.url,
+                          f"{alt_url} resolves independently — duplicate content risk",
+                          {"tested_url": alt_url, "final_url": resp.url,
+                           "status": resp.status_code})
+        return result(url, "www_redirect", "pass", resp.url,
+                      f"{alt_url} returned {resp.status_code}",
+                      {"tested_url": alt_url, "status": resp.status_code})
+    except (requests.RequestException, OSError, ValueError) as exc:
+        return result(url, "www_redirect", "error", None, str(exc))
+
+
+def http2_check(url: str) -> dict:
+    """Check HTTP/2 or HTTP/3 support via httpx."""
+    try:
+        import httpx
+        with httpx.Client(http2=True, verify=True, timeout=10,
+                          follow_redirects=True) as client:
+            resp = client.get(url, headers=HEADERS)
+            version = resp.http_version
+        is_modern = version in ("HTTP/2", "HTTP/3")
+        s = "pass" if is_modern else "warning"
+        msg = (f"{version} — multiplexed connections enabled" if is_modern
+               else f"HTTP/2 not detected ({version}) — upgrade for faster page loads")
+        return result(url, "http2", s, version, msg, {"http_version": version})
+    except ImportError:
+        return result(url, "http2", "error", None, "httpx not installed")
+    except Exception as exc:
+        logger.warning("http2_check failed for %s: %s", url, exc)
+        return result(url, "http2", "error", None, str(exc))
+
+
+def render_blocking_check(url: str) -> dict:
+    """Check for render-blocking JS and CSS in <head>."""
+    try:
+        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        head = soup.find("head") or soup
+        blocking_scripts = [
+            s.get("src", "")[:100]
+            for s in head.find_all("script", src=True)
+            if not s.get("async") and not s.get("defer") and s.get("type") != "module"
+        ]
+        blocking_styles = [
+            lk.get("href", "")[:100]
+            for lk in head.find_all("link", rel="stylesheet")
+            if not lk.get("media") or lk.get("media") in ("", "all")
+        ]
+        total = len(blocking_scripts) + len(blocking_styles)
+        s = "fail" if total > 5 else "warning" if total > 2 else "pass"
+        msg = (f"{total} render-blocking resources "
+               f"({len(blocking_scripts)} scripts, {len(blocking_styles)} stylesheets)"
+               if total else "No render-blocking resources detected")
+        return result(url, "render_blocking", s, total, msg,
+                      {"blocking_scripts": blocking_scripts[:5],
+                       "blocking_styles": blocking_styles[:5],
+                       "total": total})
+    except (requests.RequestException, OSError, ValueError) as exc:
+        return result(url, "render_blocking", "error", None, str(exc))
+
+
+def image_optimization_check(url: str) -> dict:
+    """Check image lazy loading, WebP/AVIF usage, and missing dimensions."""
+    try:
+        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        images = soup.find_all("img")
+        if not images:
+            return result(url, "image_optimization", "pass", 0, "No images found", {})
+        total = len(images)
+        lazy = sum(1 for img in images if img.get("loading") == "lazy")
+        missing_dims = sum(
+            1 for img in images if not img.get("width") or not img.get("height")
+        )
+        webp_img = sum(
+            1 for img in images
+            if ".webp" in img.get("src", "").lower()
+            or ".avif" in img.get("src", "").lower()
+        )
+        webp_src = len(
+            soup.find_all("source",
+                          type=lambda t: t and ("webp" in t or "avif" in t))
+        )
+        modern = webp_img + webp_src
+        issues = []
+        if total > 3 and lazy < total * 0.5:
+            issues.append(f"Only {lazy}/{total} images use lazy loading")
+        if missing_dims > total * 0.3:
+            issues.append(f"{missing_dims}/{total} images missing width/height (CLS risk)")
+        if total > 3 and modern < total * 0.3:
+            issues.append(f"Low WebP/AVIF usage ({modern}/{total} images)")
+        s = "fail" if len(issues) > 2 else "warning" if issues else "pass"
+        msg = ("; ".join(issues) if issues
+               else (f"{total} images — lazy: {lazy}, "
+                     f"modern format: {modern}, dims set: {total - missing_dims}"))
+        return result(url, "image_optimization", s, total, msg,
+                      {"total": total, "lazy_loaded": lazy, "modern_format": modern,
+                       "missing_dims": missing_dims})
+    except (requests.RequestException, OSError, ValueError) as exc:
+        return result(url, "image_optimization", "error", None, str(exc))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Run all Phase 1 tools on a single URL
 # ══════════════════════════════════════════════════════════════════════════════
 TOOLS = [
@@ -1217,6 +1480,15 @@ TOOLS = [
     ("Domain Age", domain_age_check),
     ("SSL Grade", ssl_check),
     ("DNS Health", dns_health_check),
+    ("Viewport", viewport_check),
+    ("Lang Attribute", lang_check),
+    ("Content Freshness", content_freshness_check),
+    ("URL Structure", url_structure_check),
+    ("Canonical Loop", canonical_loop_check),
+    ("WWW Redirect", www_redirect_check),
+    ("HTTP/2", http2_check),
+    ("Render Blocking", render_blocking_check),
+    ("Image Optimization", image_optimization_check),
 ]
 
 

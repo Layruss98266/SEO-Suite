@@ -73,47 +73,57 @@ const UC_DEFS = {
 // Individual tasks per use case — IDs match backend tool names
 const TASK_DEFS = {
   crawlability: [
-    {id:'robots',         label:'robots.txt'},
-    {id:'http_status',    label:'HTTP status'},
-    {id:'redirect',       label:'Redirects'},
-    {id:'broken_links',   label:'Broken links'},
-    {id:'internal_links', label:'Internal links'},
-    {id:'sitemap',        label:'Sitemap validation'},
-    {id:'canonical',      label:'Canonical URL'},
-    {id:'meta_robots',    label:'Meta robots / X-Robots-Tag'},
-    {id:'hreflang',       label:'Hreflang tags'},
-    {id:'ttfb',           label:'TTFB (response time)'},
+    {id:'robots',          label:'robots.txt'},
+    {id:'http_status',     label:'HTTP status'},
+    {id:'redirect',        label:'Redirects'},
+    {id:'broken_links',    label:'Broken links'},
+    {id:'internal_links',  label:'Internal links'},
+    {id:'sitemap',         label:'Sitemap validation'},
+    {id:'canonical',       label:'Canonical URL'},
+    {id:'meta_robots',     label:'Meta robots / X-Robots-Tag'},
+    {id:'hreflang',        label:'Hreflang tags'},
+    {id:'ttfb',            label:'TTFB (response time)'},
+    {id:'url_structure',   label:'URL structure'},
+    {id:'canonical_loop',  label:'Canonical loop / chain'},
   ],
   on_page: [
-    {id:'title',            label:'Title tag'},
-    {id:'meta_description', label:'Meta description'},
-    {id:'headings',         label:'Headings (H1–H3)'},
-    {id:'image_alt',        label:'Image alt text'},
-    {id:'word_count',       label:'Word count'},
-    {id:'readability',      label:'Readability'},
-    {id:'schema',           label:'Schema markup'},
-    {id:'og_tags',          label:'Open Graph / Twitter cards'},
+    {id:'title',             label:'Title tag'},
+    {id:'meta_description',  label:'Meta description'},
+    {id:'headings',          label:'Headings (H1–H3)'},
+    {id:'image_alt',         label:'Image alt text'},
+    {id:'word_count',        label:'Word count'},
+    {id:'readability',       label:'Readability'},
+    {id:'schema',            label:'Schema markup'},
+    {id:'og_tags',           label:'Open Graph / Twitter cards'},
+    {id:'viewport',          label:'Viewport meta tag'},
+    {id:'lang_attr',         label:'HTML lang attribute'},
+    {id:'content_freshness', label:'Content freshness'},
   ],
   site_health: [
-    {id:'ssl',                label:'SSL / TLS grade'},
-    {id:'domain_age',         label:'Domain age & expiry'},
-    {id:'mixed_content',      label:'Mixed content (HTTP on HTTPS)'},
-    {id:'https_enforcement',  label:'HTTPS enforcement'},
-    {id:'security_headers',   label:'Security headers'},
-    {id:'spf',                label:'SPF record'},
-    {id:'dmarc',              label:'DMARC policy'},
-    {id:'mx_records',         label:'MX records'},
-    {id:'favicon',            label:'Favicon'},
+    {id:'ssl',               label:'SSL / TLS grade'},
+    {id:'domain_age',        label:'Domain age & expiry'},
+    {id:'mixed_content',     label:'Mixed content (HTTP on HTTPS)'},
+    {id:'https_enforcement', label:'HTTPS enforcement'},
+    {id:'security_headers',  label:'Security headers'},
+    {id:'spf',               label:'SPF record'},
+    {id:'dmarc',             label:'DMARC policy'},
+    {id:'mx_records',        label:'MX records'},
+    {id:'favicon',           label:'Favicon'},
+    {id:'dns_health',        label:'DNS health'},
+    {id:'www_redirect',      label:'www / non-www redirect'},
+    {id:'http2',             label:'HTTP/2 support'},
   ],
   performance: [
-    {id:'pagespeed_mobile',  label:'PageSpeed — Mobile'},
-    {id:'pagespeed_desktop', label:'PageSpeed — Desktop'},
-    {id:'mobile',            label:'Mobile vs Desktop gap'},
-    {id:'crawlability',      label:'GSC URL inspection'},
-    {id:'lcp',               label:'LCP — Largest Contentful Paint'},
-    {id:'cls',               label:'CLS — Cumulative Layout Shift'},
-    {id:'fcp',               label:'FCP — First Contentful Paint'},
-    {id:'inp',               label:'INP — Interaction to Next Paint'},
+    {id:'render_blocking',    label:'Render-blocking resources'},
+    {id:'image_optimization', label:'Image optimization'},
+    {id:'pagespeed_mobile',   label:'PageSpeed — Mobile'},
+    {id:'pagespeed_desktop',  label:'PageSpeed — Desktop'},
+    {id:'mobile',             label:'Mobile vs Desktop gap'},
+    {id:'crawlability',       label:'GSC URL inspection'},
+    {id:'lcp',                label:'LCP — Largest Contentful Paint'},
+    {id:'cls',                label:'CLS — Cumulative Layout Shift'},
+    {id:'fcp',                label:'FCP — First Contentful Paint'},
+    {id:'inp',                label:'INP — Interaction to Next Paint'},
   ],
   search_console: [
     {id:'clicks_impressions', label:'Clicks & impressions'},
@@ -142,7 +152,7 @@ const TASK_DEFS = {
     {id:'traffic_share',  label:'Traffic share estimate'},
   ],
   technical_seo: [
-    // crawlability (10)
+    // crawlability (12)
     {id:'robots',            label:'robots.txt'},
     {id:'http_status',       label:'HTTP status'},
     {id:'redirect',          label:'Redirects'},
@@ -153,7 +163,9 @@ const TASK_DEFS = {
     {id:'meta_robots',       label:'Meta robots / X-Robots-Tag'},
     {id:'hreflang',          label:'Hreflang tags'},
     {id:'ttfb',              label:'TTFB (response time)'},
-    // on_page (8)
+    {id:'url_structure',     label:'URL structure'},
+    {id:'canonical_loop',    label:'Canonical loop / chain'},
+    // on_page (11)
     {id:'title',             label:'Title tag'},
     {id:'meta_description',  label:'Meta description'},
     {id:'headings',          label:'Headings (H1–H3)'},
@@ -162,7 +174,10 @@ const TASK_DEFS = {
     {id:'readability',       label:'Readability'},
     {id:'schema',            label:'Schema markup'},
     {id:'og_tags',           label:'Open Graph / Twitter cards'},
-    // site_health (9)
+    {id:'viewport',          label:'Viewport meta tag'},
+    {id:'lang_attr',         label:'HTML lang attribute'},
+    {id:'content_freshness', label:'Content freshness'},
+    // site_health (12)
     {id:'ssl',               label:'SSL / TLS grade'},
     {id:'domain_age',        label:'Domain age & expiry'},
     {id:'mixed_content',     label:'Mixed content'},
@@ -172,6 +187,9 @@ const TASK_DEFS = {
     {id:'dmarc',             label:'DMARC policy'},
     {id:'mx_records',        label:'MX records'},
     {id:'favicon',           label:'Favicon'},
+    {id:'dns_health',        label:'DNS health'},
+    {id:'www_redirect',      label:'www / non-www redirect'},
+    {id:'http2',             label:'HTTP/2 support'},
   ],
 };
 
@@ -186,8 +204,8 @@ const PRESETS = {
 // Per-use-case info: checks list, when-to-use, example output, API setup
 const UC_INFO = {
   crawlability: {
-    desc: 'Checks every layer that controls whether Googlebot can reach and index your page — from robots.txt rules down to internal link health.',
-    checks: ['robots.txt','HTTP status','Redirects','Broken links','Internal links','Sitemap validation','Canonical URL','Meta robots / X-Robots-Tag','Hreflang tags','TTFB (response time)'],
+    desc: 'Checks every layer that controls whether Googlebot can reach and index your page — from robots.txt rules down to internal link health and URL structure.',
+    checks: ['robots.txt','HTTP status','Redirects','Broken links','Internal links','Sitemap validation','Canonical URL','Meta robots / X-Robots-Tag','Hreflang tags','TTFB (response time)','URL structure','Canonical loop / chain'],
     when: 'Use this when pages are missing from Google Search, after a site migration, or when taking over a new client site.',
     example:
 `URL: https://example.com/blog/post
@@ -205,8 +223,8 @@ const UC_INFO = {
     api: null,
   },
   on_page: {
-    desc: 'Analyses every on-page signal Google uses to understand what your page is about and how to display it in search results.',
-    checks: ['Title tag','Meta description','Headings (H1–H3)','Image alt text','Word count','Readability','Schema markup','Open Graph / Twitter cards'],
+    desc: 'Analyses every on-page signal Google uses to understand your page — content quality, structured data, social meta, mobile-readiness, and freshness.',
+    checks: ['Title tag','Meta description','Headings (H1–H3)','Image alt text','Word count','Readability','Schema markup','Open Graph / Twitter cards','Viewport meta tag','HTML lang attribute','Content freshness'],
     when: 'Run before publishing new content, after a rankings drop, or as part of a content refresh to find quick-win optimisation gaps.',
     example:
 `URL: https://example.com/services
@@ -224,8 +242,8 @@ const UC_INFO = {
     api: null,
   },
   site_health: {
-    desc: 'Checks the security, trust, and technical foundation of your domain — things Google factors into site-wide authority.',
-    checks: ['SSL / TLS grade','Domain age & expiry','Mixed content (HTTP on HTTPS)','HTTPS enforcement','Security headers','SPF record','DMARC policy','MX records','Favicon'],
+    desc: 'Checks the security, trust, and technical foundation of your domain — SSL, DNS configuration, redirect consistency, and HTTP/2 support.',
+    checks: ['SSL / TLS grade','Domain age & expiry','Mixed content (HTTP on HTTPS)','HTTPS enforcement','Security headers','SPF record','DMARC policy','MX records','Favicon','DNS health','www / non-www redirect','HTTP/2 support'],
     when: 'Use on new client takeovers, pre-launch checklists, or any time you need a quick trust & security snapshot without running a full audit.',
     example:
 `Domain: example.com
@@ -243,8 +261,8 @@ const UC_INFO = {
     api: null,
   },
   performance: {
-    desc: 'Pulls live Core Web Vitals and PageSpeed scores for both mobile and desktop, pinpointing the exact metrics dragging your score down.',
-    checks: ['PageSpeed — Mobile','PageSpeed — Desktop','Mobile vs Desktop gap','GSC URL inspection','LCP — Largest Contentful Paint','CLS — Cumulative Layout Shift','FCP — First Contentful Paint','INP — Interaction to Next Paint'],
+    desc: 'Runs no-API page performance checks (render blocking, image optimization) plus live Core Web Vitals and PageSpeed scores when an API key is configured.',
+    checks: ['Render-blocking resources','Image optimization','PageSpeed — Mobile','PageSpeed — Desktop','Mobile vs Desktop gap','GSC URL inspection','LCP — Largest Contentful Paint','CLS — Cumulative Layout Shift','FCP — First Contentful Paint','INP — Interaction to Next Paint'],
     when: 'Run before a Google core update, when Core Web Vitals turn red in Search Console, or to find the slowest pages in a CSV of URLs.',
     example:
 `URL: https://example.com/
@@ -354,14 +372,14 @@ const UC_INFO = {
     },
   },
   technical_seo: {
-    desc: 'Comprehensive technical audit combining crawlability, on-page signals, and site health into a single run — the fastest way to get a complete technical picture of any URL without needing an API key.',
+    desc: 'Comprehensive technical audit combining crawlability (12), on-page (11), and site health (12) into a single 35-check run — the fastest way to get a complete technical picture of any URL without needing an API key.',
     checks: [
-      // crawlability (10)
-      'robots.txt','HTTP status','Redirects','Broken links','Internal links','Sitemap validation','Canonical URL','Meta robots / X-Robots-Tag','Hreflang tags','TTFB (response time)',
-      // on_page (8)
-      'Title tag','Meta description','Headings (H1–H3)','Image alt text','Word count','Readability','Schema markup','Open Graph / Twitter cards',
-      // site_health (9)
-      'SSL / TLS grade','Domain age & expiry','Mixed content','HTTPS enforcement','Security headers','SPF record','DMARC policy','MX records','Favicon',
+      // crawlability (12)
+      'robots.txt','HTTP status','Redirects','Broken links','Internal links','Sitemap validation','Canonical URL','Meta robots / X-Robots-Tag','Hreflang tags','TTFB (response time)','URL structure','Canonical loop / chain',
+      // on_page (11)
+      'Title tag','Meta description','Headings (H1–H3)','Image alt text','Word count','Readability','Schema markup','Open Graph / Twitter cards','Viewport meta tag','HTML lang attribute','Content freshness',
+      // site_health (12)
+      'SSL / TLS grade','Domain age & expiry','Mixed content','HTTPS enforcement','Security headers','SPF record','DMARC policy','MX records','Favicon','DNS health','www / non-www redirect','HTTP/2 support',
     ],
     when: 'Use as your default first audit on any new URL or client site — covers everything you need before publishing, after a site migration, or for a technical SEO proposal.',
     example:
@@ -370,20 +388,23 @@ const UC_INFO = {
   HTTP status       PASS   200 OK
   Redirects         PASS   No redirect chains
   Canonical         PASS   Self-referencing canonical
+  URL structure     PASS   Clean URL (41 chars, no issues)
   Title             PASS   58 chars — "Services | Example"
   Meta description  WARN   Missing — write 120–160 chars
-  H1                PASS   Exactly 1 H1 found
-  Schema            PASS   Organization schema detected
+  Viewport          PASS   width=device-width set
+  Lang attr         PASS   lang="en"
   SSL grade         PASS   A+  (valid · 365 days remaining)
   HTTPS enforcement PASS   HTTP → HTTPS redirect confirmed
+  HTTP/2            PASS   HTTP/2 — multiplexed connections enabled
   Security headers  WARN   Missing: CSP, X-Frame-Options
   DMARC             WARN   p=none  (set p=reject to enforce)
   ─────────────────────────────────
-  Score: 72 / 100   Warnings: 3   Fails: 0`,
+  Score: 74 / 100   Warnings: 3   Fails: 0`,
     tips: [
-      'Upload a CSV to run all 27 checks across dozens of URLs in parallel',
+      'Upload a CSV to run all 35 checks across dozens of URLs in parallel',
       'Use this as your default first-pass audit — then drill into crawlability or on-page for deeper analysis',
       'Security header and DMARC warnings are DNS-level fixes — fast wins with big trust signals',
+      'HTTP/2 and www-redirect issues are server config fixes — usually one-line changes with big performance gains',
     ],
     api: null,
   },

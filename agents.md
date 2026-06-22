@@ -60,17 +60,17 @@ python -m playwright install chromium --with-deps  # first time only
 | `SEO_SUITE_ALLOW_NO_AUTH_CLOUD` | Override cloud NO_AUTH block (dangerous) |
 | `SEO_SUITE_PUBLIC_DOCS` | `1` to expose `/openapi.yaml` + `/docs` publicly |
 
-## Use Case Check Registry (v2.5.1)
+## Use Case Check Registry (v2.6.0)
 | Use Case | Checks | Count |
 |---|---|---|
-| crawlability | robots, http_status, redirect, broken_links, internal_links, sitemap, canonical, meta_robots, hreflang, ttfb | 10 |
-| on_page | title, meta_description, headings, image_alt, word_count, readability, schema, og_tags | 8 |
-| site_health | ssl, domain_age, mixed_content, https_enforcement, security_headers, spf, dmarc, mx_records, favicon | 9 |
-| performance | pagespeed_mobile, pagespeed_desktop, mobile, gsc_url_inspection, lcp, cls, fcp, inp | 8 (API required) |
+| crawlability | robots, http_status, redirect, broken_links, internal_links, sitemap, canonical, meta_robots, hreflang, ttfb, url_structure, canonical_loop | 12 |
+| on_page | title, meta_description, headings, image_alt, word_count, readability, schema, og_tags, viewport, lang_attr, content_freshness | 11 |
+| site_health | ssl, domain_age, mixed_content, https_enforcement, security_headers, spf, dmarc, mx_records, favicon, dns_health, www_redirect, http2 | 12 |
+| performance | render_blocking, image_optimization (no API) + pagespeed_mobile, pagespeed_desktop, mobile, gsc_url_inspection, lcp, cls, fcp, inp (API required) | 10 |
 | search_console | clicks_impressions, top_queries, position_tracker, ctr_analyzer, coverage_errors, sitemaps_status, manual_actions | 7 (GSC required) |
 | authority | backlinks, domain_authority, page_authority, referring_domains, domain_rank, broken_backlinks, nofollow_ratio, spam_score | 8 |
 | rankings | rank_tracker, serp_features, competitor, rank_change, traffic_share | 5 (SerpAPI required) |
-| technical_seo | composite of crawlability + on_page + site_health | 27 |
+| technical_seo | composite of crawlability(12) + on_page(11) + site_health(12) | 35 |
 
 **Classification rules:**
 - Crawl/indexing directives (canonical, meta_robots, hreflang) → crawlability

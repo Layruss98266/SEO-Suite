@@ -1,7 +1,7 @@
 # SEO Suite — Master Project Log
 
 > **ACCOUNT-SWITCH PROOF. Read every section before touching any code.**
-> Last updated: 2026-06-22 (Session 59). Current VERSION: **2.6.3**
+> Last updated: 2026-06-22 (Session 60). Current VERSION: **2.6.4**
 
 ---
 
@@ -9,13 +9,13 @@
 
 ```
 1. cd "C:\Users\Surya L\Desktop\AI Agents\SEO Suite"
-2. Verify version:  python -c "from core.version import VERSION; print(VERSION)"  → 2.6.1
+2. Verify version:  python -c "from core.version import VERSION; print(VERSION)"  → 2.6.4
 3. Verify checks:   python -c "from core.seo_audit import TASKS; [print(k,len(v)) for k,v in TASKS.items()]"
    crawlability=12, on_page=11, site_health=12, performance=10, technical_seo=35
    search_console=7, authority=8, rankings=5
 4. Run app:  python app/server.py  → http://localhost:8080 (port 8080, NOT 5000)
 5. Auth:     NO_AUTH=1 python app/server.py  (local dev only — blocked on cloud hosts)
-6. Tests:    pytest tests/ -q  →  238 passing
+6. Tests:    pytest tests/ -q  →  578 passing
 7. Git push: git config core.hooksPath .githooks  (install pre-push hook once)
 8. VERSION file: core/version.py — bump it whenever JS/CSS changes (cache-busting)
 9. All HTML-fetching checks in tools/phase1.py use fetch_page() — 30-min shared cache
@@ -77,7 +77,7 @@ www_redirect_check, http2_check, render_blocking_check, image_optimization_check
 
 ## Order of Execution (Phases)
 
-> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → v2.6.2 → **v2.6.3** ← current
+> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → v2.6.2 → v2.6.3 → **v2.6.4** ← current
 
 ### PHASE 1 — Initial Build ✅ COMPLETE (v1.0)
 Flask app, blueprint split, SQLite auth, Playwright, SSE streaming, Docker/Render/Fly deploy, `/metrics` endpoint, OpenAPI spec, initial SEO audit checks.
@@ -133,8 +133,11 @@ Added viewport, lang_attr, content_freshness, url_structure, canonical_loop, dns
 
 ### PHASE 14 — Audit Findings Resolution ✅ COMPLETE (v2.6.2)
 
-### PHASE 15 — Remaining Audit Items + Phase 0 Blockers ✅ COMPLETE (current, v2.6.3)
+### PHASE 15 — Remaining Audit Items + Phase 0 Blockers ✅ COMPLETE (v2.6.3)
 PROJECT_LOG.md created (this file). Pre-push hook strengthened: PROJECT_LOG update check, README version staleness, secrets scan, PROJECT_LOG existence check.
+
+### PHASE 16 — S-NEW onclick Migration + Audit Correctness ✅ COMPLETE (current, v2.6.4)
+Completed full inline onclick migration (355 → 0), phase1.py check correctness fixes, reports/tools hardening, and CSS brand token.
 
 ---
 
@@ -145,7 +148,7 @@ PROJECT_LOG.md created (this file). Pre-push hook strengthened: PROJECT_LOG upda
 |---|---|
 | `python app/server.py` | Dev server, port 8080 |
 | `gunicorn --workers 1 --threads 8 --timeout 300 "app.server:create_app()"` | Production |
-| `pytest tests/ -q` | 238 tests |
+| `pytest tests/ -q` | 578 tests |
 | `ruff check . && ruff format .` | Lint + format |
 
 ### Blueprint Routes
@@ -168,7 +171,7 @@ PROJECT_LOG.md created (this file). Pre-push hook strengthened: PROJECT_LOG upda
 | `core/checker.py` | Main audit orchestrator — runs phases, saves progress, GSC integration |
 | `core/auth.py` | `login_required`, `admin_required`, cloud detection, `_failed_attempts` TTL cache |
 | `core/db.py` | SQLite helpers — users, sessions, login history, TOTP |
-| `core/version.py` | Single source of truth: `VERSION = "2.6.1"` |
+| `core/version.py` | Single source of truth: `VERSION = "2.6.4"` |
 | `core/notifier.py` | SMTP/Slack/Teams notifications |
 | `app/middleware.py` | CSP headers, CSRF deny-by-default |
 | `app/state.py` | `CFG` dict, `_check_public_url()`, `require_public_url` decorator |
@@ -237,8 +240,8 @@ Adding a check: update `TOOLS` list in `tools/phase1.py` + `TASKS` dict in `core
 ### 6. `NO_AUTH=1` blocked on cloud
 `core/auth.py` → `_on_cloud_host()` detects Render/Fly/Railway/Heroku/GCloud/Azure. `NO_AUTH=1` on any cloud host raises `RuntimeError` at startup. Override requires `SEO_SUITE_ALLOW_NO_AUTH_CLOUD=1` (dangerous). Only use `NO_AUTH=1` for local dev.
 
-### 7. CSP keeps `'unsafe-inline'` in script-src intentionally
-Dashboard has ~1000 inline `onclick="..."` attributes. Removing `'unsafe-inline'` broke every button (C-NEW2). Tracked as S-NEW. Do not remove it until all inline handlers are migrated to `addEventListener`.
+### 7. CSP `'unsafe-inline'` — S-NEW migration complete, CSP tightening now possible
+All 355 inline `onclick` handlers in dashboard.html + base.html migrated to `data-action` event delegation (v2.6.4). Single delegation handler in dashboard.js covers 140+ actions. `'unsafe-inline'` can now be removed from script-src CSP to fully close S-NEW. See scripts/migrate_onclick.py for the idempotent transformation script.
 
 ### 8. technical_seo is a composite use case
 `audit_single_url()` in `core/seo_audit.py` expands `technical_seo` in the `active` set to `{crawlability, on_page, site_health}` before dispatching checks. It never dispatches `technical_seo` directly. TASKS entry for it is `crawlability + on_page + site_health` keys (35 total).
@@ -266,7 +269,7 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 | P2 | Product | Client/project grouping in Reports panel — flat timestamp list, no domain label |
 | P3 | Product | Cross-URL issue aggregation — no "37 pages missing H1" summary view |
 | CT3 | Content | Trust signals on home page — no GitHub stars badge, no user count, no testimonials |
-| S-NEW | Security | Migrate ~1000 inline `onclick` handlers to `addEventListener` — unblocks CSP tightening |
+| S-NEW-CSP | Security | Remove `'unsafe-inline'` from script-src CSP — onclick migration complete (v2.6.4), just needs middleware.py update |
 
 ### P2 — Phase 0 Blockers ✅ ALL RESOLVED
 | ID | Item | Status |
@@ -281,10 +284,11 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 ### P3 — Code Quality (low urgency)
 | ID | Item |
 |---|---|
-| C20 | `generate_html` 200-line f-string → Jinja2 template (`core/checker.py:30474`) |
-| C24 | Three URL-validation idioms — consolidate `_reject_unsafe`, `_require_public_url`, `is_safe_url` |
-| C25 | `/api/reports/*` responses missing `ok` key |
-| S15 | Playwright `--no-sandbox` on attacker HTML (`app/blueprints/reports.py`) |
+| C20 | `generate_html` 200-line f-string → Jinja2 template (`core/checker.py:30474`) — already uses Jinja2, N/A |
+| C24 | Three URL-validation idioms — consolidate `_reject_unsafe`, `_require_public_url`, `is_safe_url` — already consolidated, N/A |
+| C25 | `/api/reports/*` object-returning routes now have `ok` key — **FIXED** v2.6.4 (array routes kept as arrays to avoid JS breakage) |
+| S15 | Playwright `--no-sandbox` on attacker HTML — **N/A** (SECURITY comment already in audit.py: "DO NOT add --no-sandbox") |
+| U5 | `--brand:#6366F1` CSS token — **FIXED** v2.6.4 |
 
 ### P4 — Product Features (future)
 | ID | Item |
@@ -295,7 +299,6 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 | P8 | GitHub/install link missing from marketing nav/footer |
 | P9 | Screaming Frog CSV as URL source |
 | CT11 | Tone consistency across marketing pages |
-| U5 | Brand color `#6366f1` hardcoded in both CSS files — need single token |
 
 ---
 
@@ -324,6 +327,7 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 | 57 | 2026-06-22 | v2.6.1 | Comprehensive audit: 3 parallel agents → 66 test failures, 30+ phase1.py issues, 15+ generators.py issues, scoring/dispatch gaps. Findings in PROJECT_LOG Audit section. |
 | 58 | 2026-06-22 | v2.6.2 | Fixed all audit findings P1–P5: soup deepcopy (CRITICAL), 66→0 test failures (auth lockout root cause = SQLite _failed_attempts persistence), phase1.py correctness (image_alt, ttfb, schema, content_freshness, robots), generators.py (PostalAddress, hreflang x-default header, sitemap ISO 8601), WEIGHTS+_SCORE_TABLE Batch I gaps, task ID collision gsc_crawl_inspection, schema_type allowlist. |
 | 59 | 2026-06-22 | v2.6.3 | Remaining audit items + Phase 0 path anchoring: removed non-standard meta name="title", review schema deprecation warning, jobposting remote fields (jobLocationType + applicantLocationRequirements), product Offer url, robots.txt Sitemap URL validation, dead "h1" key from _SCORE_TABLE, _REQUIRES_MSG improvement, __all__ in seo_audit, SEO_SUITE_DATA_DIR respected in checker.py + seo_audit.py, body-size guard (200 KB) on 5 generator routes. |
+| 60 | 2026-06-22 | v2.6.4 | S-NEW complete: all 355 inline onclick handlers migrated to data-action event delegation (scripts/migrate_onclick.py idempotent, 140+ delegation cases). phase1.py: 5xx retry, mixed-proto redirect detection, HTTP Link header canonical fallback, pagination param exclusion in url_structure, CJK-aware meta description pixel widths, hreflang lang_verification field. reports.py: ok key on 3 object-returning routes. tools.py: 200 KB body guard + 30/min rate limit via register(app,limiter). dashboard.css: --brand token. 578/578 tests. |
 
 ---
 

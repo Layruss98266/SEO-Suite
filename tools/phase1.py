@@ -191,6 +191,16 @@ def http_status_check(url: str) -> dict:
         return result(url, "http_status", "error", None, "Request failed")
 
     code = resp.status_code
+    if code >= 500:
+        # One retry — transient 5xx should not permanently mark a site broken
+        time.sleep(1)
+        try:
+            resp2 = safe_requests_get(url, headers=HEADERS, timeout=10, allow_redirects=False)
+            if resp2.status_code < 500:
+                resp, code = resp2, resp2.status_code
+        except Exception:
+            pass
+
     if code == 200:
         s, msg = "pass", f"HTTP {code} OK"
     elif code in (301, 302, 307, 308):
@@ -237,6 +247,16 @@ def redirect_check(url: str) -> dict:
         if loop:
             s, msg = "fail", "Redirect loop detected"
 
+        # Detect mixed HTTP/HTTPS mid-chain transitions
+        mixed_proto = any(
+            chain[i].startswith("http://") and chain[i + 1].startswith("https://")
+            for i in range(len(chain) - 1)
+        )
+        if mixed_proto and s == "pass":
+            s, msg = "warning", "Mixed HTTP/HTTPS redirect chain detected"
+        elif mixed_proto:
+            msg += " | Mixed HTTP/HTTPS chain"
+
         return result(
             url,
             "redirect",
@@ -247,6 +267,7 @@ def redirect_check(url: str) -> dict:
                 "hops": hops,
                 "final_url": resp.url,
                 "loop": loop,
+                "mixed_proto": mixed_proto,
                 "codes": [r.status_code for r in resp.history],
             },
         )
@@ -264,10 +285,19 @@ def canonical_check(url: str) -> dict:
         return result(url, "canonical", "error", None, "Could not fetch page")
 
     tag = soup.find("link", rel="canonical")
-    if not tag:
+    canonical = tag.get("href", "").strip() if tag else ""
+
+    # Fall back to HTTP Link header if no HTML canonical found
+    if not canonical and resp is not None:
+        link_header = resp.headers.get("Link", "")
+        m = re.search(r'<([^>]+)>;\s*rel=["\']canonical["\']', link_header)
+        if m:
+            canonical = m.group(1).strip()
+
+    if not canonical:
         return result(url, "canonical", "warning", None, "No canonical tag found")
 
-    canonical = tag.get("href", "").strip()
+    canonical = canonical
     if not canonical:
         return result(url, "canonical", "warning", None, "Canonical tag is empty")
 
@@ -314,6 +344,20 @@ def title_check(url: str) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 # 6. Meta Description Checker
 # ══════════════════════════════════════════════════════════════════════════════
+def _meta_desc_px(text: str) -> float:
+    """Estimate rendered pixel width — CJK chars count double."""
+    px = 0.0
+    for ch in text:
+        cp = ord(ch)
+        if (0x1100 <= cp <= 0x115F or 0x2E80 <= cp <= 0x2EFF or
+                0x3000 <= cp <= 0x9FFF or 0xF900 <= cp <= 0xFAFF or
+                0xFF00 <= cp <= 0xFFEF):
+            px += 14.0
+        else:
+            px += 7.5
+    return px
+
+
 def meta_description_check(url: str) -> dict:
     resp, soup = fetch_page(url)
     if not soup:
@@ -322,18 +366,20 @@ def meta_description_check(url: str) -> dict:
     tag = soup.find("meta", attrs={"name": lambda n: n and n.lower() == "description"})
     desc = tag.get("content", "").strip() if tag else ""
     length = len(desc)
+    px_width = round(_meta_desc_px(desc))
 
     if not desc:
         s, msg = "fail", "Missing meta description"
-    elif length < 70:
-        s, msg = "warning", f"Too short ({length} chars)"
-    elif length > 160:
-        s, msg = "warning", f"Too long ({length} chars)"
+    elif px_width < 430:
+        s, msg = "warning", f"Too short ({length} chars, ~{px_width}px)"
+    elif px_width > 920:
+        s, msg = "warning", f"Too long ({length} chars, ~{px_width}px)"
     else:
-        s, msg = "pass", f"Good length ({length} chars)"
+        s, msg = "pass", f"Good length ({length} chars, ~{px_width}px)"
 
     return result(
-        url, "meta_description", s, desc, msg, {"length": length, "optimal": 70 <= length <= 160}
+        url, "meta_description", s, desc, msg,
+        {"length": length, "px_width": px_width, "optimal": 430 <= px_width <= 920},
     )
 
 
@@ -712,7 +758,10 @@ def hreflang_check(url: str) -> dict:
         s,
         entries,
         msg,
-        {"lang_count": len(entries), "languages": langs, "issues": issues},
+        {
+            "lang_count": len(entries), "languages": langs, "issues": issues,
+            "lang_verification": "not_checked",
+        },
     )
 
 
@@ -1322,8 +1371,10 @@ def url_structure_check(url: str) -> dict:
         issues.append(f"URL length {len(url)} chars (target < 115)")
     if any(c.isupper() for c in path):
         issues.append("Uppercase letters in path")
-    if len(params) > 3:
-        issues.append(f"{len(params)} query params (crawl budget risk)")
+    _PAGINATION_PARAMS = {"page", "p", "pg", "paged", "offset", "start"}
+    non_pagination_params = {k for k in params if k.lower() not in _PAGINATION_PARAMS}
+    if len(non_pagination_params) > 3:
+        issues.append(f"{len(non_pagination_params)} query params (crawl budget risk)")
     session_params = {"sid", "sessionid", "session_id", "phpsessid", "jsessionid"}
     found_session = session_params & {p.lower() for p in params}
     if found_session:

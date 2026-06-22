@@ -837,5 +837,15 @@ def api_link_health():
 
 
 
-def register(app) -> None:
+def register(app, limiter=None) -> None:
     app.register_blueprint(bp)
+    if limiter:
+        _gen_routes = [
+            "tools.api_schema_generate",
+            "tools.api_robots_txt",
+            "tools.api_sitemap_generate",
+            "tools.api_hreflang_generate",
+            "tools.api_meta_tags_generate",
+        ]
+        for view_name in _gen_routes:
+            limiter.limit("30 per minute")(app.view_functions[view_name])

@@ -11,7 +11,8 @@ body.dark *::-webkit-scrollbar-thumb{background:#3A3A55;background-clip:content-
 
 :root{
   /* Brand */
-  --primary:#6366F1;--primary-d:#4F46E5;--primary-l:#EEF2FF;--primary-grad:linear-gradient(135deg,#6366F1 0%,#8B5CF6 100%);
+  --brand:#6366F1;
+  --primary:var(--brand);--primary-d:#4F46E5;--primary-l:#EEF2FF;--primary-grad:linear-gradient(135deg,var(--brand) 0%,#8B5CF6 100%);
   --success:#10B981;--success-d:#059669;--success-l:#ECFDF5;
   --warn:#F59E0B;--warn-d:#D97706;--warn-l:#FFFBEB;
   --danger:#EF4444;--danger-d:#DC2626;--danger-l:#FEF2F2;

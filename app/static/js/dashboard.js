@@ -6765,3 +6765,191 @@ function renderDuplicateScan(d) {
     </div>
     ${groupsHtml}`;
 }
+
+
+// --- S-NEW: Centralised click delegation (replaces inline onclick) -----------
+document.addEventListener('click', function _delegatedClick(e) {
+  var el = e.target.closest('[data-action]');
+  if (!el) return;
+  var action = el.dataset.action;
+  var arg    = el.dataset.arg  || null;
+  var arg2   = el.dataset.arg2 || null;
+
+  function _call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (typeof window[fn] === 'function') window[fn].apply(null, args);
+    else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      console.warn('[delegation] unknown fn:', fn);
+  }
+
+  switch (action) {
+    // Navigation
+    case 'nav':               if(typeof nav==='function') nav(el); break;
+    case 'navTo':             _call('navTo', arg); break;
+    case 'navLink':           _call('navLink', arg); break;
+    case 'navToUcRunner':     _call('navTo','uc-runner'); _call('mnavActive','mnav-uc'); break;
+    case 'navToAudRun':       _call('navTo','aud-run'); _call('openFullAudit'); break;
+    case 'navToHome':         _call('navTo','home'); break;
+    case 'navToReports':      _call('navTo','reports'); _call('loadReports'); break;
+    case 'navToReportsMnav':  _call('navTo','reports'); _call('mnavActive','mnav-rep'); break;
+    case 'navToSettings':     _call('navTo','settings'); _call('mnavActive','mnav-settings'); break;
+    case 'navLinkCompare':    _call('navLink','compare'); _call('loadCompare'); break;
+    case 'navLinkHome':       _call('navLink','home'); break;
+    case 'navLinkReports':    _call('navLink','reports'); _call('loadReports'); break;
+    case 'navLinkSettings':   _call('navLink','settings'); break;
+    case 'navLinkTrend':      _call('navLink','trend'); _call('loadTrend'); break;
+    case 'navAndLoadCompare': if(typeof nav==='function') nav(el); _call('loadCompare'); break;
+    case 'navAndLoadReports': if(typeof nav==='function') nav(el); _call('loadReports'); break;
+    case 'navAndLoadTrend':   if(typeof nav==='function') nav(el); _call('loadTrend'); break;
+    // Sidebar / UI
+    case 'toggleSidebar':     _call('toggleSidebar'); break;
+    case 'toggleKeyVis':      if(typeof toggleKeyVis==='function') toggleKeyVis(el); break;
+    case 'sbToggle':          _call('sbToggle', arg); break;
+    case 'toggleDark':        _call('toggleDark'); break;
+    case 'openCmdPalette':    _call('openCmdPalette'); break;
+    case 'closeCmdPaletteIfSelf': if(e.target===el) _call('closeCmdPalette'); break;
+    case 'stopPropagation':   e.stopPropagation(); break;
+    case 'navMobileToggle': { var n=document.getElementById('nav'); if(n) n.classList.toggle('open'); break; }
+    case 'openHelp':          _call('openHelp'); break;
+    case 'openHelpKeys': {
+      _call('openHelp');
+      var t=document.querySelector('[data-tab="keys"]');
+      if(typeof helpTab==='function') helpTab('keys',t);
+      break;
+    }
+    case 'closeHelp':         _call('closeHelp'); break;
+    case 'closeDrawer':       _call('closeDrawer'); break;
+    case 'closeAiOptModal':   _call('closeAiOptModal'); break;
+    case 'closeCannibalModal':_call('closeCannibalModal'); break;
+    case 'renderCfgHealth':   _call('renderCfgHealth'); break;
+    case 'helpTab':           if(typeof helpTab==='function') helpTab(arg, el); break;
+    case 'hreflangTab':       if(typeof hreflangTab==='function') hreflangTab(arg, el); break;
+    // Theme
+    case 'setThemePref':      _call('setThemePref', arg); break;
+    // Audit
+    case 'startAudit':        _call('startAudit'); break;
+    case 'cancelAudit':       _call('cancelAudit'); break;
+    case 'pauseAudit':        _call('pauseAudit'); break;
+    case 'resumeAudit':       _call('resumeAudit'); break;
+    case 'openAudReport':     _call('openAudReport'); break;
+    case 'openFullAudit':     _call('openFullAudit'); break;
+    case 'copyAudUrls':       _call('copyAudUrls'); break;
+    case 'runAiExplain':      _call('runAiExplain'); break;
+    case 'clearAiExplain':    _call('clearAiExplain'); break;
+    case 'runAiDraftMeta':    _call('runAiDraftMeta'); break;
+    case 'clearAiDraftMeta':  _call('clearAiDraftMeta'); break;
+    case 'applyPreset':       _call('applyPreset', arg); break;
+    case 'retryErrors':       _call('retryErrors'); break;
+    case 'filterAudLog':      if(typeof filterAudLog==='function') filterAudLog(arg, el); break;
+    case 'clickAudFile': { var f=document.getElementById('aud-file'); if(f) f.click(); } break;
+    case 'clickIdxFile': { var f=document.getElementById('idx-file'); if(f) f.click(); } break;
+    // Use-case / phase runner
+    case 'runUseCase':        _call('runUseCase'); break;
+    case 'copyUcResults':     _call('copyUcResults'); break;
+    case 'setUcFormat':       if(typeof setUcFormat==='function') setUcFormat(arg, el); break;
+    case 'clearUcRunner':     _call('clearUcRunner'); break;
+    case 'clearPhaseRunner':  _call('clearPhaseRunner'); break;
+    case 'runPhaseRunner':    _call('runPhaseRunner'); break;
+    // Indexing
+    case 'startIndex':        _call('startIndex'); break;
+    case 'cancelIndex':       _call('cancelIndex'); break;
+    case 'pauseIndex':        _call('pauseIndex'); break;
+    case 'resumeIndex':       _call('resumeIndex'); break;
+    case 'openIdxReport':     _call('openIdxReport'); break;
+    case 'copyIdxUrls':       _call('copyIdxUrls'); break;
+    case 'clearIdxForm':      _call('clearIdxForm'); break;
+    case 'filterIdxLog':      if(typeof filterIdxLog==='function') filterIdxLog(arg, el); break;
+    // Reports
+    case 'clearRepSearch':    _call('clearRepSearch'); break;
+    case 'runCompare':        _call('runCompare'); break;
+    case 'clearCompare':      _call('clearCompare'); break;
+    case 'filterReports':     if(typeof filterReports==='function') filterReports(arg, el); break;
+    // Quick tools
+    case 'runSerpPreview':    _call('runSerpPreview'); break;
+    case 'clearSerp':         _call('clearSerp'); break;
+    case 'serpSocialTab':     if(typeof serpSocialTab==='function') serpSocialTab(arg, el); break;
+    case 'runRedirectChain':  _call('runRedirectChain'); break;
+    case 'clearRedirect':     _call('clearRedirect'); break;
+    case 'runHttpHeaders':    _call('runHttpHeaders'); break;
+    case 'clearHeaders':      _call('clearHeaders'); break;
+    case 'runKeywordDensity': _call('runKeywordDensity'); break;
+    case 'clearKeywords':     _call('clearKeywords'); break;
+    case 'runCodeTextRatio':  _call('runCodeTextRatio'); break;
+    case 'clearRatio':        _call('clearRatio'); break;
+    case 'runCompression':    _call('runCompression'); break;
+    case 'clearCompression':  _call('clearCompression'); break;
+    case 'runPageType':       _call('runPageType'); break;
+    case 'runBlogAudit':      _call('runBlogAudit'); break;
+    case 'runCourseAudit':    _call('runCourseAudit'); break;
+    case 'runDuplicateScan':  _call('runDuplicateScan'); break;
+    case 'clearContentSerp':  _call('clearContentSerp'); break;
+    case 'runContentSerp':    _call('runContentSerp'); break;
+    // Sitemap / Schema
+    case 'runSitemapAudit':   _call('runSitemapAudit'); break;
+    case 'clearSitemapAudit': _call('clearSitemapAudit'); break;
+    case 'runSchemaValidation':_call('runSchemaValidation'); break;
+    case 'clearSchemaValidation':_call('clearSchemaValidation'); break;
+    // Keyword research
+    case 'runKwResearch':     _call('runKwResearch'); break;
+    case 'clearKwResearch':   _call('clearKwResearch'); break;
+    // Bing
+    case 'runBingOverview':   _call('runBingOverview'); break;
+    case 'runBingInspect':    _call('runBingInspect'); break;
+    case 'runBingSubmit':     _call('runBingSubmit'); break;
+    case 'clearBing':         _call('clearBing'); break;
+    // GSC
+    case 'runGscOpps':        _call('runGscOpps'); break;
+    case 'clearGscOpps':      _call('clearGscOpps'); break;
+    case 'runGscPosition':    _call('runGscPosition'); break;
+    case 'clearGscPosition':  _call('clearGscPosition'); break;
+    case 'runGscCtr':         _call('runGscCtr'); break;
+    case 'clearGscCtr':       _call('clearGscCtr'); break;
+    case 'runGscCoverage':    _call('runGscCoverage'); break;
+    case 'clearGscCoverage':  _call('clearGscCoverage'); break;
+    case 'runGscSitemaps':    _call('runGscSitemaps'); break;
+    case 'clearGscSitemaps':  _call('clearGscSitemaps'); break;
+    // Performance
+    case 'runPerfOpps':       _call('runPerfOpps'); break;
+    case 'clearPerfOpps':     _call('clearPerfOpps'); break;
+    // Diagnostics
+    case 'runRobotsTester':   _call('runRobotsTester'); break;
+    case 'clearRobotsTester': _call('clearRobotsTester'); break;
+    case 'runHreflangValidator':_call('runHreflangValidator'); break;
+    case 'clearHreflangValidator':_call('clearHreflangValidator'); break;
+    case 'runLinkHealth':     _call('runLinkHealth'); break;
+    case 'clearLinkHealth':   _call('clearLinkHealth'); break;
+    case 'runCrawlIntel':     _call('runCrawlIntel'); break;
+    case 'clearCrawlIntel':   _call('clearCrawlIntel'); break;
+    // Generators
+    case 'clearSchemaForm':   _call('clearSchemaForm'); break;
+    case 'clearRobotsForm':   _call('clearRobotsForm'); break;
+    case 'clearSitemapForm':  _call('clearSitemapForm'); break;
+    case 'clearHreflangForm': _call('clearHreflangForm'); break;
+    case 'clearMetaTagsForm': _call('clearMetaTagsForm'); break;
+    case 'addHreflangRow':    _call('addHreflangRow'); break;
+    case 'addRobotsRule':     _call('addRobotsRule'); break;
+    case 'copyOutput':        _call('copyOutput', arg); break;
+    case 'downloadOutput': {
+      var parts = (arg2||'').split('|');
+      _call('downloadOutput', arg, parts[0]||'', parts[1]||'');
+      break;
+    }
+    // Settings / auth
+    case 'saveSettings':      _call('saveSettings'); break;
+    case 'saveProfile':       _call('saveProfile'); break;
+    case 'deleteProfile':     _call('deleteProfile'); break;
+    case 'changeAuthCredentials':_call('changeAuthCredentials'); break;
+    case 'createUser':        _call('createUser'); break;
+    case 'doLogout':          _call('doLogout'); break;
+    case 'testNotify':        _call('testNotify', arg); break;
+    case 'toggleNotif':       _call('toggleNotif', arg); break;
+    // Cannibalisation
+    case 'switchCannibalTab': _call('switchCannibalTab', arg); break;
+    // IndexNow
+    case 'runIndexNow':       _call('runIndexNow'); break;
+    case 'clearIndexNow':     _call('clearIndexNow'); break;
+    default:
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        console.warn('[delegation] unknown data-action:', action, el);
+  }
+});

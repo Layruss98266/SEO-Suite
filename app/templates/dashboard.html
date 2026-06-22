@@ -13,13 +13,13 @@
 
 <!-- ═══ TOP BAR ════════════════════════════════════════════════════════════ -->
 <header class="topbar">
-  <button class="tb-hamburger" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle sidebar">
+  <button class="tb-hamburger" data-action="toggleSidebar" title="Toggle sidebar" aria-label="Toggle sidebar">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
-  <button class="tb-mob-search" onclick="openCmdPalette()" title="Search" aria-label="Search panels">
+  <button class="tb-mob-search" data-action="openCmdPalette" title="Search" aria-label="Search panels">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
   </button>
-  <a class="topbar-logo" onclick="navTo('home');return false">
+  <a class="topbar-logo" data-action="navToHome">
     <span class="logo-mark"><span class="logo-dot"></span></span>
     <span class="logo-text">SEO Suite</span>
     <span class="logo-ver" id="logo-ver"></span>
@@ -31,7 +31,7 @@
     <span class="tb-crumb-page" id="tb-crumb-page">Home</span>
   </div>
 
-  <div class="tb-search" onclick="openCmdPalette()" style="cursor:pointer">
+  <div class="tb-search" data-action="openCmdPalette" style="cursor:pointer">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
     <input id="tb-search-input" placeholder="Jump to…" oninput="tbSearch(this.value)" onkeydown="tbSearchKey(event)">
     <span class="tb-search-kbd">Ctrl K</span>
@@ -41,16 +41,16 @@
   <div class="tb-spacer"></div>
 
   <div class="tb-status">
-    <span class="tb-badge" id="idx-badge" data-panel="idx-live" onclick="navTo('idx-live')" title="Indexing checker">Indexing · Ready</span>
-    <span class="tb-badge" id="aud-badge" data-panel="aud-live" onclick="navTo('aud-live')" title="SEO audit">Audit · Ready</span>
+    <span class="tb-badge" id="idx-badge" data-panel="idx-live" data-action="navTo" data-arg="idx-live" title="Indexing checker">Indexing · Ready</span>
+    <span class="tb-badge" id="aud-badge" data-panel="aud-live" data-action="navTo" data-arg="aud-live" title="SEO audit">Audit · Ready</span>
   </div>
 
-  <button class="tb-quick" onclick="openFullAudit()" title="Start a full audit">
+  <button class="tb-quick" data-action="openFullAudit" title="Start a full audit">
     <span class="tb-quick-icon">⚡</span>
     <span class="tb-quick-text">Quick Audit</span>
   </button>
 
-  <button class="tb-quick tb-ai-btn" onclick="navTo('tool-ai')" title="AI SEO Assistant">
+  <button class="tb-quick tb-ai-btn" data-action="navTo" data-arg="tool-ai" title="AI SEO Assistant">
     <span class="tb-quick-icon">🤖</span>
     <span class="tb-quick-text">AI Assistant</span>
   </button>
@@ -60,14 +60,14 @@
     <span class="tb-quick-text">Website</span>
   </a>
 
-  <button class="tb-icon-btn" onclick="openHelp()" title="Help & docs (?)" aria-label="Open help">?</button>
-  <button class="tb-icon-btn" id="dark-toggle" onclick="toggleDark()" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+  <button class="tb-icon-btn" data-action="openHelp" title="Help & docs (?)" aria-label="Open help">?</button>
+  <button class="tb-icon-btn" id="dark-toggle" data-action="toggleDark" title="Toggle theme" aria-label="Toggle theme">🌙</button>
 
   <!-- User / Auth button — shown when auth is enabled -->
   <div class="tb-user" id="tb-user" style="display:none">
     <div class="tb-user-avatar" id="tb-user-avatar">👤</div>
     <span class="tb-user-name" id="tb-user-name"></span>
-    <button class="tb-user-logout" id="tb-user-logout" onclick="doLogout()" title="Sign out">Sign out</button>
+    <button class="tb-user-logout" id="tb-user-logout" data-action="doLogout" title="Sign out">Sign out</button>
   </div>
 </header>
 
@@ -75,21 +75,21 @@
 <nav class="navbar" id="navbar">
   <div class="nav-wrap">
 
-    <a class="nav-link nav-link-direct" data-panel="home" data-section="Overview" data-name="Home" onclick="navLink('home');return false" href="#">Home</a>
+    <a class="nav-link nav-link-direct" data-panel="home" data-section="Overview" data-name="Home" data-action="navLinkHome" href="#">Home</a>
 
     <div class="nav-group" id="ngrp-indexing">
       <button class="nav-link nav-has-dd">Indexing<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="nav-dd">
-        <a class="nav-dd-item" data-panel="idx-run" data-section="Indexing" data-name="Run Check" onclick="navLink('idx-run')">Run Check</a>
-        <a class="nav-dd-item" data-panel="idx-live" data-section="Indexing" data-name="Live Progress" onclick="navLink('idx-live')">Live Progress</a>
+        <a class="nav-dd-item" data-panel="idx-run" data-section="Indexing" data-name="Run Check" data-action="navLink" data-arg="idx-run">Run Check</a>
+        <a class="nav-dd-item" data-panel="idx-live" data-section="Indexing" data-name="Live Progress" data-action="navLink" data-arg="idx-live">Live Progress</a>
       </div>
     </div>
 
     <div class="nav-group" id="ngrp-audit">
       <button class="nav-link nav-has-dd">Audit<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="nav-dd">
-        <a class="nav-dd-item" data-panel="aud-run" data-section="SEO Audit" data-name="New Audit" onclick="navLink('aud-run')">New Audit</a>
-        <a class="nav-dd-item" data-panel="aud-live" data-section="SEO Audit" data-name="Live Progress" onclick="navLink('aud-live')">Live Progress</a>
+        <a class="nav-dd-item" data-panel="aud-run" data-section="SEO Audit" data-name="New Audit" data-action="navLink" data-arg="aud-run">New Audit</a>
+        <a class="nav-dd-item" data-panel="aud-live" data-section="SEO Audit" data-name="Live Progress" data-action="navLink" data-arg="aud-live">Live Progress</a>
       </div>
     </div>
 
@@ -99,103 +99,103 @@
     </div>
 
     <div class="nav-group" id="ngrp-tools">
-      <button class="nav-link nav-has-dd" onclick="navLink('tools-home')">Tools<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button class="nav-link nav-has-dd" data-action="navLink" data-arg="tools-home">Tools<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="nav-dd nav-mega">
         <div class="nav-mega-col">
           <div class="nav-mega-label">Technical</div>
-          <a class="nav-dd-item" data-panel="tool-serp" data-section="Tools" data-name="SERP Preview" onclick="navLink('tool-serp')">SERP Preview</a>
-          <a class="nav-dd-item" data-panel="tool-redirect" data-section="Tools" data-name="Redirect Chain" onclick="navLink('tool-redirect')">Redirect Chain</a>
-          <a class="nav-dd-item" data-panel="tool-headers" data-section="Tools" data-name="HTTP Headers" onclick="navLink('tool-headers')">HTTP Headers</a>
-          <a class="nav-dd-item" data-panel="tool-schema" data-section="Tools" data-name="Schema Validation" onclick="navLink('tool-schema')">Schema Validation</a>
-          <a class="nav-dd-item" data-panel="tool-compression" data-section="Tools" data-name="GZIP &amp; Cache" onclick="navLink('tool-compression')">GZIP &amp; Cache</a>
-          <a class="nav-dd-item" data-panel="tool-ratio" data-section="Tools" data-name="Code:Text Ratio" onclick="navLink('tool-ratio')">Code:Text Ratio</a>
-          <a class="nav-dd-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" onclick="navLink('tool-sitemap-audit')">Sitemap Audit</a>
-          <a class="nav-dd-item" data-panel="tool-robots-tester" data-section="Tools" data-name="robots.txt Tester" onclick="navLink('tool-robots-tester')">robots.txt Tester</a>
-          <a class="nav-dd-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" onclick="navLink('tool-hreflang-validate')">Hreflang Validator</a>
-          <a class="nav-dd-item" data-panel="tool-link-health" data-section="Tools" data-name="Link Health" onclick="navLink('tool-link-health')">Link Health</a>
-          <a class="nav-dd-item" data-panel="tool-crawl-intel" data-section="Tools" data-name="Crawl Intelligence" onclick="navLink('tool-crawl-intel')">Crawl Intelligence</a>
-          <a class="nav-dd-item" data-panel="tool-content-serp" data-section="Tools" data-name="Content + SERP" onclick="navLink('tool-content-serp')">Content + SERP</a>
-          <a class="nav-dd-item" data-panel="tool-page-type" data-section="Tools" data-name="Page Type Detector" onclick="navLink('tool-page-type')">Page Type Detector</a>
-          <a class="nav-dd-item" data-panel="tool-duplicate-scan" data-section="Tools" data-name="Cross-URL Duplicate Scan" onclick="navLink('tool-duplicate-scan')">Cross-URL Duplicate Scan</a>
-          <a class="nav-dd-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="navLink('tool-bing')">Bing Visibility</a>
+          <a class="nav-dd-item" data-panel="tool-serp" data-section="Tools" data-name="SERP Preview" data-action="navLink" data-arg="tool-serp">SERP Preview</a>
+          <a class="nav-dd-item" data-panel="tool-redirect" data-section="Tools" data-name="Redirect Chain" data-action="navLink" data-arg="tool-redirect">Redirect Chain</a>
+          <a class="nav-dd-item" data-panel="tool-headers" data-section="Tools" data-name="HTTP Headers" data-action="navLink" data-arg="tool-headers">HTTP Headers</a>
+          <a class="nav-dd-item" data-panel="tool-schema" data-section="Tools" data-name="Schema Validation" data-action="navLink" data-arg="tool-schema">Schema Validation</a>
+          <a class="nav-dd-item" data-panel="tool-compression" data-section="Tools" data-name="GZIP &amp; Cache" data-action="navLink" data-arg="tool-compression">GZIP &amp; Cache</a>
+          <a class="nav-dd-item" data-panel="tool-ratio" data-section="Tools" data-name="Code:Text Ratio" data-action="navLink" data-arg="tool-ratio">Code:Text Ratio</a>
+          <a class="nav-dd-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" data-action="navLink" data-arg="tool-sitemap-audit">Sitemap Audit</a>
+          <a class="nav-dd-item" data-panel="tool-robots-tester" data-section="Tools" data-name="robots.txt Tester" data-action="navLink" data-arg="tool-robots-tester">robots.txt Tester</a>
+          <a class="nav-dd-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" data-action="navLink" data-arg="tool-hreflang-validate">Hreflang Validator</a>
+          <a class="nav-dd-item" data-panel="tool-link-health" data-section="Tools" data-name="Link Health" data-action="navLink" data-arg="tool-link-health">Link Health</a>
+          <a class="nav-dd-item" data-panel="tool-crawl-intel" data-section="Tools" data-name="Crawl Intelligence" data-action="navLink" data-arg="tool-crawl-intel">Crawl Intelligence</a>
+          <a class="nav-dd-item" data-panel="tool-content-serp" data-section="Tools" data-name="Content + SERP" data-action="navLink" data-arg="tool-content-serp">Content + SERP</a>
+          <a class="nav-dd-item" data-panel="tool-page-type" data-section="Tools" data-name="Page Type Detector" data-action="navLink" data-arg="tool-page-type">Page Type Detector</a>
+          <a class="nav-dd-item" data-panel="tool-duplicate-scan" data-section="Tools" data-name="Cross-URL Duplicate Scan" data-action="navLink" data-arg="tool-duplicate-scan">Cross-URL Duplicate Scan</a>
+          <a class="nav-dd-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" data-action="navLink" data-arg="tool-bing">Bing Visibility</a>
         </div>
         <div class="nav-mega-col">
           <div class="nav-mega-label">GSC Tools</div>
-          <a class="nav-dd-item" data-panel="tool-gsc-opps" data-section="Tools" data-name="GSC Opportunities" onclick="navLink('tool-gsc-opps')">GSC Opportunities</a>
-          <a class="nav-dd-item" data-panel="tool-gsc-position" data-section="Tools" data-name="GSC Position Tracker" onclick="navLink('tool-gsc-position')">Position Tracker</a>
-          <a class="nav-dd-item" data-panel="tool-gsc-ctr" data-section="Tools" data-name="GSC CTR Analyzer" onclick="navLink('tool-gsc-ctr')">CTR Analyzer</a>
-          <a class="nav-dd-item" data-panel="tool-gsc-coverage" data-section="Tools" data-name="GSC Coverage Errors" onclick="navLink('tool-gsc-coverage')">Coverage Errors</a>
-          <a class="nav-dd-item" data-panel="tool-gsc-sitemaps" data-section="Tools" data-name="GSC Sitemaps Status" onclick="navLink('tool-gsc-sitemaps')">Sitemaps Status</a>
-          <a class="nav-dd-item" data-panel="tool-phase-runner" data-section="Tools" data-name="Phase Runner" onclick="navLink('tool-phase-runner')">Phase Runner</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-opps" data-section="Tools" data-name="GSC Opportunities" data-action="navLink" data-arg="tool-gsc-opps">GSC Opportunities</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-position" data-section="Tools" data-name="GSC Position Tracker" data-action="navLink" data-arg="tool-gsc-position">Position Tracker</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-ctr" data-section="Tools" data-name="GSC CTR Analyzer" data-action="navLink" data-arg="tool-gsc-ctr">CTR Analyzer</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-coverage" data-section="Tools" data-name="GSC Coverage Errors" data-action="navLink" data-arg="tool-gsc-coverage">Coverage Errors</a>
+          <a class="nav-dd-item" data-panel="tool-gsc-sitemaps" data-section="Tools" data-name="GSC Sitemaps Status" data-action="navLink" data-arg="tool-gsc-sitemaps">Sitemaps Status</a>
+          <a class="nav-dd-item" data-panel="tool-phase-runner" data-section="Tools" data-name="Phase Runner" data-action="navLink" data-arg="tool-phase-runner">Phase Runner</a>
         </div>
         <div class="nav-mega-col">
           <div class="nav-mega-label">Content &amp; Research</div>
-          <a class="nav-dd-item" data-panel="tool-keywords" data-section="Tools" data-name="Keyword Density" onclick="navLink('tool-keywords')">Keyword Density</a>
-          <a class="nav-dd-item" data-panel="tool-kw-research" data-section="Tools" data-name="Keyword Research" onclick="navLink('tool-kw-research')">Keyword Research</a>
-          <a class="nav-dd-item" data-panel="tool-course-audit" data-section="Tools" data-name="Course Page Audit" onclick="navLink('tool-course-audit')">Course Page Audit</a>
-          <a class="nav-dd-item" data-panel="tool-blog-audit" data-section="Tools" data-name="Blog Post Audit" onclick="navLink('tool-blog-audit')">Blog Post Audit</a>
-          <a class="nav-dd-item" data-panel="tool-perf-opps" data-section="Tools" data-name="Perf Opportunities" onclick="navLink('tool-perf-opps')">Perf Opportunities</a>
-          <a class="nav-dd-item" data-panel="tool-indexnow" data-section="Tools" data-name="IndexNow Submit" onclick="navLink('tool-indexnow')">IndexNow Submit</a>
-          <a class="nav-dd-item" data-panel="tool-ai" data-section="Tools" data-name="AI Assistant" onclick="navLink('tool-ai')">AI Assistant</a>
+          <a class="nav-dd-item" data-panel="tool-keywords" data-section="Tools" data-name="Keyword Density" data-action="navLink" data-arg="tool-keywords">Keyword Density</a>
+          <a class="nav-dd-item" data-panel="tool-kw-research" data-section="Tools" data-name="Keyword Research" data-action="navLink" data-arg="tool-kw-research">Keyword Research</a>
+          <a class="nav-dd-item" data-panel="tool-course-audit" data-section="Tools" data-name="Course Page Audit" data-action="navLink" data-arg="tool-course-audit">Course Page Audit</a>
+          <a class="nav-dd-item" data-panel="tool-blog-audit" data-section="Tools" data-name="Blog Post Audit" data-action="navLink" data-arg="tool-blog-audit">Blog Post Audit</a>
+          <a class="nav-dd-item" data-panel="tool-perf-opps" data-section="Tools" data-name="Perf Opportunities" data-action="navLink" data-arg="tool-perf-opps">Perf Opportunities</a>
+          <a class="nav-dd-item" data-panel="tool-indexnow" data-section="Tools" data-name="IndexNow Submit" data-action="navLink" data-arg="tool-indexnow">IndexNow Submit</a>
+          <a class="nav-dd-item" data-panel="tool-ai" data-section="Tools" data-name="AI Assistant" data-action="navLink" data-arg="tool-ai">AI Assistant</a>
         </div>
       </div>
     </div>
 
     <div class="nav-group" id="ngrp-generators">
-      <button class="nav-link nav-has-dd" onclick="navLink('gen-home')">Generators<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+      <button class="nav-link nav-has-dd" data-action="navLink" data-arg="gen-home">Generators<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="nav-dd">
-        <a class="nav-dd-item" data-panel="gen-schema" data-section="Generators" data-name="Schema Markup" onclick="navLink('gen-schema')">Schema Markup</a>
-        <a class="nav-dd-item" data-panel="gen-robots" data-section="Generators" data-name="robots.txt" onclick="navLink('gen-robots')">robots.txt</a>
-        <a class="nav-dd-item" data-panel="gen-sitemap" data-section="Generators" data-name="XML Sitemap" onclick="navLink('gen-sitemap')">XML Sitemap</a>
-        <a class="nav-dd-item" data-panel="gen-hreflang" data-section="Generators" data-name="Hreflang Tags" onclick="navLink('gen-hreflang')">Hreflang Tags</a>
-        <a class="nav-dd-item" data-panel="gen-metatags" data-section="Generators" data-name="Meta Tags" onclick="navLink('gen-metatags')">Meta Tags</a>
+        <a class="nav-dd-item" data-panel="gen-schema" data-section="Generators" data-name="Schema Markup" data-action="navLink" data-arg="gen-schema">Schema Markup</a>
+        <a class="nav-dd-item" data-panel="gen-robots" data-section="Generators" data-name="robots.txt" data-action="navLink" data-arg="gen-robots">robots.txt</a>
+        <a class="nav-dd-item" data-panel="gen-sitemap" data-section="Generators" data-name="XML Sitemap" data-action="navLink" data-arg="gen-sitemap">XML Sitemap</a>
+        <a class="nav-dd-item" data-panel="gen-hreflang" data-section="Generators" data-name="Hreflang Tags" data-action="navLink" data-arg="gen-hreflang">Hreflang Tags</a>
+        <a class="nav-dd-item" data-panel="gen-metatags" data-section="Generators" data-name="Meta Tags" data-action="navLink" data-arg="gen-metatags">Meta Tags</a>
       </div>
     </div>
 
     <div class="nav-group" id="ngrp-data">
       <button class="nav-link nav-has-dd">Data<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="nav-dd">
-        <a class="nav-dd-item" data-panel="reports" data-section="Data" data-name="Reports" onclick="navLink('reports');loadReports()">Reports</a>
-        <a class="nav-dd-item" data-panel="compare" data-section="Data" data-name="Compare" onclick="navLink('compare');loadCompare()">Compare</a>
-        <a class="nav-dd-item" data-panel="trend" data-section="Data" data-name="Trend" onclick="navLink('trend');loadTrend()">Trend</a>
+        <a class="nav-dd-item" data-panel="reports" data-section="Data" data-name="Reports" data-action="navLinkReports">Reports</a>
+        <a class="nav-dd-item" data-panel="compare" data-section="Data" data-name="Compare" data-action="navLinkCompare">Compare</a>
+        <a class="nav-dd-item" data-panel="trend" data-section="Data" data-name="Trend" data-action="navLinkTrend">Trend</a>
       </div>
     </div>
 
-    <a class="nav-link nav-link-direct" data-panel="settings" data-section="Settings" data-name="Settings" onclick="navLink('settings');return false" href="#">Settings</a>
+    <a class="nav-link nav-link-direct" data-panel="settings" data-section="Settings" data-name="Settings" data-action="navLinkSettings" href="#">Settings</a>
 
   </div>
 </nav>
 
 <!-- ═══ HELP MODAL ═════════════════════════════════════════════════════════ -->
-<div class="modal-mask" id="help-mask" onclick="closeHelp()"></div>
+<div class="modal-mask" id="help-mask" data-action="closeHelp"></div>
 <div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
   <div class="modal-head">
     <div>
       <div class="modal-title" id="help-modal-title">SEO Suite · Help & Reference</div>
       <div class="modal-sub">Everything you can do here · keyboard shortcuts · setup hints</div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeHelp()" aria-label="Close">✕</button>
+    <button class="btn btn-ghost btn-sm" data-action="closeHelp" aria-label="Close">✕</button>
   </div>
   <div class="modal-tabs">
-    <button class="modal-tab active" data-tab="overview" onclick="helpTab('overview',this)">Overview</button>
-    <button class="modal-tab" data-tab="usecases" onclick="helpTab('usecases',this)">Use Cases</button>
-    <button class="modal-tab" data-tab="keys"     onclick="helpTab('keys',this)">API Keys</button>
-    <button class="modal-tab" data-tab="shortcuts" onclick="helpTab('shortcuts',this)">Shortcuts</button>
-    <button class="modal-tab" data-tab="troubleshoot" onclick="helpTab('troubleshoot',this)">Troubleshoot</button>
-    <button class="modal-tab" data-tab="about"    onclick="helpTab('about',this)">About</button>
+    <button class="modal-tab active" data-tab="overview" data-action="helpTab" data-arg="overview">Overview</button>
+    <button class="modal-tab" data-tab="usecases" data-action="helpTab" data-arg="usecases">Use Cases</button>
+    <button class="modal-tab" data-tab="keys"     data-action="helpTab" data-arg="keys">API Keys</button>
+    <button class="modal-tab" data-tab="shortcuts" data-action="helpTab" data-arg="shortcuts">Shortcuts</button>
+    <button class="modal-tab" data-tab="troubleshoot" data-action="helpTab" data-arg="troubleshoot">Troubleshoot</button>
+    <button class="modal-tab" data-tab="about"    data-action="helpTab" data-arg="about">About</button>
   </div>
   <div class="modal-body" id="help-body"></div>
 </div>
 
 <!-- ═══ AI CTR OPTIMIZER MODAL ═════════════════════════════════════════════ -->
-<div class="modal-mask" id="ai-opt-mask" onclick="closeAiOptModal()"></div>
+<div class="modal-mask" id="ai-opt-mask" data-action="closeAiOptModal"></div>
 <div class="modal" id="ai-opt-modal" style="max-width:800px;width:90%" role="dialog" aria-modal="true" aria-labelledby="ai-opt-modal-title">
   <div class="modal-head">
     <div>
       <div class="modal-title" id="ai-opt-modal-title">🤖 AI Snippet Optimizer</div>
       <div class="modal-sub" id="ai-opt-url-subtitle" style="word-break:break-all"></div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeAiOptModal()" aria-label="Close">✕</button>
+    <button class="btn btn-ghost btn-sm" data-action="closeAiOptModal" aria-label="Close">✕</button>
   </div>
   <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
     <!-- Live Meta tags vs Top queries -->
@@ -220,14 +220,14 @@
 </div>
 
 <!-- ═══ CANNIBALIZATION VISUALIZER MODAL ═════════════════════════════════════ -->
-<div class="modal-mask" id="cannibal-mask" onclick="closeCannibalModal()"></div>
+<div class="modal-mask" id="cannibal-mask" data-action="closeCannibalModal"></div>
 <div class="modal" id="cannibal-modal" style="max-width:850px;width:95%" role="dialog" aria-modal="true" aria-labelledby="cannibal-modal-title">
   <div class="modal-head">
     <div>
       <div class="modal-title" id="cannibal-modal-title">⚔️ Cannibalization Merger & Visualizer</div>
       <div class="modal-sub">Side-by-side URL comparison and remediation snippets for query: <strong id="cannibal-query-title" style="color:var(--c-yellow)"></strong></div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeCannibalModal()" aria-label="Close">✕</button>
+    <button class="btn btn-ghost btn-sm" data-action="closeCannibalModal" aria-label="Close">✕</button>
   </div>
   <div class="modal-body" style="max-height: calc(100vh - 200px); overflow-y: auto;">
     <!-- Side by side table -->
@@ -254,9 +254,9 @@
       
       <!-- Internal Tabs for snippets -->
       <div class="u-flex u-mb-12 u-gap-8" style="border-bottom:1px solid var(--border)">
-        <button class="btn btn-ghost btn-sm active-tab-btn" id="tab-btn-redirect" onclick="switchCannibalTab('redirect')">301 Redirect</button>
-        <button class="btn btn-ghost btn-sm" id="tab-btn-canonical" onclick="switchCannibalTab('canonical')">Canonical Tag</button>
-        <button class="btn btn-ghost btn-sm" id="tab-btn-linking" onclick="switchCannibalTab('linking')">Internal Link</button>
+        <button class="btn btn-ghost btn-sm active-tab-btn" id="tab-btn-redirect" data-action="switchCannibalTab" data-arg="redirect">301 Redirect</button>
+        <button class="btn btn-ghost btn-sm" id="tab-btn-canonical" data-action="switchCannibalTab" data-arg="canonical">Canonical Tag</button>
+        <button class="btn btn-ghost btn-sm" id="tab-btn-linking" data-action="switchCannibalTab" data-arg="linking">Internal Link</button>
       </div>
 
       <!-- Tab content -->
@@ -290,24 +290,24 @@
   <div class="sb-scroll">
 
     <!-- Home — always visible, no group -->
-    <div class="sb-item sb-home active" data-panel="home" data-section="Overview" data-name="Home" onclick="nav(this)">
+    <div class="sb-item sb-home active" data-panel="home" data-section="Overview" data-name="Home" data-action="nav">
       <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
       <span class="sb-text">Home</span>
     </div>
 
     <!-- Indexing -->
     <div class="sb-group" id="sbg-indexing">
-      <div class="sb-group-hd" onclick="sbToggle('sbg-indexing')">
+      <div class="sb-group-hd" data-action="sbToggle" data-arg="sbg-indexing">
         <span class="sb-group-label">Indexing</span>
         <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
       </div>
       <div class="sb-group-body">
-        <div class="sb-item" data-panel="idx-run" data-section="Indexing" data-name="Run Check" onclick="nav(this)">
+        <div class="sb-item" data-panel="idx-run" data-section="Indexing" data-name="Run Check" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
           <span class="sb-text">Run Check</span>
           <span class="sb-pip" id="pip-idx"></span>
         </div>
-        <div class="sb-item" data-panel="idx-live" data-section="Indexing" data-name="Live Progress" onclick="nav(this)">
+        <div class="sb-item" data-panel="idx-live" data-section="Indexing" data-name="Live Progress" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 0 1 20 0"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="12" r="1"/></svg></span>
           <span class="sb-text">Live Progress</span>
         </div>
@@ -316,17 +316,17 @@
 
     <!-- SEO Audit -->
     <div class="sb-group" id="sbg-audit">
-      <div class="sb-group-hd" onclick="sbToggle('sbg-audit')">
+      <div class="sb-group-hd" data-action="sbToggle" data-arg="sbg-audit">
         <span class="sb-group-label">SEO Audit</span>
         <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
       </div>
       <div class="sb-group-body">
-        <div class="sb-item" data-panel="aud-run" data-section="SEO Audit" data-name="New Audit" onclick="nav(this)">
+        <div class="sb-item" data-panel="aud-run" data-section="SEO Audit" data-name="New Audit" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 4 4 5-5"/></svg></span>
           <span class="sb-text">New Audit</span>
           <span class="sb-pip" id="pip-aud"></span>
         </div>
-        <div class="sb-item" data-panel="aud-live" data-section="SEO Audit" data-name="Live Progress" onclick="nav(this)">
+        <div class="sb-item" data-panel="aud-live" data-section="SEO Audit" data-name="Live Progress" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 0 1 20 0"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="12" r="1"/></svg></span>
           <span class="sb-text">Live Progress</span>
         </div>
@@ -335,7 +335,7 @@
 
     <!-- Use Cases -->
     <div class="sb-group" id="sbg-usecases">
-      <div class="sb-group-hd" onclick="sbToggle('sbg-usecases')">
+      <div class="sb-group-hd" data-action="sbToggle" data-arg="sbg-usecases">
         <span class="sb-group-label">Use Cases</span>
         <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
       </div>
@@ -346,126 +346,126 @@
 
     <!-- Tools — collapsed by default -->
     <div class="sb-group sb-group-collapsed" id="sbg-tools">
-      <div class="sb-group-hd" onclick="sbToggle('sbg-tools')">
+      <div class="sb-group-hd" data-action="sbToggle" data-arg="sbg-tools">
         <span class="sb-group-label">Tools</span>
         <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
       </div>
       <div class="sb-group-body">
-        <div class="sb-item" data-panel="tools-home" data-section="Tools" data-name="All Tools" onclick="nav(this)">
+        <div class="sb-item" data-panel="tools-home" data-section="Tools" data-name="All Tools" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="6" rx="1"/><rect x="9" y="3" width="6" height="6" rx="1"/><rect x="16" y="3" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="9" y="10" width="6" height="6" rx="1"/><rect x="16" y="10" width="6" height="6" rx="1"/><rect x="2" y="17" width="6" height="6" rx="1"/><rect x="9" y="17" width="6" height="6" rx="1"/><rect x="16" y="17" width="6" height="6" rx="1"/></svg></span>
           <span class="sb-text">All Tools</span>
         </div>
         <div class="sb-divider-label u-mt-4"></div>
-        <div class="sb-item" data-panel="tool-serp" data-section="Tools" data-name="SERP Preview" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-serp" data-section="Tools" data-name="SERP Preview" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></span>
           <span class="sb-text">SERP Preview</span>
         </div>
-        <div class="sb-item" data-panel="tool-redirect" data-section="Tools" data-name="Redirect Chain" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-redirect" data-section="Tools" data-name="Redirect Chain" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
           <span class="sb-text">Redirect Chain</span>
         </div>
-        <div class="sb-item" data-panel="tool-headers" data-section="Tools" data-name="HTTP Headers" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-headers" data-section="Tools" data-name="HTTP Headers" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
           <span class="sb-text">HTTP Headers</span>
         </div>
-        <div class="sb-item" data-panel="tool-keywords" data-section="Tools" data-name="Keyword Density" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-keywords" data-section="Tools" data-name="Keyword Density" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h6"/></svg></span>
           <span class="sb-text">Keyword Density</span>
         </div>
-        <div class="sb-item" data-panel="tool-ratio" data-section="Tools" data-name="Code:Text Ratio" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-ratio" data-section="Tools" data-name="Code:Text Ratio" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
           <span class="sb-text">Code:Text Ratio</span>
         </div>
-        <div class="sb-item" data-panel="tool-compression" data-section="Tools" data-name="GZIP &amp; Cache" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-compression" data-section="Tools" data-name="GZIP &amp; Cache" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
           <span class="sb-text">GZIP &amp; Cache</span>
         </div>
-        <div class="sb-item" data-panel="tool-schema" data-section="Tools" data-name="Schema Validation" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-schema" data-section="Tools" data-name="Schema Validation" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
           <span class="sb-text">Schema Validation</span>
         </div>
-        <div class="sb-item" data-panel="tool-indexnow" data-section="Tools" data-name="IndexNow Submit" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-indexnow" data-section="Tools" data-name="IndexNow Submit" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
           <span class="sb-text">IndexNow Submit</span>
         </div>
-        <div class="sb-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-sitemap-audit" data-section="Tools" data-name="Sitemap Audit" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
           <span class="sb-text">Sitemap Audit</span>
         </div>
-        <div class="sb-item" data-panel="tool-robots-tester" data-section="Tools" data-name="robots.txt Tester" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-robots-tester" data-section="Tools" data-name="robots.txt Tester" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
           <span class="sb-text">robots.txt Tester</span>
         </div>
-        <div class="sb-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-hreflang-validate" data-section="Tools" data-name="Hreflang Validator" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
           <span class="sb-text">Hreflang Validator</span>
         </div>
-        <div class="sb-item" data-panel="tool-link-health" data-section="Tools" data-name="Link Health" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-link-health" data-section="Tools" data-name="Link Health" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
           <span class="sb-text">Link Health</span>
         </div>
-        <div class="sb-item" data-panel="tool-crawl-intel" data-section="Tools" data-name="Crawl Intelligence" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-crawl-intel" data-section="Tools" data-name="Crawl Intelligence" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg></span>
           <span class="sb-text">Crawl Intelligence</span>
         </div>
-        <div class="sb-item" data-panel="tool-content-serp" data-section="Tools" data-name="Content + SERP" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-content-serp" data-section="Tools" data-name="Content + SERP" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
           <span class="sb-text">Content + SERP</span>
         </div>
         <!-- Stage 3-A -->
-        <div class="sb-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-bing" data-section="Tools" data-name="Bing Visibility" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
           <span class="sb-text">Bing Visibility</span>
         </div>
         <div class="sb-divider-label">GSC Tools</div>
-        <div class="sb-item" data-panel="tool-gsc-opps" data-section="Tools" data-name="GSC Opportunities" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-gsc-opps" data-section="Tools" data-name="GSC Opportunities" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
           <span class="sb-text">GSC Opportunities</span>
         </div>
-        <div class="sb-item" data-panel="tool-gsc-position" data-section="Tools" data-name="GSC Position Tracker" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-gsc-position" data-section="Tools" data-name="GSC Position Tracker" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
           <span class="sb-text">GSC Position Tracker</span>
         </div>
-        <div class="sb-item" data-panel="tool-gsc-ctr" data-section="Tools" data-name="GSC CTR Analyzer" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-gsc-ctr" data-section="Tools" data-name="GSC CTR Analyzer" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></span>
           <span class="sb-text">GSC CTR Analyzer</span>
         </div>
-        <div class="sb-item" data-panel="tool-gsc-coverage" data-section="Tools" data-name="GSC Coverage Errors" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-gsc-coverage" data-section="Tools" data-name="GSC Coverage Errors" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
           <span class="sb-text">GSC Coverage Errors</span>
         </div>
-        <div class="sb-item" data-panel="tool-gsc-sitemaps" data-section="Tools" data-name="GSC Sitemaps Status" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-gsc-sitemaps" data-section="Tools" data-name="GSC Sitemaps Status" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
           <span class="sb-text">GSC Sitemaps Status</span>
         </div>
-        <div class="sb-item" data-panel="tool-phase-runner" data-section="Tools" data-name="Phase Runner" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-phase-runner" data-section="Tools" data-name="Phase Runner" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
           <span class="sb-text">Phase Runner</span>
         </div>
         <!-- Stage 3-C -->
-        <div class="sb-item" data-panel="tool-perf-opps" data-section="Tools" data-name="Perf Opportunities" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-perf-opps" data-section="Tools" data-name="Perf Opportunities" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
           <span class="sb-text">Perf Opportunities</span>
         </div>
         <!-- Keyword Research -->
-        <div class="sb-item" data-panel="tool-kw-research" data-section="Tools" data-name="Keyword Research" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-kw-research" data-section="Tools" data-name="Keyword Research" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></span>
           <span class="sb-text">Keyword Research</span>
         </div>
         <!-- Page intelligence & cross-URL -->
-        <div class="sb-item" data-panel="tool-page-type" data-section="Tools" data-name="Page Type Detector" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-page-type" data-section="Tools" data-name="Page Type Detector" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg></span>
           <span class="sb-text">Page Type Detector</span>
         </div>
-        <div class="sb-item" data-panel="tool-course-audit" data-section="Tools" data-name="Course Page Audit" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-course-audit" data-section="Tools" data-name="Course Page Audit" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>
           <span class="sb-text">Course Page Audit</span>
         </div>
-        <div class="sb-item" data-panel="tool-blog-audit" data-section="Tools" data-name="Blog Post Audit" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-blog-audit" data-section="Tools" data-name="Blog Post Audit" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4"/><path d="M8 13h8M8 17h5"/></svg></span>
           <span class="sb-text">Blog Post Audit</span>
         </div>
-        <div class="sb-item" data-panel="tool-duplicate-scan" data-section="Tools" data-name="Cross-URL Duplicate Scan" onclick="nav(this)">
+        <div class="sb-item" data-panel="tool-duplicate-scan" data-section="Tools" data-name="Cross-URL Duplicate Scan" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
           <span class="sb-text">Cross-URL Duplicate Scan</span>
         </div>
@@ -474,33 +474,33 @@
 
     <!-- Generators — collapsed by default -->
     <div class="sb-group sb-group-collapsed" id="sbg-generators">
-      <div class="sb-group-hd" onclick="sbToggle('sbg-generators')">
+      <div class="sb-group-hd" data-action="sbToggle" data-arg="sbg-generators">
         <span class="sb-group-label">Generators</span>
         <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
       </div>
       <div class="sb-group-body">
-        <div class="sb-item" data-panel="gen-home" data-section="Generators" data-name="All Generators" onclick="nav(this)">
+        <div class="sb-item" data-panel="gen-home" data-section="Generators" data-name="All Generators" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="6" rx="1"/><rect x="9" y="3" width="6" height="6" rx="1"/><rect x="16" y="3" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="9" y="10" width="6" height="6" rx="1"/><rect x="16" y="10" width="6" height="6" rx="1"/><rect x="2" y="17" width="6" height="6" rx="1"/><rect x="9" y="17" width="6" height="6" rx="1"/><rect x="16" y="17" width="6" height="6" rx="1"/></svg></span>
           <span class="sb-text">All Generators</span>
         </div>
         <div class="sb-divider-label u-mt-4"></div>
-        <div class="sb-item" data-panel="gen-schema" data-section="Generators" data-name="Schema Markup" onclick="nav(this)">
+        <div class="sb-item" data-panel="gen-schema" data-section="Generators" data-name="Schema Markup" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
           <span class="sb-text">Schema Markup</span>
         </div>
-        <div class="sb-item" data-panel="gen-robots" data-section="Generators" data-name="robots.txt" onclick="nav(this)">
+        <div class="sb-item" data-panel="gen-robots" data-section="Generators" data-name="robots.txt" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6"/></svg></span>
           <span class="sb-text">robots.txt</span>
         </div>
-        <div class="sb-item" data-panel="gen-sitemap" data-section="Generators" data-name="XML Sitemap" onclick="nav(this)">
+        <div class="sb-item" data-panel="gen-sitemap" data-section="Generators" data-name="XML Sitemap" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v4H3z"/><path d="M3 10h18v4H3z"/><path d="M3 17h18v4H3z"/></svg></span>
           <span class="sb-text">XML Sitemap</span>
         </div>
-        <div class="sb-item" data-panel="gen-hreflang" data-section="Generators" data-name="Hreflang Tags" onclick="nav(this)">
+        <div class="sb-item" data-panel="gen-hreflang" data-section="Generators" data-name="Hreflang Tags" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
           <span class="sb-text">Hreflang Tags</span>
         </div>
-        <div class="sb-item" data-panel="gen-metatags" data-section="Generators" data-name="Meta Tags" onclick="nav(this)">
+        <div class="sb-item" data-panel="gen-metatags" data-section="Generators" data-name="Meta Tags" data-action="nav">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></span>
           <span class="sb-text">Meta Tags</span>
         </div>
@@ -509,21 +509,21 @@
 
     <!-- Data -->
     <div class="sb-group sb-group-collapsed" id="sbg-data">
-      <div class="sb-group-hd" onclick="sbToggle('sbg-data')">
+      <div class="sb-group-hd" data-action="sbToggle" data-arg="sbg-data">
         <span class="sb-group-label">Data</span>
         <svg class="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
       </div>
       <div class="sb-group-body">
-        <div class="sb-item" data-panel="reports" data-section="Data" data-name="Reports" onclick="nav(this);loadReports()">
+        <div class="sb-item" data-panel="reports" data-section="Data" data-name="Reports" data-action="navAndLoadReports">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg></span>
           <span class="sb-text">Reports</span>
           <span class="sb-count" id="sb-rep-count" style="display:none">0</span>
         </div>
-        <div class="sb-item" data-panel="compare" data-section="Data" data-name="Compare" onclick="nav(this);loadCompare()">
+        <div class="sb-item" data-panel="compare" data-section="Data" data-name="Compare" data-action="navAndLoadCompare">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg></span>
           <span class="sb-text">Compare</span>
         </div>
-        <div class="sb-item" data-panel="trend" data-section="Data" data-name="Trend" onclick="nav(this);loadTrend()">
+        <div class="sb-item" data-panel="trend" data-section="Data" data-name="Trend" data-action="navAndLoadTrend">
           <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
           <span class="sb-text">Trend</span>
         </div>
@@ -531,7 +531,7 @@
     </div>
 
     <!-- Settings — always visible at bottom -->
-    <div class="sb-item sb-settings" data-panel="settings" data-section="Settings" data-name="Settings" onclick="nav(this)">
+    <div class="sb-item sb-settings" data-panel="settings" data-section="Settings" data-name="Settings" data-action="nav">
       <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
       <span class="sb-text">Settings</span>
     </div>
@@ -548,7 +548,7 @@
   </div>
 </aside>
 
-<div class="sb-mask" id="sb-mask" onclick="toggleSidebar()"></div>
+<div class="sb-mask" id="sb-mask" data-action="toggleSidebar"></div>
 
 <!-- Main -->
 <div class="main" id="main-content">
@@ -567,9 +567,9 @@
         <div class="page-sub" id="h-greet-sub" style="color:rgba(255,255,255,.72)">Pick a use case to run, or start a full audit</div>
       </div>
       <div class="u-flex u-gap-8 u-flex-wrap" style="align-self:flex-end">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.14);color:#fff;border:1.5px solid rgba(255,255,255,.22)" onclick="navTo('idx-run')">🔍 Indexing Check</button>
-        <button class="btn btn-primary btn-sm" onclick="openFullAudit()">⚡ Full Audit</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);border:1.5px solid rgba(255,255,255,.15)" onclick="navTo('reports');loadReports()">📄 Reports</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.14);color:#fff;border:1.5px solid rgba(255,255,255,.22)" data-action="navTo" data-arg="idx-run">🔍 Indexing Check</button>
+        <button class="btn btn-primary btn-sm" data-action="openFullAudit">⚡ Full Audit</button>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);border:1.5px solid rgba(255,255,255,.15)" data-action="navToReports">📄 Reports</button>
       </div>
     </div>
   </div>
@@ -606,21 +606,21 @@
   <div class="home-strip-section">
     <div class="home-strip-hd">
       <span class="home-strip-title">Quick Tools</span>
-      <a class="home-strip-all" onclick="navTo('tool-serp')">All Tools →</a>
+      <a class="home-strip-all" data-action="navTo" data-arg="tool-serp">All Tools →</a>
     </div>
     <div class="home-strip">
-      <div class="home-strip-item" onclick="navTo('tool-serp')"><span class="home-strip-icon">📱</span><span class="home-strip-label">SERP Preview</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-redirect')"><span class="home-strip-icon">🔗</span><span class="home-strip-label">Redirect Chain</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-headers')"><span class="home-strip-icon">🔤</span><span class="home-strip-label">HTTP Headers</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-keywords')"><span class="home-strip-icon">📊</span><span class="home-strip-label">Keyword Density</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-schema')"><span class="home-strip-icon">🏷️</span><span class="home-strip-label">Schema Check</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-sitemap-audit')"><span class="home-strip-icon">🗺️</span><span class="home-strip-label">Sitemap Audit</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-gsc-opps')"><span class="home-strip-icon">📈</span><span class="home-strip-label">GSC Opportunities</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-perf-opps')"><span class="home-strip-icon">⚡</span><span class="home-strip-label">Perf Opportunities</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-kw-research')"><span class="home-strip-icon">🔍</span><span class="home-strip-label">Keyword Research</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-bing')"><span class="home-strip-icon">🔷</span><span class="home-strip-label">Bing Visibility</span></div>
-      <div class="home-strip-item" onclick="navTo('tool-indexnow')"><span class="home-strip-icon">📤</span><span class="home-strip-label">IndexNow Submit</span></div>
-      <div class="home-strip-item home-strip-item-ai" onclick="navTo('tool-ai')"><span class="home-strip-icon">🤖</span><span class="home-strip-label">AI Assistant</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-serp"><span class="home-strip-icon">📱</span><span class="home-strip-label">SERP Preview</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-redirect"><span class="home-strip-icon">🔗</span><span class="home-strip-label">Redirect Chain</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-headers"><span class="home-strip-icon">🔤</span><span class="home-strip-label">HTTP Headers</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-keywords"><span class="home-strip-icon">📊</span><span class="home-strip-label">Keyword Density</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-schema"><span class="home-strip-icon">🏷️</span><span class="home-strip-label">Schema Check</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-sitemap-audit"><span class="home-strip-icon">🗺️</span><span class="home-strip-label">Sitemap Audit</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-gsc-opps"><span class="home-strip-icon">📈</span><span class="home-strip-label">GSC Opportunities</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-perf-opps"><span class="home-strip-icon">⚡</span><span class="home-strip-label">Perf Opportunities</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-kw-research"><span class="home-strip-icon">🔍</span><span class="home-strip-label">Keyword Research</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-bing"><span class="home-strip-icon">🔷</span><span class="home-strip-label">Bing Visibility</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="tool-indexnow"><span class="home-strip-icon">📤</span><span class="home-strip-label">IndexNow Submit</span></div>
+      <div class="home-strip-item home-strip-item-ai" data-action="navTo" data-arg="tool-ai"><span class="home-strip-icon">🤖</span><span class="home-strip-label">AI Assistant</span></div>
     </div>
   </div>
 
@@ -628,14 +628,14 @@
   <div class="home-strip-section">
     <div class="home-strip-hd">
       <span class="home-strip-title">Generators</span>
-      <a class="home-strip-all" onclick="navTo('gen-schema')">All Generators →</a>
+      <a class="home-strip-all" data-action="navTo" data-arg="gen-schema">All Generators →</a>
     </div>
     <div class="home-strip">
-      <div class="home-strip-item" onclick="navTo('gen-schema')"><span class="home-strip-icon">🧱</span><span class="home-strip-label">Schema Markup</span></div>
-      <div class="home-strip-item" onclick="navTo('gen-robots')"><span class="home-strip-icon">🤖</span><span class="home-strip-label">robots.txt</span></div>
-      <div class="home-strip-item" onclick="navTo('gen-sitemap')"><span class="home-strip-icon">🗺️</span><span class="home-strip-label">XML Sitemap</span></div>
-      <div class="home-strip-item" onclick="navTo('gen-hreflang')"><span class="home-strip-icon">🌐</span><span class="home-strip-label">Hreflang Tags</span></div>
-      <div class="home-strip-item" onclick="navTo('gen-metatags')"><span class="home-strip-icon">🏷️</span><span class="home-strip-label">Meta Tags</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="gen-schema"><span class="home-strip-icon">🧱</span><span class="home-strip-label">Schema Markup</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="gen-robots"><span class="home-strip-icon">🤖</span><span class="home-strip-label">robots.txt</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="gen-sitemap"><span class="home-strip-icon">🗺️</span><span class="home-strip-label">XML Sitemap</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="gen-hreflang"><span class="home-strip-icon">🌐</span><span class="home-strip-label">Hreflang Tags</span></div>
+      <div class="home-strip-item" data-action="navTo" data-arg="gen-metatags"><span class="home-strip-icon">🏷️</span><span class="home-strip-label">Meta Tags</span></div>
     </div>
   </div>
 
@@ -680,7 +680,7 @@
       <div class="fg-full" id="idx-file-row" style="display:none">
         <label class="label" for="idx-file">Upload CSV / Excel</label>
         <div class="dropzone" id="idx-dropzone"
-             onclick="document.getElementById('idx-file').click()"
+             data-action="clickIdxFile"
              ondragover="event.preventDefault();this.classList.add('drag')"
              ondragleave="this.classList.remove('drag')"
              ondrop="idxFileDrop(event)">
@@ -716,8 +716,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary btn-block" id="idx-btn" onclick="startIndex()">🔍 Start Indexing Check</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearIdxForm()" title="Clear form">🗑 Clear</button>
+          <button class="btn btn-primary btn-block" id="idx-btn" data-action="startIndex">🔍 Start Indexing Check</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearIdxForm" title="Clear form">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -732,7 +732,7 @@
       <div class="page-title">Indexing Progress</div>
       <div class="page-sub" id="idx-live-sub">Ready — start a check above</div>
     </div>
-    <button class="notif-btn" id="idx-notif-btn" onclick="toggleNotif('idx')" title="Enable desktop notification on completion">🔔</button>
+    <button class="notif-btn" id="idx-notif-btn" data-action="toggleNotif" data-arg="idx" title="Enable desktop notification on completion">🔔</button>
   </div>
   <div class="stats-row" style="grid-template-columns:repeat(5,1fr)">
     <div class="stat"><div class="stat-n c-blue"   id="is-checked">0</div><div class="stat-l">Checked</div></div>
@@ -752,27 +752,27 @@
       <span class="throughput-badge" id="idx-throughput" style="display:none"></span>
     </div>
     <div class="live-controls">
-      <button class="btn btn-danger btn-sm"  id="idx-cancel-btn" onclick="cancelIndex()" style="display:none">⏹ Cancel</button>
-      <button class="btn btn-warn btn-sm"    id="idx-pause-btn"  onclick="pauseIndex()"  style="display:none">⏸ Pause</button>
-      <button class="btn btn-primary btn-sm" id="idx-resume-btn" onclick="resumeIndex()" style="display:none">▶ Resume</button>
-      <button class="btn btn-warn btn-sm"    id="idx-retry-btn"  onclick="retryErrors()" style="display:none">🔄 Retry Errors (<span id="idx-error-count">0</span>)</button>
+      <button class="btn btn-danger btn-sm"  id="idx-cancel-btn" data-action="cancelIndex" style="display:none">⏹ Cancel</button>
+      <button class="btn btn-warn btn-sm"    id="idx-pause-btn"  data-action="pauseIndex"  style="display:none">⏸ Pause</button>
+      <button class="btn btn-primary btn-sm" id="idx-resume-btn" data-action="resumeIndex" style="display:none">▶ Resume</button>
+      <button class="btn btn-warn btn-sm"    id="idx-retry-btn"  data-action="retryErrors" style="display:none">🔄 Retry Errors (<span id="idx-error-count">0</span>)</button>
       <a id="idx-partial-btn" class="btn btn-ghost btn-sm u-no-underline" href="/api/index/partial" title="Download results collected so far" style="display:none">⬇ Export Partial</a>
     </div>
     <div class="log-filter">
-      <button class="lf-btn active" onclick="filterIdxLog('all',this)">All <span class="lf-count" id="idx-count-all">0</span></button>
-      <button class="lf-btn"        onclick="filterIdxLog('indexed',this)">✅ Indexed <span class="lf-count" id="idx-count-indexed">0</span></button>
-      <button class="lf-btn"        onclick="filterIdxLog('not-indexed',this)">❌ Not Indexed <span class="lf-count" id="idx-count-not">0</span></button>
-      <button class="lf-btn"        onclick="filterIdxLog('error',this)">⚠ Errors <span class="lf-count" id="idx-count-err">0</span></button>
-      <button class="lf-btn lf-action" onclick="copyIdxUrls()" title="Copy currently-visible URLs">📋 Copy URLs</button>
-      <button class="lf-btn lf-action" onclick="expandIdxLog(this)" title="Expand / shrink log">⛶</button>
+      <button class="lf-btn active" data-action="filterIdxLog" data-arg="all">All <span class="lf-count" id="idx-count-all">0</span></button>
+      <button class="lf-btn"        data-action="filterIdxLog" data-arg="indexed">✅ Indexed <span class="lf-count" id="idx-count-indexed">0</span></button>
+      <button class="lf-btn"        data-action="filterIdxLog" data-arg="not-indexed">❌ Not Indexed <span class="lf-count" id="idx-count-not">0</span></button>
+      <button class="lf-btn"        data-action="filterIdxLog" data-arg="error">⚠ Errors <span class="lf-count" id="idx-count-err">0</span></button>
+      <button class="lf-btn lf-action" data-action="copyIdxUrls" title="Copy currently-visible URLs">📋 Copy URLs</button>
+      <button class="lf-btn lf-action" data-action="expandIdxLog" title="Expand / shrink log">⛶</button>
       <label class="log-autoscroll"><input type="checkbox" id="idx-autoscroll" checked> Auto-scroll</label>
     </div>
     <div class="log-box" id="idx-log"></div>
     <div class="done-bar" id="idx-done-bar">
       <span class="done-bar-text" id="idx-done-text">✓ Indexing complete</span>
-      <button class="btn btn-primary btn-sm" id="idx-open-btn" onclick="openIdxReport()" style="display:none">Open Report ↗</button>
+      <button class="btn btn-primary btn-sm" id="idx-open-btn" data-action="openIdxReport" style="display:none">Open Report ↗</button>
       <a id="idx-dl-btn" class="btn btn-ghost btn-sm u-no-underline" style="display:none">⬇ CSV</a>
-      <button class="btn btn-ghost btn-sm" onclick="navTo('idx-run')">↻ New Check</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="idx-run">↻ New Check</button>
     </div>
   </div>
 </div>
@@ -800,11 +800,11 @@
   <div class="card card-sm">
     <div class="section-title">Quick presets</div>
     <div class="pill-row">
-      <button class="btn btn-ghost btn-sm" onclick="applyPreset('all')">⚡ Full Audit</button>
-      <button class="btn btn-ghost btn-sm" onclick="applyPreset('technical')">🏗️ Technical</button>
-      <button class="btn btn-ghost btn-sm" onclick="applyPreset('performance')">🚀 Performance</button>
-      <button class="btn btn-ghost btn-sm" onclick="applyPreset('visibility')">👁️ Visibility</button>
-      <button class="btn btn-ghost btn-sm" onclick="applyPreset('none')" style="margin-left:auto">Clear all</button>
+      <button class="btn btn-ghost btn-sm" data-action="applyPreset" data-arg="all">⚡ Full Audit</button>
+      <button class="btn btn-ghost btn-sm" data-action="applyPreset" data-arg="technical">🏗️ Technical</button>
+      <button class="btn btn-ghost btn-sm" data-action="applyPreset" data-arg="performance">🚀 Performance</button>
+      <button class="btn btn-ghost btn-sm" data-action="applyPreset" data-arg="visibility">👁️ Visibility</button>
+      <button class="btn btn-ghost btn-sm" data-action="applyPreset" data-arg="none" style="margin-left:auto">Clear all</button>
     </div>
   </div>
 
@@ -813,12 +813,12 @@
     <div class="section-title u-mb-10">Deep Analysis Tools</div>
     <div class="u-text-muted u-mb-12" style="font-size:12.5px">Run after a full audit for deeper insights — these tools go beyond the standard 7 use cases.</div>
     <div class="pill-row u-flex-wrap u-gap-8">
-      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-gsc-opps')" title="Low-CTR pages, position decay, cannibalization">📊 GSC Opportunities</button>
-      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-perf-opps')" title="Core Web Vitals buckets with fix plan">⚡ Perf Opportunities</button>
-      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-ai')" title="AI-powered audit explanation &amp; meta tag drafting">🤖 AI Assistant</button>
-      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-bing')" title="Bing Webmaster Tools — clicks, crawl, sitemaps">🔷 Bing Visibility</button>
-      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-schema')" title="Schema / Rich Results validation">🏷️ Schema Validate</button>
-      <button class="btn btn-ghost btn-sm" onclick="navTo('tool-sitemap-audit')" title="Sitemap orphans, duplicates, oversized">🗺 Sitemap Audit</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-gsc-opps" title="Low-CTR pages, position decay, cannibalization">📊 GSC Opportunities</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-perf-opps" title="Core Web Vitals buckets with fix plan">⚡ Perf Opportunities</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-ai" title="AI-powered audit explanation &amp; meta tag drafting">🤖 AI Assistant</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-bing" title="Bing Webmaster Tools — clicks, crawl, sitemaps">🔷 Bing Visibility</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-schema" title="Schema / Rich Results validation">🏷️ Schema Validate</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-sitemap-audit" title="Sitemap orphans, duplicates, oversized">🗺 Sitemap Audit</button>
     </div>
   </div>
   <div class="card">
@@ -850,7 +850,7 @@
       <div class="fg-full" id="aud-file-row" style="display:none">
         <label class="label" for="aud-file">Upload CSV / Excel</label>
         <div class="dropzone" id="aud-dropzone"
-             onclick="document.getElementById('aud-file').click()"
+             data-action="clickAudFile"
              ondragover="event.preventDefault();this.classList.add('drag')"
              ondragleave="this.classList.remove('drag')"
              ondrop="audFileDrop(event)">
@@ -890,8 +890,8 @@
           <select class="input u-flex-1" id="aud-profile" onchange="loadProfile(this.value)" style="min-width:160px">
             <option value="">— Select a profile —</option>
           </select>
-          <button class="btn btn-ghost btn-sm" onclick="saveProfile()">💾 Save current</button>
-          <button class="btn btn-ghost btn-sm" onclick="deleteProfile()">🗑 Delete</button>
+          <button class="btn btn-ghost btn-sm" data-action="saveProfile">💾 Save current</button>
+          <button class="btn btn-ghost btn-sm" data-action="deleteProfile">🗑 Delete</button>
         </div>
       </div>
       <div class="fg-full" id="kw-row" style="display:none">
@@ -899,7 +899,7 @@
         <input class="input" id="aud-kw" placeholder="corporate training, leadership training">
       </div>
       <div class="fg-full">
-        <button class="btn btn-primary btn-block" id="aud-btn" onclick="startAudit()">🔬 Start Audit</button>
+        <button class="btn btn-primary btn-block" id="aud-btn" data-action="startAudit">🔬 Start Audit</button>
       </div>
     </div>
   </div>
@@ -938,7 +938,7 @@
         <span class="wu-dot" id="aud-wu-dot"></span>
         <span id="aud-worker-active">0</span>/<span id="aud-worker-total">3</span> workers
       </div>
-      <button class="notif-btn" id="aud-notif-btn" onclick="toggleNotif('aud')" title="Enable desktop notification on completion">🔔</button>
+      <button class="notif-btn" id="aud-notif-btn" data-action="toggleNotif" data-arg="aud" title="Enable desktop notification on completion">🔔</button>
     </div>
   </div>
   <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
@@ -971,17 +971,17 @@
       <span class="throughput-badge" id="aud-throughput" style="display:none"></span>
     </div>
     <div class="live-controls">
-      <button class="btn btn-danger btn-sm"  id="aud-cancel-btn"  onclick="cancelAudit()"  style="display:none">⏹ Cancel</button>
-      <button class="btn btn-warn btn-sm"    id="aud-pause-btn"   onclick="pauseAudit()"   style="display:none">⏸ Pause</button>
-      <button class="btn btn-primary btn-sm" id="aud-resume-btn"  onclick="resumeAudit()"  style="display:none">▶ Resume</button>
+      <button class="btn btn-danger btn-sm"  id="aud-cancel-btn"  data-action="cancelAudit"  style="display:none">⏹ Cancel</button>
+      <button class="btn btn-warn btn-sm"    id="aud-pause-btn"   data-action="pauseAudit"   style="display:none">⏸ Pause</button>
+      <button class="btn btn-primary btn-sm" id="aud-resume-btn"  data-action="resumeAudit"  style="display:none">▶ Resume</button>
       <a id="aud-partial-btn" class="btn btn-ghost btn-sm u-no-underline" href="/api/audit/partial" title="Download results collected so far" style="display:none">⬇ Export Partial</a>
     </div>
     <div class="log-filter">
-      <button class="lf-btn active" onclick="filterAudLog('all',this)">All <span class="lf-count" id="aud-count-all">0</span></button>
-      <button class="lf-btn"        onclick="filterAudLog('issues',this)">⚠ Has Issues <span class="lf-count" id="aud-count-iss">0</span></button>
-      <button class="lf-btn"        onclick="filterAudLog('low',this)">❌ Low Score (&lt;50) <span class="lf-count" id="aud-count-low">0</span></button>
-      <button class="lf-btn lf-action" onclick="copyAudUrls()" title="Copy currently-visible URLs">📋 Copy URLs</button>
-      <button class="lf-btn lf-action" onclick="expandAudLog(this)" title="Expand log">⛶</button>
+      <button class="lf-btn active" data-action="filterAudLog" data-arg="all">All <span class="lf-count" id="aud-count-all">0</span></button>
+      <button class="lf-btn"        data-action="filterAudLog" data-arg="issues">⚠ Has Issues <span class="lf-count" id="aud-count-iss">0</span></button>
+      <button class="lf-btn"        data-action="filterAudLog" data-arg="low">❌ Low Score (&lt;50) <span class="lf-count" id="aud-count-low">0</span></button>
+      <button class="lf-btn lf-action" data-action="copyAudUrls" title="Copy currently-visible URLs">📋 Copy URLs</button>
+      <button class="lf-btn lf-action" data-action="expandAudLog" title="Expand log">⛶</button>
       <label class="log-autoscroll"><input type="checkbox" id="aud-autoscroll" checked> Auto-scroll</label>
     </div>
     <div class="log-box" id="aud-log"></div>
@@ -991,23 +991,23 @@
     </div>
     <div class="done-bar" id="aud-done-bar">
       <span class="done-bar-text" id="aud-done-text">✓ Audit complete</span>
-      <button class="btn btn-primary btn-sm" id="aud-open-btn" onclick="openAudReport()" style="display:none">Open Report ↗</button>
+      <button class="btn btn-primary btn-sm" id="aud-open-btn" data-action="openAudReport" style="display:none">Open Report ↗</button>
       <a id="aud-dl-btn"  class="btn btn-ghost btn-sm u-no-underline" style="display:none">⬇ XLSX</a>
       <a id="aud-pdf-btn" class="btn btn-ghost btn-sm u-no-underline" style="display:none">⬇ PDF</a>
-      <button class="btn btn-ghost btn-sm" onclick="navTo('aud-run')">↻ New Audit</button>
+      <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="aud-run">↻ New Audit</button>
     </div>
 
     <!-- Next Steps — deep analysis shortcuts shown after audit completes -->
     <div class="u-mt-12" id="aud-next-steps" style="display:none">
       <div class="section-title u-mb-8 u-fs-12">Go deeper with these tools →</div>
       <div class="pill-row u-flex-wrap" style="gap:7px">
-        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-gsc-opps')" title="Low-CTR pages, decay, cannibalization">📊 GSC Opportunities</button>
-        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-perf-opps')" title="Core Web Vitals priority buckets">⚡ Perf Opportunities</button>
-        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-ai')" title="AI explanation + meta drafting">🤖 AI Assistant</button>
-        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-bing')" title="Bing visibility, crawl, sitemaps">🔷 Bing Visibility</button>
-        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-schema')" title="Rich results / Schema validation">🏷️ Schema Validate</button>
-        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-sitemap-audit')" title="Orphans, duplicates, oversized">🗺 Sitemap Audit</button>
-        <button class="btn btn-ghost btn-sm" onclick="navTo('tool-kw-research')" title="Keyword ideas via DataForSEO">🔎 Keyword Research</button>
+        <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-gsc-opps" title="Low-CTR pages, decay, cannibalization">📊 GSC Opportunities</button>
+        <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-perf-opps" title="Core Web Vitals priority buckets">⚡ Perf Opportunities</button>
+        <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-ai" title="AI explanation + meta drafting">🤖 AI Assistant</button>
+        <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-bing" title="Bing visibility, crawl, sitemaps">🔷 Bing Visibility</button>
+        <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-schema" title="Rich results / Schema validation">🏷️ Schema Validate</button>
+        <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-sitemap-audit" title="Orphans, duplicates, oversized">🗺 Sitemap Audit</button>
+        <button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="tool-kw-research" title="Keyword ideas via DataForSEO">🔎 Keyword Research</button>
       </div>
     </div>
   </div>
@@ -1020,7 +1020,7 @@
       <div class="page-title">Reports</div>
       <div class="page-sub">Browse all your previous runs. You can view the live HTML reports or download the raw data spreadsheets.</div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="loadReports()">↻ Refresh</button>
+    <button class="btn btn-ghost btn-sm" data-action="loadReports">↻ Refresh</button>
   </div>
   <div class="rep-stats">
     <div class="rep-stat"><div class="rep-stat-n c-blue" id="rep-total">—</div><div class="rep-stat-l">Total Reports</div></div>
@@ -1029,13 +1029,13 @@
   </div>
   <div class="rep-toolbar">
     <div class="tab-row" style="margin:0;border:none;padding-bottom:0">
-      <button class="tab-btn active" onclick="filterReports('all',this)">All</button>
-      <button class="tab-btn" onclick="filterReports('indexing',this)">Indexing</button>
-      <button class="tab-btn" onclick="filterReports('audit',this)">SEO Audit</button>
+      <button class="tab-btn active" data-action="filterReports" data-arg="all">All</button>
+      <button class="tab-btn" data-action="filterReports" data-arg="indexing">Indexing</button>
+      <button class="tab-btn" data-action="filterReports" data-arg="audit">SEO Audit</button>
     </div>
     <div class="u-flex-1 u-min-w-200" style="position:relative">
       <input class="rep-search u-w-full" id="rep-search" placeholder="🔍  Search reports…" oninput="renderReports()" style="padding-right:32px">
-      <button class="u-text-muted u-fs-14" onclick="clearRepSearch()" title="Clear search" id="rep-search-clear" style="display:none" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;line-height:1">✕</button>
+      <button class="u-text-muted u-fs-14" data-action="clearRepSearch" title="Clear search" id="rep-search-clear" style="display:none" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;line-height:1">✕</button>
     </div>
     <select class="rep-sort" id="rep-sort" onchange="renderReports()" title="Sort reports">
       <option value="newest">↓ Newest</option>
@@ -1080,8 +1080,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary btn-block" onclick="runCompare()">🔀 Compare Reports</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearCompare()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary btn-block" data-action="runCompare">🔀 Compare Reports</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearCompare" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -1098,7 +1098,7 @@
       <div class="page-title">Indexing Trend</div>
       <div class="page-sub">Historical indexed vs not-indexed over time</div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="loadTrend()">↻ Refresh</button>
+    <button class="btn btn-ghost btn-sm" data-action="loadTrend">↻ Refresh</button>
   </div>
   <div class="trend-kpi-row" id="trend-kpi-row" style="display:none">
     <div class="trend-kpi">
@@ -1124,7 +1124,7 @@
       <div class="empty-state-icon">📈</div>
       <div class="empty-state-title">Not enough data yet</div>
       <div class="empty-state-sub">Run at least two indexing checks to see the trend chart</div>
-      <div class="empty-state-action"><button class="btn btn-ghost btn-sm" onclick="navTo('idx-run')">Run Indexing Check →</button></div>
+      <div class="empty-state-action"><button class="btn btn-ghost btn-sm" data-action="navTo" data-arg="idx-run">Run Indexing Check →</button></div>
     </div>
   </div>
   <div class="card" id="trend-table" style="display:none">
@@ -1156,7 +1156,7 @@
     </div>
     <div class="u-flex u-items-center" style="gap:10px;flex-shrink:0">
       <input class="input" type="search" placeholder="🔍 Filter settings…" oninput="filterSettings(this.value)" style="width:200px">
-      <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+      <button class="btn btn-primary" data-action="saveSettings">💾 Save Settings</button>
     </div>
   </div>
 
@@ -1164,7 +1164,7 @@
   <div class="card" style="margin-bottom:20px">
     <div class="u-flex u-items-center u-justify-between u-mb-12">
       <div class="section-title" style="margin-bottom:0">🩺 Configuration Health</div>
-      <button class="btn btn-ghost btn-sm" onclick="renderCfgHealth()">↻ Refresh</button>
+      <button class="btn btn-ghost btn-sm" data-action="renderCfgHealth">↻ Refresh</button>
     </div>
     <div class="cfg-health-grid" id="cfg-health-grid">
       <div class="u-text-muted u-fs-12" style="padding:6px">Loading…</div>
@@ -1190,7 +1190,7 @@
           <div class="s-label">GSC Credentials File</div>
           <div class="s-desc">Path to service account JSON · <a class="u-text-primary" href="https://console.cloud.google.com/" target="_blank">Download from GCP</a> → IAM → Service Accounts</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" id="cfg-gsc-creds" placeholder="gsc_credentials.json"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" id="cfg-gsc-creds" placeholder="gsc_credentials.json"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="settings-row">
@@ -1211,7 +1211,7 @@
           <div class="s-label">PageSpeed API Key <span class="cfg-badge" id="badge-pagespeed"></span></div>
           <div class="s-desc">Free · <a class="u-text-primary" href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> → Enable PageSpeed Insights API → Create API key</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" id="cfg-pagespeed" placeholder="AIza…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" id="cfg-pagespeed" placeholder="AIza…"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="cfg-info-box">
@@ -1229,7 +1229,7 @@
           <div class="s-label">Groq API Key <span class="cfg-badge" id="badge-groq"></span></div>
           <div class="s-desc">Get a free API key at <a class="u-text-primary" href="https://console.groq.com" target="_blank">console.groq.com</a> to unlock instant AI audit explanations and meta tag suggestions.</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-groq" placeholder="gsk_…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-groq" placeholder="gsk_…"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="settings-row">
@@ -1237,7 +1237,7 @@
           <div class="s-label">Bing Webmaster API Key <span class="cfg-badge" id="badge-bing"></span></div>
           <div class="s-desc">Connect your Bing Webmaster key from <a class="u-text-primary" href="https://www.bing.com/webmasters" target="_blank">bing.com/webmasters</a> to populate your search visibility charts.</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-bing" placeholder="your_key…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-bing" placeholder="your_key…"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="cfg-info-box">
@@ -1256,8 +1256,8 @@
           <div class="s-desc">Free · Generate a key in Tools → IndexNow Submit, then host it at <code>https://yourdomain.com/{key}.txt</code></div>
         </div>
         <div class="u-flex u-gap-8 u-items-center">
-          <div class="key-wrap" style="width:180px"><input class="input" id="cfg-indexnow-key" placeholder="a1b2c3d4…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
-          <button class="btn btn-ghost btn-sm" onclick="generateAndFillIndexNowKey()">Generate</button>
+          <div class="key-wrap" style="width:180px"><input class="input" id="cfg-indexnow-key" placeholder="a1b2c3d4…"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
+          <button class="btn btn-ghost btn-sm" data-action="generateAndFillIndexNowKey">Generate</button>
         </div>
       </div>
 
@@ -1279,7 +1279,7 @@
           <div class="s-label">SerpAPI Key <span class="cfg-badge" id="badge-serpapi"></span></div>
           <div class="s-desc">Get 100 free monthly queries at <a class="u-text-primary" href="https://serpapi.com" target="_blank">serpapi.com</a> to track keyword rankings in live search engine results.</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" id="cfg-serpapi" placeholder="your_key…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" id="cfg-serpapi" placeholder="your_key…"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="settings-row">
@@ -1287,7 +1287,7 @@
           <div class="s-label">Moz Access ID <span class="cfg-badge" id="badge-moz"></span></div>
           <div class="s-desc">Sign up for a free API token at <a class="u-text-primary" href="https://moz.com/products/api" target="_blank">moz.com/products/api</a> to check domain metrics and backlink profiles.</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" id="cfg-moz-id" placeholder="mozscape-…"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" id="cfg-moz-id" placeholder="mozscape-…"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="settings-row">
@@ -1295,7 +1295,7 @@
           <div class="s-label">Moz Secret Key</div>
           <div class="s-desc">Required alongside Moz Access ID</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-moz-secret" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-moz-secret" placeholder="••••••••"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="settings-row">
@@ -1303,7 +1303,7 @@
           <div class="s-label">DataForSEO Login <span class="cfg-badge" id="badge-dfs"></span></div>
           <div class="s-desc">Connect your <a class="u-text-primary" href="https://dataforseo.com" target="_blank">dataforseo.com</a> account for professional-grade keyword rankings and deep SEO analysis.</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" id="cfg-dfs-login" placeholder="email@example.com"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" id="cfg-dfs-login" placeholder="email@example.com"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <div class="settings-row">
@@ -1311,7 +1311,7 @@
           <div class="s-label">DataForSEO Password</div>
           <div class="s-desc">Required alongside DataForSEO login email</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-dfs-pass" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" type="password" id="cfg-dfs-pass" placeholder="••••••••"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
     </div>
 
@@ -1339,11 +1339,11 @@
         <div class="s-label u-mb-10">Change Password</div>
         <div class="form-grid u-gap-8">
           <div class="fg-full"><label class="label" for="cfg-auth-user">New Username</label><input class="input" id="cfg-auth-user" placeholder="admin"></div>
-          <div class="fg-full"><label class="label" for="cfg-auth-pass">New Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass" placeholder="min 12 characters"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
-          <div class="fg-full"><label class="label" for="cfg-auth-pass2">Confirm Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass2" placeholder="repeat password"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><label class="label" for="cfg-auth-pass">New Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass" placeholder="min 12 characters"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><label class="label" for="cfg-auth-pass2">Confirm Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-auth-pass2" placeholder="repeat password"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div></div>
         </div>
         <div class="u-fs-12" id="auth-change-error" style="color:var(--c-red);margin-top:6px;display:none"></div>
-        <button class="btn btn-ghost btn-sm u-mt-10" onclick="changeAuthCredentials()">Update Credentials</button>
+        <button class="btn btn-ghost btn-sm u-mt-10" data-action="changeAuthCredentials">Update Credentials</button>
         <div class="cfg-info-box u-mt-12">
           <div class="cfg-info-title">How auth works</div>
           <div class="cfg-info-body">Auth activates when <code>SEO_SUITE_PASSWORD_HASH</code> is set in your environment, or once any user account exists. Run <code>python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('yourpassword'))"</code> to generate a hash, then set it in <code>.env</code>.</div>
@@ -1368,11 +1368,11 @@
         <div class="s-label u-mb-8">Add User</div>
         <div class="form-grid u-gap-8">
           <div class="fg-full"><label class="label" for="new-user-name">Username</label><input class="input" id="new-user-name" placeholder="username"></div>
-          <div class="fg-full"><label class="label" for="new-user-pass">Password</label><div class="key-wrap"><input class="input" type="password" id="new-user-pass" placeholder="min 12 characters"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div class="fg-full"><label class="label" for="new-user-pass">Password</label><div class="key-wrap"><input class="input" type="password" id="new-user-pass" placeholder="min 12 characters"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div></div>
           <div class="fg-full u-flex u-items-center u-gap-8"><input type="checkbox" id="new-user-admin"><span class="label" style="margin:0">Make this user an admin</span></div>
         </div>
         <div class="u-fs-12" id="new-user-error" style="color:var(--c-red);margin-top:6px;display:none"></div>
-        <button class="btn btn-ghost btn-sm u-mt-10" onclick="createUser()">+ Add User</button>
+        <button class="btn btn-ghost btn-sm u-mt-10" data-action="createUser">+ Add User</button>
       </div>
     </div>
 
@@ -1425,7 +1425,7 @@
           <div><label class="label" for="cfg-smtp-port">Port</label><input class="input" id="cfg-smtp-port" placeholder="587" style="width:80px"></div>
           <div class="fg-full"><label class="label" for="cfg-smtp-from">From Address</label><input class="input" id="cfg-smtp-from" placeholder="you@example.com"></div>
           <div><label class="label" for="cfg-smtp-user">Username</label><input class="input" id="cfg-smtp-user" placeholder="you@example.com"></div>
-          <div><label class="label" for="cfg-smtp-pass">Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-smtp-pass" placeholder="••••••••"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div></div>
+          <div><label class="label" for="cfg-smtp-pass">Password</label><div class="key-wrap"><input class="input" type="password" id="cfg-smtp-pass" placeholder="••••••••"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div></div>
           <div class="fg-full"><label class="label" for="cfg-smtp-to">Report To</label><input class="input" id="cfg-smtp-to" placeholder="team@example.com"></div>
         </div>
       </div>
@@ -1434,9 +1434,9 @@
       <div class="u-mt-14" style="border-top:1px solid var(--c-border);padding-top:12px">
         <div class="s-label u-mb-8">Test Notifications</div>
         <div class="u-flex u-gap-8 u-flex-wrap u-items-center">
-          <button class="btn btn-ghost btn-sm" onclick="testNotify('email')">✉️ Test Email</button>
-          <button class="btn btn-ghost btn-sm" onclick="testNotify('slack')">💬 Test Slack</button>
-          <button class="btn btn-ghost btn-sm" onclick="testNotify('teams')">🟦 Test Teams</button>
+          <button class="btn btn-ghost btn-sm" data-action="testNotify" data-arg="email">✉️ Test Email</button>
+          <button class="btn btn-ghost btn-sm" data-action="testNotify" data-arg="slack">💬 Test Slack</button>
+          <button class="btn btn-ghost btn-sm" data-action="testNotify" data-arg="teams">🟦 Test Teams</button>
           <span class="u-fs-12 u-text-cmuted" id="notif-test-msg"></span>
         </div>
       </div>
@@ -1505,13 +1505,13 @@
         </div>
       </div>
       <div class="theme-row">
-        <div class="theme-opt" id="theme-opt-light" onclick="setThemePref('light')">
+        <div class="theme-opt" id="theme-opt-light" data-action="setThemePref" data-arg="light">
           <span class="theme-opt-icon">☀️</span>Light
         </div>
-        <div class="theme-opt" id="theme-opt-dark" onclick="setThemePref('dark')">
+        <div class="theme-opt" id="theme-opt-dark" data-action="setThemePref" data-arg="dark">
           <span class="theme-opt-icon">🌙</span>Dark
         </div>
-        <div class="theme-opt" id="theme-opt-system" onclick="setThemePref('system')">
+        <div class="theme-opt" id="theme-opt-system" data-action="setThemePref" data-arg="system">
           <span class="theme-opt-icon">💻</span>System
         </div>
       </div>
@@ -1542,10 +1542,10 @@
   <div class="card">
     <!-- Input format tabs -->
     <div class="uc-fmt-tabs" id="uc-fmt-tabs">
-      <button class="uc-fmt-tab active" data-fmt="url"     onclick="setUcFormat('url',this)">🔗 URL</button>
-      <button class="uc-fmt-tab"        data-fmt="domain"  onclick="setUcFormat('domain',this)">🌐 Domain</button>
-      <button class="uc-fmt-tab"        data-fmt="sitemap" onclick="setUcFormat('sitemap',this)">🗺 Sitemap</button>
-      <button class="uc-fmt-tab"        data-fmt="csv"     onclick="setUcFormat('csv',this)">📄 CSV / XLSX</button>
+      <button class="uc-fmt-tab active" data-fmt="url"     data-action="setUcFormat" data-arg="url">🔗 URL</button>
+      <button class="uc-fmt-tab"        data-fmt="domain"  data-action="setUcFormat" data-arg="domain">🌐 Domain</button>
+      <button class="uc-fmt-tab"        data-fmt="sitemap" data-action="setUcFormat" data-arg="sitemap">🗺 Sitemap</button>
+      <button class="uc-fmt-tab"        data-fmt="csv"     data-action="setUcFormat" data-arg="csv">📄 CSV / XLSX</button>
     </div>
     <div class="uc-fmt-hint" id="uc-fmt-hint"></div>
     <div class="form-grid u-mt-12">
@@ -1564,8 +1564,8 @@
         <input class="input" id="uc-keywords" placeholder="seo tools, keyword research">
       </div>
       <div class="fg-full u-flex u-items-center" style="gap:10px">
-        <button class="btn btn-primary" id="uc-run-btn" onclick="runUseCase()">Run Check</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearUcRunner()" title="Clear input &amp; results">🗑 Clear</button>
+        <button class="btn btn-primary" id="uc-run-btn" data-action="runUseCase">Run Check</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearUcRunner" title="Clear input &amp; results">🗑 Clear</button>
         <div id="uc-req-badges" class="uc-req-badges"></div>
       </div>
     </div>
@@ -1593,7 +1593,7 @@
         <div class="tool-guide-body">
           <div class="tool-guide-title uc-api-notice-title" id="uc-api-notice-title">API key required</div>
           <ol class="help-steps u-mt-8" id="uc-api-notice-steps"></ol>
-          <button class="btn btn-ghost btn-sm u-mt-10" onclick="openHelp();helpTab('keys',document.querySelector('[data-tab=\'keys\']'))" style="font-size:11.5px">📖 Full setup guide → API Keys tab</button>
+          <button class="btn btn-ghost btn-sm u-mt-10" data-action="openHelpKeys" style="font-size:11.5px">📖 Full setup guide → API Keys tab</button>
         </div>
       </div>
     </div>
@@ -1614,8 +1614,8 @@
       <div class="u-flex u-items-center u-justify-between u-mb-12">
         <div class="section-title" style="margin-bottom:0">Checks</div>
         <div class="u-flex u-gap-8">
-          <button class="btn btn-ghost btn-sm" onclick="copyUcResults()" title="Copy results as text">📋 Copy</button>
-          <button class="btn btn-ghost btn-sm" onclick="navTo('aud-run');openFullAudit()" title="Run a full audit for deeper analysis">⚡ Full Audit</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyUcResults" title="Copy results as text">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" data-action="navToAudRun" title="Run a full audit for deeper analysis">⚡ Full Audit</button>
         </div>
       </div>
       <div id="uc-checks-list"></div>
@@ -1669,16 +1669,16 @@
     <div class="card u-flex-1 u-min-w-300">
       <div id="schema-form-fields"></div>
       <div class="u-flex u-gap-8 u-mt-16">
-        <button class="btn btn-primary" onclick="generateSchema()">Generate Markup</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearSchemaForm()" title="Clear form &amp; output">🗑 Clear</button>
+        <button class="btn btn-primary" data-action="generateSchema">Generate Markup</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearSchemaForm" title="Clear form &amp; output">🗑 Clear</button>
       </div>
     </div>
     <div class="card u-flex-1 u-min-w-300" id="schema-output-card" style="display:none">
       <div class="u-flex u-justify-between u-items-center u-mb-10">
         <div class="section-title">Generated Markup</div>
         <div class="u-flex u-gap-6">
-          <button class="btn btn-ghost btn-sm" onclick="copyOutput('schema-output')">📋 Copy</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('schema-output','schema','json')">⬇ .json</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyOutput" data-arg="schema-output">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" data-action="downloadOutput" data-arg="schema-output" data-arg2="schema|json">⬇ .json</button>
         </div>
       </div>
       <textarea id="schema-output" class="gen-output" rows="20" readonly></textarea>
@@ -1717,7 +1717,7 @@
         <div class="fg-full">
           <div class="u-flex u-justify-between u-items-center u-mb-8">
             <span class="section-title">Rules</span>
-            <button class="btn btn-ghost btn-sm" onclick="addRobotsRule()">+ Add Rule</button>
+            <button class="btn btn-ghost btn-sm" data-action="addRobotsRule">+ Add Rule</button>
           </div>
           <div id="robots-rules"></div>
         </div>
@@ -1727,8 +1727,8 @@
         </div>
         <div class="fg-full">
           <div class="u-flex u-gap-8">
-            <button class="btn btn-primary" onclick="generateRobots()">Generate robots.txt</button>
-            <button class="btn btn-ghost btn-sm" onclick="clearRobotsForm()" title="Clear all rules &amp; output">🗑 Clear</button>
+            <button class="btn btn-primary" data-action="generateRobots">Generate robots.txt</button>
+            <button class="btn btn-ghost btn-sm" data-action="clearRobotsForm" title="Clear all rules &amp; output">🗑 Clear</button>
           </div>
         </div>
       </div>
@@ -1737,8 +1737,8 @@
       <div class="u-flex u-justify-between u-items-center u-mb-10">
         <div class="section-title">Output</div>
         <div class="u-flex u-gap-6">
-          <button class="btn btn-ghost btn-sm" onclick="copyOutput('robots-output')">📋 Copy</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('robots-output','robots','txt')">⬇ robots.txt</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyOutput" data-arg="robots-output">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" data-action="downloadOutput" data-arg="robots-output" data-arg2="robots|txt">⬇ robots.txt</button>
         </div>
       </div>
       <div id="robots-disallow-warn" class="cfg-info-box u-mb-8" style="border-left:3px solid var(--danger);background:var(--danger-l)" style="display:none">
@@ -1813,8 +1813,8 @@
         </div>
         <div class="fg-full">
           <div class="u-flex u-gap-8">
-            <button class="btn btn-primary" onclick="generateSitemap()">Generate Sitemap</button>
-            <button class="btn btn-ghost btn-sm" onclick="clearSitemapForm()" title="Clear URLs &amp; output">🗑 Clear</button>
+            <button class="btn btn-primary" data-action="generateSitemap">Generate Sitemap</button>
+            <button class="btn btn-ghost btn-sm" data-action="clearSitemapForm" title="Clear URLs &amp; output">🗑 Clear</button>
           </div>
         </div>
       </div>
@@ -1823,8 +1823,8 @@
       <div class="u-flex u-justify-between u-items-center u-mb-10">
         <div class="section-title">Output <span class="u-text-muted u-fw-400 u-fs-13" id="sitemap-url-count"></span></div>
         <div class="u-flex u-gap-6">
-          <button class="btn btn-ghost btn-sm" onclick="copyOutput('sitemap-output')">📋 Copy</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('sitemap-output','sitemap','xml')">⬇ .xml</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyOutput" data-arg="sitemap-output">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" data-action="downloadOutput" data-arg="sitemap-output" data-arg2="sitemap|xml">⬇ .xml</button>
         </div>
       </div>
       <textarea id="sitemap-output" class="gen-output" rows="16" readonly placeholder="XML sitemap will appear here…"></textarea>
@@ -1857,7 +1857,7 @@
     <div class="card u-flex-1 u-min-w-300">
       <div class="u-flex u-justify-between u-items-center u-mb-12">
         <div class="section-title">Language / Region Entries</div>
-        <button class="btn btn-ghost btn-sm" onclick="addHreflangRow()">+ Add</button>
+        <button class="btn btn-ghost btn-sm" data-action="addHreflangRow">+ Add</button>
       </div>
       <div id="hreflang-rows"></div>
       <div class="u-mt-12" style="padding-top:12px;border-top:1px solid var(--border)">
@@ -1867,21 +1867,21 @@
         <input class="input" id="hreflang-xdefault-url" placeholder="x-default URL" style="display:none">
       </div>
       <div class="u-flex u-gap-8 u-mt-12">
-        <button class="btn btn-primary" onclick="generateHreflang()">Generate Tags</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearHreflangForm()" title="Clear rows &amp; output">🗑 Clear</button>
+        <button class="btn btn-primary" data-action="generateHreflang">Generate Tags</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearHreflangForm" title="Clear rows &amp; output">🗑 Clear</button>
       </div>
     </div>
     <div class="card u-flex-1 u-min-w-300">
       <div class="u-flex u-justify-between u-items-center u-mb-10">
         <div class="section-title">Output</div>
         <div class="u-flex u-gap-6">
-          <button class="btn btn-ghost btn-sm" onclick="copyOutput('hreflang-output')">📋 Copy</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('hreflang-output','hreflang','html')">⬇ .html</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyOutput" data-arg="hreflang-output">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" data-action="downloadOutput" data-arg="hreflang-output" data-arg2="hreflang|html">⬇ .html</button>
         </div>
       </div>
       <div class="tab-row u-mb-10">
-        <button class="tab-btn active" onclick="hreflangTab('html',this)">HTML &lt;link&gt; tags</button>
-        <button class="tab-btn" onclick="hreflangTab('http',this)">HTTP Header</button>
+        <button class="tab-btn active" data-action="hreflangTab" data-arg="html">HTML &lt;link&gt; tags</button>
+        <button class="tab-btn" data-action="hreflangTab" data-arg="http">HTTP Header</button>
       </div>
       <textarea id="hreflang-output"      class="gen-output" rows="10" readonly placeholder="Hreflang tags will appear here…"></textarea>
       <textarea id="hreflang-http-output" class="gen-output u-mt-8" rows="4"  readonly placeholder="HTTP header value will appear here…" style="display:none"></textarea>
@@ -1962,8 +1962,8 @@
         </div>
         <div class="fg-full">
           <div class="u-flex u-gap-8">
-            <button class="btn btn-primary" onclick="generateMetaTags()">Generate Meta Tags</button>
-            <button class="btn btn-ghost btn-sm" onclick="clearMetaTagsForm()" title="Clear form &amp; output">🗑 Clear</button>
+            <button class="btn btn-primary" data-action="generateMetaTags">Generate Meta Tags</button>
+            <button class="btn btn-ghost btn-sm" data-action="clearMetaTagsForm" title="Clear form &amp; output">🗑 Clear</button>
           </div>
         </div>
       </div>
@@ -1972,8 +1972,8 @@
       <div class="u-flex u-justify-between u-items-center u-mb-10">
         <div class="section-title">Output</div>
         <div class="u-flex u-gap-6">
-          <button class="btn btn-ghost btn-sm" onclick="copyOutput('metatags-output')">📋 Copy</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadOutput('metatags-output','metatags','html')">⬇ .html</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyOutput" data-arg="metatags-output">📋 Copy</button>
+          <button class="btn btn-ghost btn-sm" data-action="downloadOutput" data-arg="metatags-output" data-arg2="metatags|html">⬇ .html</button>
         </div>
       </div>
       <textarea id="metatags-output" class="gen-output" rows="20" readonly placeholder="Meta tags will appear here…"></textarea>
@@ -2028,8 +2028,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runSerpPreview()" id="serp-btn">Fetch Preview</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearSerp()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runSerpPreview" id="serp-btn">Fetch Preview</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearSerp" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2062,8 +2062,8 @@
     <div class="card">
       <div class="section-title u-mb-10">Social Media Preview</div>
       <div class="tab-row u-mb-12">
-        <button class="tab-btn active" onclick="serpSocialTab('og',this)">Open Graph (Facebook)</button>
-        <button class="tab-btn" onclick="serpSocialTab('tw',this)">Twitter / X Card</button>
+        <button class="tab-btn active" data-action="serpSocialTab" data-arg="og">Open Graph (Facebook)</button>
+        <button class="tab-btn" data-action="serpSocialTab" data-arg="tw">Twitter / X Card</button>
       </div>
       <div id="serp-og-panel">
         <div class="social-preview-card" id="og-preview-card">
@@ -2119,8 +2119,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runRedirectChain()">Check Redirects</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearRedirect()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runRedirectChain">Check Redirects</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearRedirect" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2163,9 +2163,9 @@
         <input class="input" id="hdrs-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runHttpHeaders()">
       </div>
       <div class="u-flex u-gap-8" style="align-items:flex-end">
-        <button class="btn btn-primary" onclick="runHttpHeaders()">Fetch Headers</button>
+        <button class="btn btn-primary" data-action="runHttpHeaders">Fetch Headers</button>
         <label class="u-flex u-items-center u-gap-6 u-fs-13 u-text-text2"><input type="checkbox" id="hdrs-seo-only"> SEO relevant only</label>
-        <button class="btn btn-ghost btn-sm" onclick="clearHeaders()" title="Clear">🗑 Clear</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearHeaders" title="Clear">🗑 Clear</button>
       </div>
     </div>
   </div>
@@ -2215,8 +2215,8 @@
       </div>
       <div style="align-self:flex-end">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runKeywordDensity()">Analyse</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearKeywords()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runKeywordDensity">Analyse</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearKeywords" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2262,8 +2262,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runCodeTextRatio()">Check Ratio</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearRatio()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runCodeTextRatio">Check Ratio</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearRatio" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2310,8 +2310,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runCompression()">Run Check</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearCompression()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runCompression">Run Check</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearCompression" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2354,8 +2354,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runSchemaValidation()">Validate</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearSchemaValidation()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runSchemaValidation">Validate</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearSchemaValidation" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2408,7 +2408,7 @@
         <label class="label" for="inow-key">IndexNow API Key</label>
         <div class="u-flex u-gap-8">
           <input class="input u-flex-1" id="inow-key" placeholder="Paste key or generate one below">
-          <button class="btn btn-ghost btn-sm" onclick="indexnowGenerateKey()" title="Generate a new key">Generate</button>
+          <button class="btn btn-ghost btn-sm" data-action="indexnowGenerateKey" title="Generate a new key">Generate</button>
         </div>
       </div>
       <div>
@@ -2429,8 +2429,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runIndexNow()">Submit to IndexNow</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearIndexNow()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runIndexNow">Submit to IndexNow</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearIndexNow" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2471,8 +2471,8 @@
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
-          <button class="btn btn-primary" onclick="runSitemapAudit()">Audit Sitemap</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearSitemapAudit()" title="Clear">🗑 Clear</button>
+          <button class="btn btn-primary" data-action="runSitemapAudit">Audit Sitemap</button>
+          <button class="btn btn-ghost btn-sm" data-action="clearSitemapAudit" title="Clear">🗑 Clear</button>
         </div>
       </div>
     </div>
@@ -2516,8 +2516,8 @@
         <option value="2" selected>Last month</option>
         <option value="3">Last 6 months</option>
       </select>
-      <button class="btn btn-primary" onclick="runBingOverview()">Fetch</button>
-      <button class="btn btn-ghost" onclick="clearBing()">Clear</button>
+      <button class="btn btn-primary" data-action="runBingOverview">Fetch</button>
+      <button class="btn btn-ghost" data-action="clearBing">Clear</button>
     </div>
     <div id="bing-error" class="error-box" style="display:none"></div>
     <div id="bing-spinner" class="spinner" style="display:none"></div>
@@ -2537,8 +2537,8 @@
     <div class="card-title">Inspect / Submit URL</div>
     <div class="tool-row">
       <input class="input u-flex-1" id="bing-inspect-url" placeholder="https://example.com/page">
-      <button class="btn btn-primary" onclick="runBingInspect()">Inspect</button>
-      <button class="btn btn-ghost btn-sm" onclick="runBingSubmit()">Submit to Bing</button>
+      <button class="btn btn-primary" data-action="runBingInspect">Inspect</button>
+      <button class="btn btn-ghost btn-sm" data-action="runBingSubmit">Submit to Bing</button>
     </div>
     <div class="u-mt-12" id="bing-inspect-result" style="display:none"></div>
   </div>
@@ -2569,8 +2569,8 @@
     <div class="card-title">Run Analysis</div>
     <div class="tool-row">
       <input class="input u-flex-1" id="gsc-opps-site" placeholder="https://example.com/">
-      <button class="btn btn-primary" onclick="runGscOpps()">Analyse</button>
-      <button class="btn btn-ghost" onclick="clearGscOpps()">Clear</button>
+      <button class="btn btn-primary" data-action="runGscOpps">Analyse</button>
+      <button class="btn btn-ghost" data-action="clearGscOpps">Clear</button>
     </div>
     <div id="gsc-opps-error" class="error-box" style="display:none"></div>
     <div id="gsc-opps-spinner" class="spinner" style="display:none"></div>
@@ -2628,8 +2628,8 @@
     <div class="tool-row u-flex-wrap u-gap-8">
       <input class="input u-flex-1 u-min-w-200" id="gsc-pos-url" placeholder="https://example.com/page">
       <input class="input u-flex-1" id="gsc-pos-site" placeholder="https://example.com/" style="min-width:180px">
-      <button class="btn btn-primary" onclick="runGscPosition()">Analyse</button>
-      <button class="btn btn-ghost" onclick="clearGscPosition()">Clear</button>
+      <button class="btn btn-primary" data-action="runGscPosition">Analyse</button>
+      <button class="btn btn-ghost" data-action="clearGscPosition">Clear</button>
     </div>
     <div class="u-fs-11 u-text-cmuted u-mt-4">Page URL &nbsp;·&nbsp; Site URL (GSC property)</div>
     <div id="gsc-pos-error" class="error-box" style="display:none"></div>
@@ -2665,8 +2665,8 @@
     <div class="tool-row u-flex-wrap u-gap-8">
       <input class="input u-flex-1 u-min-w-200" id="gsc-ctr-site" placeholder="https://example.com/">
       <input class="input" id="gsc-ctr-min" placeholder="Min impressions (100)" style="width:180px" type="number" min="10" value="100">
-      <button class="btn btn-primary" onclick="runGscCtr()">Analyse</button>
-      <button class="btn btn-ghost" onclick="clearGscCtr()">Clear</button>
+      <button class="btn btn-primary" data-action="runGscCtr">Analyse</button>
+      <button class="btn btn-ghost" data-action="clearGscCtr">Clear</button>
     </div>
     <div id="gsc-ctr-error" class="error-box" style="display:none"></div>
     <div id="gsc-ctr-spinner" class="spinner" style="display:none"></div>
@@ -2700,8 +2700,8 @@
   <div class="card">
     <div class="tool-row">
       <input class="input u-flex-1" id="gsc-cov-site" placeholder="https://example.com/">
-      <button class="btn btn-primary" onclick="runGscCoverage()">Check</button>
-      <button class="btn btn-ghost" onclick="clearGscCoverage()">Clear</button>
+      <button class="btn btn-primary" data-action="runGscCoverage">Check</button>
+      <button class="btn btn-ghost" data-action="clearGscCoverage">Clear</button>
     </div>
     <div id="gsc-cov-error" class="error-box" style="display:none"></div>
     <div id="gsc-cov-spinner" class="spinner" style="display:none"></div>
@@ -2735,8 +2735,8 @@
   <div class="card">
     <div class="tool-row">
       <input class="input u-flex-1" id="gsc-sm-site" placeholder="https://example.com/">
-      <button class="btn btn-primary" onclick="runGscSitemaps()">Check</button>
-      <button class="btn btn-ghost" onclick="clearGscSitemaps()">Clear</button>
+      <button class="btn btn-primary" data-action="runGscSitemaps">Check</button>
+      <button class="btn btn-ghost" data-action="clearGscSitemaps">Clear</button>
     </div>
     <div id="gsc-sm-error" class="error-box" style="display:none"></div>
     <div id="gsc-sm-spinner" class="spinner" style="display:none"></div>
@@ -2791,8 +2791,8 @@
           <option value="4">4 — Auth</option>
         </select>
       </div>
-      <button class="btn btn-primary" onclick="runPhaseRunner()">Run Phase</button>
-      <button class="btn btn-ghost" onclick="clearPhaseRunner()">Clear</button>
+      <button class="btn btn-primary" data-action="runPhaseRunner">Run Phase</button>
+      <button class="btn btn-ghost" data-action="clearPhaseRunner">Clear</button>
     </div>
     <div id="phase-run-error" class="error-box" style="display:none"></div>
     <div id="phase-run-spinner" class="spinner" style="display:none"></div>
@@ -2832,8 +2832,8 @@
   <div class="card">
     <div class="tool-row">
       <input class="input u-flex-1" id="perf-opps-url" placeholder="https://example.com/">
-      <button class="btn btn-primary" onclick="runPerfOpps()">Analyse</button>
-      <button class="btn btn-ghost" onclick="clearPerfOpps()">Clear</button>
+      <button class="btn btn-primary" data-action="runPerfOpps">Analyse</button>
+      <button class="btn btn-ghost" data-action="clearPerfOpps">Clear</button>
     </div>
     <div id="perf-opps-error" class="error-box" style="display:none"></div>
     <div id="perf-opps-spinner" class="spinner" style="display:none"></div>
@@ -2902,8 +2902,8 @@
     </div>
     <div class="tool-row u-mt-8">
       <input class="input u-flex-1" id="ai-audit-url" placeholder="https://example.com/ (optional context)">
-      <button class="btn btn-primary" onclick="runAiExplain()">Explain</button>
-      <button class="btn btn-ghost" onclick="clearAiExplain()">Clear</button>
+      <button class="btn btn-primary" data-action="runAiExplain">Explain</button>
+      <button class="btn btn-ghost" data-action="clearAiExplain">Clear</button>
     </div>
     <div id="ai-explain-error" class="error-box" style="display:none"></div>
     <div id="ai-explain-spinner" class="spinner" style="display:none"></div>
@@ -2933,8 +2933,8 @@
     </div>
     <div class="tool-row u-mt-8">
       <input class="input u-flex-1" id="ai-meta-queries" placeholder="Top GSC queries, comma-separated (optional)">
-      <button class="btn btn-primary" onclick="runAiDraftMeta()">Draft</button>
-      <button class="btn btn-ghost" onclick="clearAiDraftMeta()">Clear</button>
+      <button class="btn btn-primary" data-action="runAiDraftMeta">Draft</button>
+      <button class="btn btn-ghost" data-action="clearAiDraftMeta">Clear</button>
     </div>
     <div id="ai-meta-error" class="error-box" style="display:none"></div>
     <div id="ai-meta-spinner" class="spinner" style="display:none"></div>
@@ -2979,8 +2979,8 @@
         <option value="2036">🇦🇺 Australia</option>
         <option value="2124">🇨🇦 Canada</option>
       </select>
-      <button class="btn btn-primary" onclick="runKwResearch()">Research</button>
-      <button class="btn btn-ghost" onclick="clearKwResearch()">Clear</button>
+      <button class="btn btn-primary" data-action="runKwResearch">Research</button>
+      <button class="btn btn-ghost" data-action="clearKwResearch">Clear</button>
     </div>
     <div id="kw-error" class="error-box" style="display:none"></div>
     <div id="kw-spinner" class="spinner" style="display:none"></div>
@@ -3035,8 +3035,8 @@
         <input class="input" id="robots-test-url" placeholder="https://example.com/any-page" onkeydown="if(event.key==='Enter')runRobotsTester()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" onclick="runRobotsTester()">Test robots.txt</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearRobotsTester()" title="Clear">🗑 Clear</button>
+        <button class="btn btn-primary" data-action="runRobotsTester">Test robots.txt</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearRobotsTester" title="Clear">🗑 Clear</button>
       </div>
     </div>
     <div id="robots-test-error" class="error-box" style="display:none"></div>
@@ -3087,8 +3087,8 @@
         <input class="input" id="hreflang-val-url" placeholder="https://example.com/en/page" onkeydown="if(event.key==='Enter')runHreflangValidator()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" onclick="runHreflangValidator()">Validate</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearHreflangValidator()" title="Clear">🗑 Clear</button>
+        <button class="btn btn-primary" data-action="runHreflangValidator">Validate</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearHreflangValidator" title="Clear">🗑 Clear</button>
       </div>
     </div>
     <div id="hreflang-val-error" class="error-box" style="display:none"></div>
@@ -3131,8 +3131,8 @@
         <input class="input" id="lh-url" placeholder="https://example.com/about" onkeydown="if(event.key==='Enter')runLinkHealth()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" onclick="runLinkHealth()">Scan Links</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearLinkHealth()">🗑 Clear</button>
+        <button class="btn btn-primary" data-action="runLinkHealth">Scan Links</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearLinkHealth">🗑 Clear</button>
       </div>
     </div>
     <div id="lh-error" class="error-box" style="display:none"></div>
@@ -3174,8 +3174,8 @@
         <input class="input" id="ci-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCrawlIntel()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" onclick="runCrawlIntel()">Analyse Crawl Access</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearCrawlIntel()">🗑 Clear</button>
+        <button class="btn btn-primary" data-action="runCrawlIntel">Analyse Crawl Access</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearCrawlIntel">🗑 Clear</button>
       </div>
     </div>
     <div id="ci-error" class="error-box" style="display:none"></div>
@@ -3224,8 +3224,8 @@
         <input class="input" id="cs-kw" placeholder="your target keyword" onkeydown="if(event.key==='Enter')runContentSerp()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" onclick="runContentSerp()">Analyse</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearContentSerp()">🗑 Clear</button>
+        <button class="btn btn-primary" data-action="runContentSerp">Analyse</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearContentSerp">🗑 Clear</button>
       </div>
     </div>
     <div id="cs-error" class="error-box" style="display:none"></div>
@@ -3262,7 +3262,7 @@
         <input class="input" id="pt-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runPageType()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" id="pt-btn" onclick="runPageType()">Detect Page Type</button>
+        <button class="btn btn-primary" id="pt-btn" data-action="runPageType">Detect Page Type</button>
       </div>
     </div>
   </div>
@@ -3293,7 +3293,7 @@
         <input class="input" id="ca-url" placeholder="https://example.com/courses/..." onkeydown="if(event.key==='Enter')runCourseAudit()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" id="ca-btn" onclick="runCourseAudit()">Run Course Audit</button>
+        <button class="btn btn-primary" id="ca-btn" data-action="runCourseAudit">Run Course Audit</button>
       </div>
     </div>
   </div>
@@ -3324,7 +3324,7 @@
         <input class="input" id="ba-url" placeholder="https://example.com/blog/..." onkeydown="if(event.key==='Enter')runBlogAudit()">
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" id="ba-btn" onclick="runBlogAudit()">Run Blog Audit</button>
+        <button class="btn btn-primary" id="ba-btn" data-action="runBlogAudit">Run Blog Audit</button>
       </div>
     </div>
   </div>
@@ -3355,7 +3355,7 @@
         <textarea class="input" id="ds-urls" rows="8" placeholder="https://example.com/a&#10;https://example.com/b&#10;https://example.com/c"></textarea>
       </div>
       <div class="fg-full u-flex u-gap-8">
-        <button class="btn btn-primary" id="ds-btn" onclick="runDuplicateScan()">Scan for Duplicates</button>
+        <button class="btn btn-primary" id="ds-btn" data-action="runDuplicateScan">Scan for Duplicates</button>
       </div>
     </div>
   </div>
@@ -3376,18 +3376,18 @@
     <div style="margin-top:28px">
       <div class="u-fs-11 u-fw-700 u-uppercase u-text-cmuted u-mb-14" style="letter-spacing:.08em">Technical</div>
       <div class="u-grid u-gap-14" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
-        <div class="tool-card" onclick="navLink('tool-serp')"><div class="tc-icon">🔍</div><div class="tc-body"><div class="tc-name">SERP Preview</div><div class="tc-desc">Preview how your page appears in Google search results — title, description, URL</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-redirect')"><div class="tc-icon">↪</div><div class="tc-body"><div class="tc-name">Redirect Chain</div><div class="tc-desc">Follow every redirect hop and detect loops, mixed-protocol hops, and final destination</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-headers')"><div class="tc-icon">📋</div><div class="tc-body"><div class="tc-name">HTTP Headers</div><div class="tc-desc">Inspect raw response headers — caching, security, content-type, and SEO signals</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-schema')"><div class="tc-icon">🧩</div><div class="tc-body"><div class="tc-name">Schema Validation</div><div class="tc-desc">Extract and validate JSON-LD structured data against Schema.org for rich result eligibility</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-compression')"><div class="tc-icon">📦</div><div class="tc-body"><div class="tc-name">GZIP &amp; Cache</div><div class="tc-desc">Check whether pages are served with compression and correct cache-control headers</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-ratio')"><div class="tc-icon">⚖️</div><div class="tc-body"><div class="tc-name">Code:Text Ratio</div><div class="tc-desc">Measure how much of the page is actual content versus HTML markup overhead</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-sitemap-audit')"><div class="tc-icon">🗺️</div><div class="tc-body"><div class="tc-name">Sitemap Audit</div><div class="tc-desc">Fetch and audit your XML sitemap — size limits, duplicates, broken URLs, HTTP links</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-robots-tester')"><div class="tc-icon">🤖</div><div class="tc-body"><div class="tc-name">robots.txt Tester</div><div class="tc-desc">Test crawler access rules — per-agent directives, sitemap declarations, crawl-delay</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-hreflang-validate')"><div class="tc-icon">🌐</div><div class="tc-body"><div class="tc-name">Hreflang Validator</div><div class="tc-desc">Validate multilingual hreflang tags — x-default, duplicate langs, unreachable alternates</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-link-health')"><div class="tc-icon">🔗</div><div class="tc-body"><div class="tc-name">Link Health</div><div class="tc-desc">Scan every outbound link on a page and flag broken (4xx/5xx) and redirected URLs</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-crawl-intel')"><div class="tc-icon">🕷️</div><div class="tc-body"><div class="tc-name">Crawl Intelligence</div><div class="tc-desc">Unified crawlability view — robots.txt rules and sitemap health analysed together</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-indexnow')"><div class="tc-icon">⚡</div><div class="tc-body"><div class="tc-name">IndexNow Submit</div><div class="tc-desc">Submit URLs instantly to Bing and Yandex for fast indexing via the IndexNow protocol</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-serp"><div class="tc-icon">🔍</div><div class="tc-body"><div class="tc-name">SERP Preview</div><div class="tc-desc">Preview how your page appears in Google search results — title, description, URL</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-redirect"><div class="tc-icon">↪</div><div class="tc-body"><div class="tc-name">Redirect Chain</div><div class="tc-desc">Follow every redirect hop and detect loops, mixed-protocol hops, and final destination</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-headers"><div class="tc-icon">📋</div><div class="tc-body"><div class="tc-name">HTTP Headers</div><div class="tc-desc">Inspect raw response headers — caching, security, content-type, and SEO signals</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-schema"><div class="tc-icon">🧩</div><div class="tc-body"><div class="tc-name">Schema Validation</div><div class="tc-desc">Extract and validate JSON-LD structured data against Schema.org for rich result eligibility</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-compression"><div class="tc-icon">📦</div><div class="tc-body"><div class="tc-name">GZIP &amp; Cache</div><div class="tc-desc">Check whether pages are served with compression and correct cache-control headers</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-ratio"><div class="tc-icon">⚖️</div><div class="tc-body"><div class="tc-name">Code:Text Ratio</div><div class="tc-desc">Measure how much of the page is actual content versus HTML markup overhead</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-sitemap-audit"><div class="tc-icon">🗺️</div><div class="tc-body"><div class="tc-name">Sitemap Audit</div><div class="tc-desc">Fetch and audit your XML sitemap — size limits, duplicates, broken URLs, HTTP links</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-robots-tester"><div class="tc-icon">🤖</div><div class="tc-body"><div class="tc-name">robots.txt Tester</div><div class="tc-desc">Test crawler access rules — per-agent directives, sitemap declarations, crawl-delay</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-hreflang-validate"><div class="tc-icon">🌐</div><div class="tc-body"><div class="tc-name">Hreflang Validator</div><div class="tc-desc">Validate multilingual hreflang tags — x-default, duplicate langs, unreachable alternates</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-link-health"><div class="tc-icon">🔗</div><div class="tc-body"><div class="tc-name">Link Health</div><div class="tc-desc">Scan every outbound link on a page and flag broken (4xx/5xx) and redirected URLs</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-crawl-intel"><div class="tc-icon">🕷️</div><div class="tc-body"><div class="tc-name">Crawl Intelligence</div><div class="tc-desc">Unified crawlability view — robots.txt rules and sitemap health analysed together</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-indexnow"><div class="tc-icon">⚡</div><div class="tc-body"><div class="tc-name">IndexNow Submit</div><div class="tc-desc">Submit URLs instantly to Bing and Yandex for fast indexing via the IndexNow protocol</div></div></div>
       </div>
     </div>
 
@@ -3395,12 +3395,12 @@
     <div style="margin-top:32px">
       <div class="u-fs-11 u-fw-700 u-uppercase u-text-cmuted u-mb-14" style="letter-spacing:.08em">Bing &amp; Search Console</div>
       <div class="u-grid u-gap-14" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
-        <div class="tool-card" onclick="navLink('tool-bing')"><div class="tc-icon">🔎</div><div class="tc-body"><div class="tc-name">Bing Visibility</div><div class="tc-desc">Bing Webmaster Tools overview — traffic, crawl health, and URL inspection</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-gsc-opps')"><div class="tc-icon">📊</div><div class="tc-body"><div class="tc-name">GSC Opportunities</div><div class="tc-desc">Low-CTR pages, position decay, and keyword cannibalization from Search Console data</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-gsc-position')"><div class="tc-icon">📈</div><div class="tc-body"><div class="tc-name">GSC Position Tracker</div><div class="tc-desc">Average ranking position trend over the last 90 days for a specific page</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-gsc-ctr')"><div class="tc-icon">🎯</div><div class="tc-body"><div class="tc-name">GSC CTR Analyzer</div><div class="tc-desc">Find pages ranking in the top 20 with high impressions but low click-through rate</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-gsc-coverage')"><div class="tc-icon">⚠️</div><div class="tc-body"><div class="tc-name">GSC Coverage Errors</div><div class="tc-desc">Submitted vs indexed gaps across all sitemaps — find pages Google won't index</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-gsc-sitemaps')"><div class="tc-icon">📂</div><div class="tc-body"><div class="tc-name">GSC Sitemaps Status</div><div class="tc-desc">All sitemaps registered in Search Console with submission dates and indexing health</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-bing"><div class="tc-icon">🔎</div><div class="tc-body"><div class="tc-name">Bing Visibility</div><div class="tc-desc">Bing Webmaster Tools overview — traffic, crawl health, and URL inspection</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-gsc-opps"><div class="tc-icon">📊</div><div class="tc-body"><div class="tc-name">GSC Opportunities</div><div class="tc-desc">Low-CTR pages, position decay, and keyword cannibalization from Search Console data</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-gsc-position"><div class="tc-icon">📈</div><div class="tc-body"><div class="tc-name">GSC Position Tracker</div><div class="tc-desc">Average ranking position trend over the last 90 days for a specific page</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-gsc-ctr"><div class="tc-icon">🎯</div><div class="tc-body"><div class="tc-name">GSC CTR Analyzer</div><div class="tc-desc">Find pages ranking in the top 20 with high impressions but low click-through rate</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-gsc-coverage"><div class="tc-icon">⚠️</div><div class="tc-body"><div class="tc-name">GSC Coverage Errors</div><div class="tc-desc">Submitted vs indexed gaps across all sitemaps — find pages Google won't index</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-gsc-sitemaps"><div class="tc-icon">📂</div><div class="tc-body"><div class="tc-name">GSC Sitemaps Status</div><div class="tc-desc">All sitemaps registered in Search Console with submission dates and indexing health</div></div></div>
       </div>
     </div>
 
@@ -3408,12 +3408,12 @@
     <div style="margin-top:32px">
       <div class="u-fs-11 u-fw-700 u-uppercase u-text-cmuted u-mb-14" style="letter-spacing:.08em">Content &amp; Research</div>
       <div class="u-grid u-gap-14" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
-        <div class="tool-card" onclick="navLink('tool-keywords')"><div class="tc-icon">🔡</div><div class="tc-body"><div class="tc-name">Keyword Density</div><div class="tc-desc">Analyse keyword frequency and prominence across a live page's visible text content</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-content-serp')"><div class="tc-icon">✍️</div><div class="tc-body"><div class="tc-name">Content + SERP</div><div class="tc-desc">Combined snippet quality and keyword fit scoring for a URL and target keyword</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-kw-research')"><div class="tc-icon">🔬</div><div class="tc-body"><div class="tc-name">Keyword Research</div><div class="tc-desc">Related keywords, search volume, and intent clusters via DataForSEO</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-perf-opps')"><div class="tc-icon">⚡</div><div class="tc-body"><div class="tc-name">Perf Opportunities</div><div class="tc-desc">PageSpeed and Core Web Vitals opportunities — find what's slowing your pages down</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-phase-runner')"><div class="tc-icon">▶️</div><div class="tc-body"><div class="tc-name">Phase Runner</div><div class="tc-desc">Run any combination of SEO audit phases against a single URL</div></div></div>
-        <div class="tool-card" onclick="navLink('tool-ai')"><div class="tc-icon">🤖</div><div class="tc-body"><div class="tc-name">AI Assistant</div><div class="tc-desc">AI-powered SEO analysis, recommendations, and copy suggestions</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-keywords"><div class="tc-icon">🔡</div><div class="tc-body"><div class="tc-name">Keyword Density</div><div class="tc-desc">Analyse keyword frequency and prominence across a live page's visible text content</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-content-serp"><div class="tc-icon">✍️</div><div class="tc-body"><div class="tc-name">Content + SERP</div><div class="tc-desc">Combined snippet quality and keyword fit scoring for a URL and target keyword</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-kw-research"><div class="tc-icon">🔬</div><div class="tc-body"><div class="tc-name">Keyword Research</div><div class="tc-desc">Related keywords, search volume, and intent clusters via DataForSEO</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-perf-opps"><div class="tc-icon">⚡</div><div class="tc-body"><div class="tc-name">Perf Opportunities</div><div class="tc-desc">PageSpeed and Core Web Vitals opportunities — find what's slowing your pages down</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-phase-runner"><div class="tc-icon">▶️</div><div class="tc-body"><div class="tc-name">Phase Runner</div><div class="tc-desc">Run any combination of SEO audit phases against a single URL</div></div></div>
+        <div class="tool-card" data-action="navLink" data-arg="tool-ai"><div class="tc-icon">🤖</div><div class="tc-body"><div class="tc-name">AI Assistant</div><div class="tc-desc">AI-powered SEO analysis, recommendations, and copy suggestions</div></div></div>
       </div>
     </div>
 
@@ -3429,35 +3429,35 @@
     </div>
 
     <div class="u-grid u-gap-14" style="margin-top:28px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
-      <div class="tool-card" onclick="navLink('gen-schema')">
+      <div class="tool-card" data-action="navLink" data-arg="gen-schema">
         <div class="tc-icon">🧩</div>
         <div class="tc-body">
           <div class="tc-name">Schema Markup</div>
           <div class="tc-desc">Generate JSON-LD for rich results — Article, Product, FAQ, HowTo, LocalBusiness, and more</div>
         </div>
       </div>
-      <div class="tool-card" onclick="navLink('gen-robots')">
+      <div class="tool-card" data-action="navLink" data-arg="gen-robots">
         <div class="tc-icon">🤖</div>
         <div class="tc-body">
           <div class="tc-name">robots.txt</div>
           <div class="tc-desc">Build a correctly formatted robots.txt with per-crawler directives and sitemap declarations</div>
         </div>
       </div>
-      <div class="tool-card" onclick="navLink('gen-sitemap')">
+      <div class="tool-card" data-action="navLink" data-arg="gen-sitemap">
         <div class="tc-icon">🗺️</div>
         <div class="tc-body">
           <div class="tc-name">XML Sitemap</div>
           <div class="tc-desc">Generate a standards-compliant XML sitemap with priority, changefreq, and lastmod fields</div>
         </div>
       </div>
-      <div class="tool-card" onclick="navLink('gen-hreflang')">
+      <div class="tool-card" data-action="navLink" data-arg="gen-hreflang">
         <div class="tc-icon">🌐</div>
         <div class="tc-body">
           <div class="tc-name">Hreflang Tags</div>
           <div class="tc-desc">Generate <code>&lt;link rel="alternate" hreflang&gt;</code> markup and HTTP Link header alternatives</div>
         </div>
       </div>
-      <div class="tool-card" onclick="navLink('gen-metatags')">
+      <div class="tool-card" data-action="navLink" data-arg="gen-metatags">
         <div class="tc-icon">🏷️</div>
         <div class="tc-body">
           <div class="tc-name">Meta Tags</div>
@@ -3473,14 +3473,14 @@
 </div><!-- /app -->
 
 <!-- ═══ URL DETAIL DRAWER ══════════════════════════════════════════════════ -->
-<div class="drawer-mask" id="drawer-mask" onclick="closeDrawer()"></div>
+<div class="drawer-mask" id="drawer-mask" data-action="closeDrawer"></div>
 <aside class="drawer" id="drawer">
   <div class="drawer-head">
     <div>
       <div class="drawer-title" id="drawer-title">URL details</div>
       <div class="drawer-sub" id="drawer-sub">—</div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="closeDrawer()">✕</button>
+    <button class="btn btn-ghost btn-sm" data-action="closeDrawer">✕</button>
   </div>
   <div class="drawer-body" id="drawer-body"></div>
 </aside>
@@ -3490,31 +3490,31 @@
 
 <!-- ═══ MOBILE BOTTOM NAV ════════════════════════════════════════════════════ -->
 <nav class="mobile-nav" id="mobile-nav">
-  <button class="mobile-nav-btn active" id="mnav-home" onclick="navTo('home');mnavActive('mnav-home')" aria-label="Home">
+  <button class="mobile-nav-btn active" id="mnav-home" data-action="navToHome" aria-label="Home">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     Home
   </button>
-  <button class="mobile-nav-btn" id="mnav-uc" onclick="navTo('uc-runner');mnavActive('mnav-uc')" aria-label="Run">
+  <button class="mobile-nav-btn" id="mnav-uc" data-action="navToUcRunner" aria-label="Run">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
     Run
   </button>
-  <button class="mobile-nav-btn" id="mnav-rep" onclick="navTo('reports');mnavActive('mnav-rep')" aria-label="Reports">
+  <button class="mobile-nav-btn" id="mnav-rep" data-action="navToReportsMnav" aria-label="Reports">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
     Reports
   </button>
-  <button class="mobile-nav-btn" id="mnav-search" onclick="openCmdPalette()" aria-label="Search">
+  <button class="mobile-nav-btn" id="mnav-search" data-action="openCmdPalette" aria-label="Search">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
     Search
   </button>
-  <button class="mobile-nav-btn" id="mnav-settings" onclick="navTo('settings');mnavActive('mnav-settings')" aria-label="Settings">
+  <button class="mobile-nav-btn" id="mnav-settings" data-action="navToSettings" aria-label="Settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
     Settings
   </button>
 </nav>
 
 <!-- ═══ COMMAND PALETTE ══════════════════════════════════════════════════════ -->
-<div class="cmd-mask" id="cmd-mask" onclick="if(event.target===this)closeCmdPalette()">
-  <div class="cmd-palette" onclick="event.stopPropagation()">
+<div class="cmd-mask" id="cmd-mask" data-action="closeCmdPaletteIfSelf">
+  <div class="cmd-palette" data-action="stopPropagation">
     <div class="cmd-search-row">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <input class="cmd-search-input" id="cmd-input" placeholder="Jump to anything…" oninput="cmdSearch(this.value)" onkeydown="cmdKey(event)" autocomplete="off" spellcheck="false">

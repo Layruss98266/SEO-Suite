@@ -26,7 +26,6 @@ _SCORE_TABLE: dict[str, dict[str, Any]] = {
     "title":              {"impact": 9,  "effort": "low"},
     "meta_description":   {"impact": 7,  "effort": "low"},
     "canonical":          {"impact": 8,  "effort": "low"},
-    "h1":                 {"impact": 8,  "effort": "low"},
     "headings":           {"impact": 6,  "effort": "low"},
     # Batch I checks (viewport, lang, freshness, url, canonical loop, redirect, http2, perf):
     "viewport":           {"impact": 8,  "effort": "low"},

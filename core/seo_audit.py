@@ -6,6 +6,7 @@ Runs all Phase 1-4 tools and generates a comprehensive HTML + Excel + CSV report
 import csv
 import json
 import logging
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -67,8 +68,18 @@ from tools.phase4 import (
 )
 
 _PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-REPORTS_DIR = _PROJECT_ROOT / "data" / "reports"
+_DATA_BASE   = Path(os.environ.get("SEO_SUITE_DATA_DIR", str(_PROJECT_ROOT / "data")))
+REPORTS_DIR  = _DATA_BASE / "reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+__all__ = [
+    "USE_CASES",
+    "TASKS",
+    "WEIGHTS",
+    "audit_single_url",
+    "calc_seo_score",
+    "get_issue_summary",
+]
 CFG = load_config()
 logger = logging.getLogger(__name__)
 
@@ -683,7 +694,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
     # credential/service is missing. Previously these silently produced an empty
     # section; now the user gets an explicit, actionable notice.
     _REQUIRES_MSG = {
-        "pagespeed_api_key": "PageSpeed API key not set — configure it in Settings → Performance.",
+        "pagespeed_api_key": "PageSpeed API key not configured — PageSpeed scores, Core Web Vitals, and mobile/desktop gap are unavailable. Render-blocking and image optimisation checks run without it.",
         "gsc": "Google Search Console not connected — enable it in Settings → Search Console.",
         "serpapi_key": "No rank-tracking API key — add SerpAPI or DataForSEO credentials in Settings.",
     }

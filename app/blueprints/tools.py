@@ -732,6 +732,8 @@ def api_schema_fields(schema_type):
 @bp.route("/api/tools/schema_generate", methods=["POST"])
 @login_required
 def api_schema_generate():
+    if len(request.data) > 200_000:
+        return jsonify({"ok": False, "error": "Request body too large"}), 413
     data = request.get_json(force=True) or {}
     schema_type = (data.get("schema_type") or "").strip()
     form_data = data.get("data", {})
@@ -747,6 +749,8 @@ def api_schema_generate():
 @bp.route("/api/tools/robots_txt", methods=["POST"])
 @login_required
 def api_robots_txt():
+    if len(request.data) > 200_000:
+        return jsonify({"ok": False, "error": "Request body too large"}), 413
     data = request.get_json(force=True) or {}
     from tools.generators import generate_robots_txt
 
@@ -756,6 +760,8 @@ def api_robots_txt():
 @bp.route("/api/tools/sitemap_generate", methods=["POST"])
 @login_required
 def api_sitemap_generate():
+    if len(request.data) > 200_000:
+        return jsonify({"ok": False, "error": "Request body too large"}), 413
     data = request.get_json(force=True) or {}
     from tools.generators import generate_sitemap
 
@@ -765,6 +771,8 @@ def api_sitemap_generate():
 @bp.route("/api/tools/hreflang_generate", methods=["POST"])
 @login_required
 def api_hreflang_generate():
+    if len(request.data) > 200_000:
+        return jsonify({"ok": False, "error": "Request body too large"}), 413
     data = request.get_json(force=True) or {}
     from tools.generators import generate_hreflang
 
@@ -774,6 +782,8 @@ def api_hreflang_generate():
 @bp.route("/api/tools/meta_tags_generate", methods=["POST"])
 @login_required
 def api_meta_tags_generate():
+    if len(request.data) > 200_000:
+        return jsonify({"ok": False, "error": "Request body too large"}), 413
     data = request.get_json(force=True) or {}
     from tools.generators import generate_meta_tags
 

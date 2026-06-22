@@ -208,6 +208,8 @@ SCHEMA_TEMPLATES = {
             {"id": "salary_currency", "label": "Salary Currency (e.g. USD)", "type": "text", "required": False},
             {"id": "salary_unit", "label": "Salary Unit", "type": "select", "required": False,
              "options": ["HOUR", "DAY", "WEEK", "MONTH", "YEAR"]},
+            {"id": "job_location_type", "label": "Location Type (TELECOMMUTE for remote)", "type": "text", "required": False},
+            {"id": "applicant_location_requirements", "label": "Applicant Location Requirements (country code, e.g. US)", "type": "text", "required": False},
         ]
     },
     "course": {
@@ -312,6 +314,8 @@ def _build_product(data: dict) -> dict:
             offer["priceCurrency"] = data["currency"]
         if data.get("availability"):
             offer["availability"] = f"https://schema.org/{data['availability']}"
+        if data.get("url"):
+            offer["url"] = data["url"]
         obj["offers"] = offer
     if data.get("rating_value"):
         obj["aggregateRating"] = {
@@ -602,6 +606,13 @@ def _build_jobposting(data: dict) -> dict:
         obj["jobLocation"]["address"]["postalCode"] = data["zip"]
     if data.get("employment_type"):
         obj["employmentType"] = data["employment_type"]
+    if data.get("job_location_type") == "TELECOMMUTE":
+        obj["jobLocationType"] = "TELECOMMUTE"
+        if data.get("applicant_location_requirements"):
+            obj["applicantLocationRequirements"] = {
+                "@type": "Country",
+                "name": data["applicant_location_requirements"],
+            }
     if data.get("valid_through"):
         obj["validThrough"] = data["valid_through"]
     if data.get("salary_min") or data.get("salary_max"):
@@ -730,6 +741,11 @@ def generate_schema(schema_type: str, data: dict) -> dict:
         for field in SCHEMA_TEMPLATES[schema_type]["fields"]:
             if field.get("required") and not str(data.get(field["id"], "")).strip():
                 warnings.append(f"Missing required field: {field['label']}")
+        if schema_type == "review":
+            warnings.append(
+                "Standalone Review schemas are deprecated by Google (Sept 2023). "
+                "Embed this as the 'review' property of a Product, LocalBusiness, or Book instead."
+            )
         return {"ok": True, "schema_type": schema_type, "markup": markup, "json": obj, "warnings": warnings}
     except (ValueError, KeyError, TypeError, AttributeError) as e:
         logger.exception("generate_schema failed for %s", schema_type)
@@ -784,7 +800,11 @@ def generate_robots_txt(data: dict) -> dict:
             lines.append("")
 
         if data.get("sitemap"):
-            lines.append(f"Sitemap: {_clean(data['sitemap'])}")
+            sitemap_url = _clean(data["sitemap"])
+            if sitemap_url.startswith("https://") or sitemap_url.startswith("http://"):
+                lines.append(f"Sitemap: {sitemap_url}")
+            else:
+                warnings.append(f"Dropped Sitemap directive: URL must be absolute (https://). Got: {sitemap_url}")
 
         return {"ok": True, "content": "\n".join(lines).strip(), "warnings": warnings}
     except (ValueError, TypeError) as e:
@@ -952,8 +972,6 @@ def generate_meta_tags(data: dict) -> dict:
 
         if t:
             lines.append(f"<title>{te}</title>")
-        if t:
-            lines.append(f'<meta name="title" content="{te}">')
         if d:
             lines.append(f'<meta name="description" content="{de}">')
         if k:

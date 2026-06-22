@@ -97,7 +97,8 @@ CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML
 # Path("data") resolved relative to cwd, which could split config, reports,
 # uploads, and profiles across different trees when launched outside repo root.
 _PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-DATA_DIR     = _PROJECT_ROOT / "data";           DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR     = Path(os.environ.get("SEO_SUITE_DATA_DIR", str(_PROJECT_ROOT / "data")))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 PROGRESS_DIR = DATA_DIR / "progress";            PROGRESS_DIR.mkdir(exist_ok=True)
 REPORTS_DIR  = DATA_DIR / "reports";             REPORTS_DIR.mkdir(exist_ok=True)
 HISTORY_FILE = DATA_DIR / "history.json"

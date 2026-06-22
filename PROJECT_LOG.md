@@ -1,7 +1,7 @@
 # SEO Suite — Master Project Log
 
 > **ACCOUNT-SWITCH PROOF. Read every section before touching any code.**
-> Last updated: 2026-06-22 (Session 58). Current VERSION: **2.6.2**
+> Last updated: 2026-06-22 (Session 59). Current VERSION: **2.6.3**
 
 ---
 
@@ -77,7 +77,7 @@ www_redirect_check, http2_check, render_blocking_check, image_optimization_check
 
 ## Order of Execution (Phases)
 
-> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → **v2.6.2** ← current
+> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → v2.6.2 → **v2.6.3** ← current
 
 ### PHASE 1 — Initial Build ✅ COMPLETE (v1.0)
 Flask app, blueprint split, SQLite auth, Playwright, SSE streaming, Docker/Render/Fly deploy, `/metrics` endpoint, OpenAPI spec, initial SEO audit checks.
@@ -131,7 +131,9 @@ Added viewport, lang_attr, content_freshness, url_structure, canonical_loop, dns
 
 ### PHASE 13 — PROJECT_LOG + Pre-push Hook ✅ COMPLETE (v2.6.1)
 
-### PHASE 14 — Audit Findings Resolution ✅ COMPLETE (current, v2.6.2)
+### PHASE 14 — Audit Findings Resolution ✅ COMPLETE (v2.6.2)
+
+### PHASE 15 — Remaining Audit Items + Phase 0 Blockers ✅ COMPLETE (current, v2.6.3)
 PROJECT_LOG.md created (this file). Pre-push hook strengthened: PROJECT_LOG update check, README version staleness, secrets scan, PROJECT_LOG existence check.
 
 ---
@@ -321,6 +323,7 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 | 56 | 2026-06-22 | v2.6.1 | PROJECT_LOG.md rebuilt (account-switch proof), pre-push hook strengthened (5 new checks), README updated (8 use cases, PROJECT_LOG in docs table). |
 | 57 | 2026-06-22 | v2.6.1 | Comprehensive audit: 3 parallel agents → 66 test failures, 30+ phase1.py issues, 15+ generators.py issues, scoring/dispatch gaps. Findings in PROJECT_LOG Audit section. |
 | 58 | 2026-06-22 | v2.6.2 | Fixed all audit findings P1–P5: soup deepcopy (CRITICAL), 66→0 test failures (auth lockout root cause = SQLite _failed_attempts persistence), phase1.py correctness (image_alt, ttfb, schema, content_freshness, robots), generators.py (PostalAddress, hreflang x-default header, sitemap ISO 8601), WEIGHTS+_SCORE_TABLE Batch I gaps, task ID collision gsc_crawl_inspection, schema_type allowlist. |
+| 59 | 2026-06-22 | v2.6.3 | Remaining audit items + Phase 0 path anchoring: removed non-standard meta name="title", review schema deprecation warning, jobposting remote fields (jobLocationType + applicantLocationRequirements), product Offer url, robots.txt Sitemap URL validation, dead "h1" key from _SCORE_TABLE, _REQUIRES_MSG improvement, __all__ in seo_audit, SEO_SUITE_DATA_DIR respected in checker.py + seo_audit.py, body-size guard (200 KB) on 5 generator routes. |
 
 ---
 
@@ -491,4 +494,4 @@ Full detail: `TOOL_ROADMAP.md`
 
 ---
 
-_Last updated: 2026-06-22 — Session 58 — v2.6.2_
+_Last updated: 2026-06-22 — Session 59 — v2.6.3_

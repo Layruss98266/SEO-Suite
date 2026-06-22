@@ -1,256 +1,367 @@
-# SEO Suite — Project Log
+# SEO Suite — Master Project Log
 
-> Living document. Update in the same commit as any VERSION bump, new feature, or structural change.
-> Pre-push hook enforces this: it warns if `PROJECT_LOG.md` was not touched in a push that changed `core/version.py`, `tools/phase1.py`, or `core/seo_audit.py`.
+> **ACCOUNT-SWITCH PROOF. Read every section before touching any code.**
+> Last updated: 2026-06-22 (Session ~55+). Current VERSION: **2.6.1**
 
 ---
 
-## Project Snapshot
+## 60-Second Resume
 
-| Item | Value |
+```
+1. cd "C:\Users\Surya L\Desktop\AI Agents\SEO Suite"
+2. Verify version:  python -c "from core.version import VERSION; print(VERSION)"  → 2.6.1
+3. Verify checks:   python -c "from core.seo_audit import TASKS; [print(k,len(v)) for k,v in TASKS.items()]"
+   crawlability=12, on_page=11, site_health=12, performance=10, technical_seo=35
+   search_console=7, authority=8, rankings=5
+4. Run app:  python app/server.py  → http://localhost:8080 (port 8080, NOT 5000)
+5. Auth:     NO_AUTH=1 python app/server.py  (local dev only — blocked on cloud hosts)
+6. Tests:    pytest tests/ -q  →  238 passing
+7. Git push: git config core.hooksPath .githooks  (install pre-push hook once)
+8. VERSION file: core/version.py — bump it whenever JS/CSS changes (cache-busting)
+9. All HTML-fetching checks in tools/phase1.py use fetch_page() — 30-min shared cache
+10. dashboard.js?v=VERSION is rewritten in /app route — bump VERSION to bust browser cache
+```
+
+**Do NOT:**
+- Run `python main.py` as entry point — correct entry is `python app/server.py`
+- Forget `import re` is at module level in phase1.py (moved there in Batch I — don't add local import re again)
+- Use `safe_requests_get()` directly in new check functions — use `fetch_page(url)` instead (returns `(resp, soup)` tuple, caches, SSRF-safe)
+- Return `"pass"` when `fetch_page()` returns `(None, None)` — that's a network failure; return `"error"`
+- Add checks to `TOOLS` registry in phase1.py without also adding to `TASKS` dict in `core/seo_audit.py`, `TASK_DEFS` in `dashboard.js`, and `UC_INFO` in `dashboard.js` — all four must stay in sync
+- Change VERSION without updating `PROJECT_LOG.md` version history section
+- Use `--workers` > 1 with gunicorn — SSE queues and audit run state are in-process memory
+- Commit `.env` — pre-push hook will block it. Check `.gitignore`
+- Use `git push --force` — never, on any branch
+- Add `Co-Authored-By: Claude` trailer to commits — user wants clean attribution
+- Set `NO_AUTH=1` on Render/Fly/Railway/Heroku — `core/auth.py` detects cloud hosts and raises `RuntimeError`
+- Write `dashboard.html` inline `onclick` handlers for new features — existing ones are legacy; new wiring goes in `dashboard.js` with `addEventListener`
+- Hardcode absolute paths — use relative paths or `DATA_DIR` env var
+
+---
+
+## Current State
+
+### Check Registry (live — verified against `TASKS` in `core/seo_audit.py`)
+
+| Use Case | Checks | Count | API Needed? |
+|---|---|---|---|
+| crawlability | robots, http_status, redirect, broken_links, internal_links, sitemap, canonical, meta_robots, hreflang, ttfb, url_structure, canonical_loop | 12 | No |
+| on_page | title, meta_description, headings, image_alt, word_count, readability, schema, og_tags, viewport, lang_attr, content_freshness | 11 | No |
+| site_health | ssl, domain_age, mixed_content, https_enforcement, security_headers, spf, dmarc, mx_records, favicon, dns_health, www_redirect, http2 | 12 | No |
+| performance | render_blocking, image_optimization (no API) · pagespeed_mobile, pagespeed_desktop, mobile, gsc_url_inspection, lcp, cls, fcp, inp (API-gated) | 10 | PageSpeed API for 8 |
+| technical_seo | composite: crawlability(12) + on_page(11) + site_health(12) | 35 | No |
+| search_console | clicks_impressions, top_queries, position_tracker, ctr_analyzer, coverage_errors, sitemaps_status, manual_actions | 7 | GSC creds |
+| authority | backlinks, domain_authority, page_authority, referring_domains, domain_rank, broken_backlinks, nofollow_ratio, spam_score | 8 | Moz + DataForSEO |
+| rankings | rank_tracker, serp_features, competitor, rank_change, traffic_share | 5 | SerpAPI |
+
+**Classification rules (for future checks):**
+- Crawl/indexing directives (canonical, meta_robots, hreflang, url_structure, canonical_loop) → crawlability
+- Server response time (ttfb) → crawlability (crawl budget signal)
+- Brand/infrastructure assets (favicon, dns, ssl, http2) → site_health
+- Content quality + rendering signals → on_page
+- Lab/field performance metrics → performance
+
+### phase1.py Check Functions (27 total, all in TOOLS registry)
+
+```
+robots_check, http_status_check, redirect_check, canonical_check,
+title_check, meta_description_check, heading_check, image_alt_check,
+word_count_check, broken_link_check, internal_links_check, schema_check,
+hreflang_check, ttfb_check, readability_check, domain_age_check,
+ssl_check, dns_health_check, viewport_check, lang_check,
+content_freshness_check, url_structure_check, canonical_loop_check,
+www_redirect_check, http2_check, render_blocking_check, image_optimization_check
+```
+
+---
+
+## Order of Execution (Phases)
+
+> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → **v2.6.1** ← current
+
+### PHASE 1 — Initial Build ✅ COMPLETE (v1.0)
+Flask app, blueprint split, SQLite auth, Playwright, SSE streaming, Docker/Render/Fly deploy, `/metrics` endpoint, OpenAPI spec, initial SEO audit checks.
+
+### PHASE 2 — Auth Hardening ✅ COMPLETE (v1.x)
+Argon2id passwords, anti-enumeration, account lockout, HIBP breach check, TOTP 2FA with backup codes, server-side sessions with revocation, GDPR export/delete, password reset flows, login notifications.
+
+### PHASE 3 — Marketing Site ✅ COMPLETE (v2.0)
+Public marketing pages (`/`, `/features`, `/pricing`, `/about`, `/blog`), app moved behind `/app`, humanized copy, em-dash sweep, IndexNow guide, Groq setup guide.
+
+### PHASE 4 — Security Audit (30-issue batch) ✅ COMPLETE (v2.1)
+Fixed 19/21 security items from full-codebase audit:
+S1 XXE/OOB-fetch via lxml, S2 CSRF deny-by-default, S3 TOTP brute-force, S4 admin throttle, S5 CSP/COOP/CORP headers, S6 SMTP timeout, S7 OpenAPI gated, S8 signup auto-login, S9 NO_AUTH blocked on cloud, S10 cloud detection, S11/S12 CI + Docker SHA pinning, S13 configurable limiter backend, S14 CSP sandbox, S16 next-param regex, S17 pip-audit, S19 failed_attempts TTL cap, S20 login history pagination.
+
+Remaining open: S15 (Playwright --no-sandbox), S-NEW (inline onclick → addEventListener).
+
+### PHASE 5 — Code Quality Refactors ✅ COMPLETE (v2.2)
+Fixed 18/26 code quality items. Key fixes: C1 executor cancellation, C2 index_status race condition, C3-C8 various high-priority bugs, C11 god function extraction, C14 shared phase runner, C15 require_public_url decorator, C19/C22 print/winsound in Flask path, C23 itertools.count, C25 api_error helper. CSRF bypass (C18) fixed. Jinja2 HTML report template. 
+
+Remaining open: C20 (generate_html f-string), C24 (3 URL-validation idioms), C25 partial (reports/* missing ok key).
+
+### PHASE 6 — UI/UX + Content ✅ COMPLETE (v2.1.x)
+All 12 UI/UX items fixed (U1-U12): undefined CSS vars, skip link, label[for], modal ARIA, sidebar localStorage, mobile bottom nav, cache-busting dashboard.js, /health version field.
+
+9/11 content items fixed: H1 rewrite, per-page meta descriptions, privacy/terms/changelog stubs, blog pillar posts, CTA hierarchy, OG tags, features page groupings.
+
+Remaining open: CT3 (trust signals — GitHub stars, user count), CT11 (tone consistency across pages).
+
+### PHASE 7 — Specialist Audit Modules ✅ COMPLETE (v2.3)
+`tools/page_type.py` — auto-detects course/blog/product/generic.
+`tools/course_audit.py` — 8-section course page audit (schema, CTAs, instructor, pricing, FAQ, trust).
+`tools/blog_audit.py` — author, date, schema, OG, reading time.
+`tools/duplicate_detector.py` — cross-URL duplicate content via SimHash.
+`tools/issue_scoring.py` — impact × effort scoring; `scored_issues` field in audit results.
+All wired into dashboard (4 new tool panels).
+
+### PHASE 8 — CI + Mobile + /api/me ✅ COMPLETE (v2.4)
+CI SHA pinning corrected (39-char truncated → verified 40-char). `/api/me` added — SPA skips `/api/users` for non-admins (eliminates 403 console noise). `.tool-row` CSS added. Pre-push hook created at `.githooks/pre-push`.
+
+### PHASE 9 — Technical SEO Use Case ✅ COMPLETE (v2.5)
+New use case `technical_seo` = crawlability(10) + on_page(8) + site_health(9) = 27 checks. Mobile search tap-target. C25 partial fix. AUDIT_LOG stale items corrected.
+
+### PHASE 10 — Check Reclassification ✅ COMPLETE (v2.5.1)
+Moved checks to correct use cases: hreflang + ttfb → crawlability; favicon → site_health; canonical + meta_robots removed from on_page (kept in crawlability). Fixed: technical_seo badge showing 0 (UC_INFO entry missing). Updated "27 checks" string in USE_CASES + UC_DEFS.
+
+### PHASE 11 — Batch I: 10 New Checks ✅ COMPLETE (v2.6.0)
+Added viewport, lang_attr, content_freshness, url_structure, canonical_loop, dns_health (wired), www_redirect, http2, render_blocking, image_optimization. All 9 HTML-fetching checks use `fetch_page()` shared cache. New counts: crawlability=12, on_page=11, site_health=12, performance=10, technical_seo=35.
+
+### PHASE 12 — Batch I Quality Fixes ✅ COMPLETE (v2.6.1)
+5 fixes: render_blocking separate JS/CSS thresholds, image_optimization smart content-image filter + fetchpriority, www_redirect NXDOMAIN returns pass, canonical_loop missing canonical returns warning, all checks use shared fetch_page cache.
+
+### PHASE 13 — PROJECT_LOG + Pre-push Hook ✅ COMPLETE (current)
+PROJECT_LOG.md created (this file). Pre-push hook strengthened: PROJECT_LOG update check, README version staleness, secrets scan, PROJECT_LOG existence check.
+
+---
+
+## What's Built & Verified
+
+### Entry Points
+| Command | What |
 |---|---|
-| **Current version** | 2.6.1 |
-| **Stack** | Python 3.11 · Flask 3.x · SQLite · Vanilla JS SPA |
-| **Total audit checks** | 35 (no-API) + 8 API-gated performance + 7 GSC + 5 rankings + 8 authority |
-| **Use cases** | 8 (crawlability, on_page, site_health, performance, search_console, authority, rankings, technical_seo) |
-| **Test count** | 238 passing |
-| **Deploy targets** | Render (auto) · Fly.io · Docker · VPS (gunicorn) |
-| **Auth** | Argon2id · TOTP 2FA · CSRF deny-by-default · rate limiting · account lockout |
-| **Privacy** | Self-hosted, no third-party data leaks — all checks run from the user's server |
+| `python app/server.py` | Dev server, port 8080 |
+| `gunicorn --workers 1 --threads 8 --timeout 300 "app.server:create_app()"` | Production |
+| `pytest tests/ -q` | 238 tests |
+| `ruff check . && ruff format .` | Lint + format |
 
----
+### Blueprint Routes
+| Blueprint | File | Key Routes |
+|---|---|---|
+| audit | `app/blueprints/audit.py` | `/api/audit/start`, `/api/audit/stream` (SSE), `/api/audit/full_results`, `/api/audit/cancel` |
+| indexing | `app/blueprints/indexing.py` | `/api/index/run`, `/api/index/stream`, `/api/index/partial` |
+| tools | `app/blueprints/tools.py` | 40+ `/api/tools/*` individual tool routes |
+| auth_views | `app/blueprints/auth_views.py` | `/login`, `/signup`, `/logout`, `/login/totp`, `/api/users`, `/api/me` |
+| misc | `app/blueprints/misc.py` | `/app` (SPA), `/health`, `/api/csrf`, `/metrics` |
+| reports | `app/blueprints/reports.py` | `/api/reports/*` — list, download, delete |
+| settings | `app/blueprints/settings.py` | `/api/settings` GET/POST |
+| runners | `app/blueprints/runners.py` | `/api/usecase/run` |
+| site | `app/blueprints/site.py` | `/`, `/features`, `/pricing`, `/about`, `/blog`, `/privacy`, `/terms` |
 
-## Version History
-
-### v2.6.1 — 2026-06-22
-**5 quality fixes to Batch I checks**
-
-| Fix | Detail |
+### Core Modules
+| File | Purpose |
 |---|---|
-| `render_blocking` thresholds | Separate JS (>0=warn, >2=fail) vs CSS (>6=warn, >12=fail). Previous single threshold caused false fails on CSS-heavy sites. |
-| `image_optimization` smart filter | Skip `data:` URI inline images and `aria-hidden="true"` decorative images before scoring. Add `fetchpriority=high` absence warning for LCP candidates. |
-| `www_redirect` NXDOMAIN | `validate_public_url` raises `ValueError` for non-existent hosts. Catch it in the fetch block so non-resolvable www variants return `[pass]` (no duplicate risk) instead of `[error]`. |
-| `canonical_loop` no-canonical | When no canonical tag exists on first hop, return `[warning]` (add self-referencing canonical) instead of `[pass]`. |
-| Shared `fetch_page()` cache | All 9 new HTML-fetching checks now use the existing 30-min in-memory cache instead of making separate HTTP requests per check. |
+| `core/seo_audit.py` | `TASKS` dict (authoritative check registry), `USE_CASES` dict, `audit_single_url()` dispatch |
+| `core/checker.py` | Main audit orchestrator — runs phases, saves progress, GSC integration |
+| `core/auth.py` | `login_required`, `admin_required`, cloud detection, `_failed_attempts` TTL cache |
+| `core/db.py` | SQLite helpers — users, sessions, login history, TOTP |
+| `core/version.py` | Single source of truth: `VERSION = "2.6.1"` |
+| `core/notifier.py` | SMTP/Slack/Teams notifications |
+| `app/middleware.py` | CSP headers, CSRF deny-by-default |
+| `app/state.py` | `CFG` dict, `_check_public_url()`, `require_public_url` decorator |
 
-**Files:** `tools/phase1.py`, `core/version.py`
+### Tools Modules
+| File | What |
+|---|---|
+| `tools/phase1.py` | 27 no-API audit checks + `fetch_page()` cache + `TOOLS` registry |
+| `tools/phase2.py` | PageSpeed API, GSC URL inspection, CWV (LCP/CLS/FCP/INP) |
+| `tools/phase3.py` | Authority checks (Moz, DataForSEO) |
+| `tools/phase4.py` | Rankings (SerpAPI) |
+| `tools/generators.py` | Schema (15 JSON-LD types), robots.txt, XML sitemap, hreflang, meta tags |
+| `tools/quick_tools.py` | SERP preview, redirect chain, HTTP headers, keyword density, code:text ratio, GZIP+cache |
+| `tools/ai_assist.py` | Groq-powered audit explanation, AI meta drafter |
+| `tools/page_type.py` | Auto-detect course/blog/product/generic |
+| `tools/course_audit.py` | 8-section course page audit |
+| `tools/blog_audit.py` | Author, date, schema, OG, reading time |
+| `tools/duplicate_detector.py` | Cross-URL duplicate content (SimHash) |
+| `tools/issue_scoring.py` | Impact × effort scoring — adds `scored_issues` to audit results |
+| `tools/sitemap_audit.py` | Sitemap audit (in/out, orphans, oversized) |
+| `tools/schema_validator.py` | JSON-LD validator (SSRF fix pending before UI exposure) |
+| `tools/bing_webmaster.py` | Bing Webmaster API integration |
+| `tools/indexnow.py` | IndexNow submission |
+| `tools/keyword_research.py` | Keyword research (DataForSEO) |
+| `tools/_common.py` | `safe_error()`, `xml_text()`, shared helpers |
+| `tools/_phase_runner.py` | `run_fns_parallel()`, `run_phase()` — shared ThreadPoolExecutor helpers |
 
----
-
-### v2.6.0 — 2026-06-22
-**Batch I: 10 new checks across 4 use cases**
-
-New checks added to `tools/phase1.py` and wired into `core/seo_audit.py` + `dashboard.js`:
-
-| Check | Use Case | What it checks |
+### Frontend (dashboard.js key structures)
+| Structure | Purpose | Update When |
 |---|---|---|
-| `viewport_check` | on_page | `<meta name="viewport">` presence and `width=device-width` |
-| `lang_check` | on_page | `lang` attribute on `<html>` element |
-| `content_freshness_check` | on_page | `Last-Modified` header + `article:modified_time`, `<time datetime>` in-page signals |
-| `url_structure_check` | crawlability | URL length, uppercase chars, session params, slug underscores, long numeric IDs |
-| `canonical_loop_check` | crawlability | Traces canonical chain up to 5 hops; detects loops, multi-hop chains, missing canonicals |
-| `dns_health_check` | site_health | Was already implemented; now wired into the dispatch block |
-| `www_redirect_check` | site_health | Tests www ↔ non-www; detects duplicate content or missing redirect consolidation |
-| `http2_check` | site_health | Uses httpx to detect HTTP/2 or HTTP/3 support |
-| `render_blocking_check` | performance | Counts blocking `<script>` (no async/defer) and `<link rel=stylesheet>` in `<head>` |
-| `image_optimization_check` | performance | Lazy loading ratio, WebP/AVIF usage, missing width/height (CLS risk) |
+| `UC_DEFS[]` | Nav sidebar entries, use case descriptions | Adding/renaming use cases |
+| `TASK_DEFS{}` | Task lists per use case | Adding/removing checks |
+| `UC_INFO{}` | Badge check counts + learn panel text + tips | Check counts change |
+| `VERSION` check | `/app` route injects `dashboard.js?v=VERSION` | Every VERSION bump |
 
-**Check counts after:** crawlability=12, on_page=11, site_health=12, performance=10, technical_seo=35
-
-**Files:** `tools/phase1.py`, `core/seo_audit.py`, `app/static/js/dashboard.js`, `agents.md`, `AUDIT_LOG.md`
-
----
-
-### v2.5.1 — 2026-06-21
-**Check reclassification + project sync**
-
-Moved checks to semantically correct use cases:
-- `hreflang` + `ttfb` → crawlability (from on_page) — both are crawl/indexing signals
-- `canonical` + `meta_robots` → removed from on_page (kept only in crawlability)
-- `favicon` → site_health (from on_page) — infrastructure asset, not content
-
-Fixed: technical_seo badge showing 0 checks — UC_INFO entry was missing from dashboard.js.
-Updated: USE_CASES description "27 checks" in seo_audit.py.
+### Data & Config
+| Path | What |
+|---|---|
+| `data/seo_suite.db` | SQLite: users, sessions, login history, TOTP secrets (git-ignored) |
+| `data/reports/` | HTML/XLSX/CSV/JSON audit outputs (git-ignored) |
+| `data/app.log` | Runtime logs (git-ignored) |
+| `.env` | API keys + secrets (NEVER commit) |
+| `render.yaml` | Render blueprint (free tier) |
+| `Dockerfile` | SHA-pinned `mcr.microsoft.com/playwright/python:v1.48.0-jammy` |
+| `.github/workflows/ci.yml` | SHA-pinned actions: checkout, setup-python, upload-artifact |
 
 ---
 
-### v2.5.0 — 2026-06-20
-**Batch H: Technical SEO use case (27 checks) + mobile fixes**
+## Critical Gotchas
 
-- New use case `technical_seo` — composite of crawlability(10) + on_page(8) + site_health(9)
-- Mobile search tap-target added (`#tb-mob-search` button, hidden on desktop)
-- C25 partial fix: `/api/reports/delete_bulk` missing `ok` key in response
-- AUDIT_LOG: marked S18, C21, C23 as fixed (were already fixed in code, log was stale)
+### 1. `fetch_page()` vs `safe_requests_get()` — use fetch_page for all HTML checks
+`fetch_page(url)` in phase1.py: calls `validate_public_url`, caches 30 min, returns `(resp, soup)`. Returns `(None, None)` on network failure (not on `ValueError` from SSRF guard — that raises). New checks must call `fetch_page`, check `if resp is None or soup is None → return error`, never bypass.
 
----
+### 2. `validate_public_url()` raises `ValueError` — does NOT return None
+SSRF guard raises `ValueError("Could not resolve URL host: ...")` for bad domains. `fetch_page` catches `RequestException, OSError` but NOT `ValueError`. If your function wraps `fetch_page`, catch `ValueError` separately — see `www_redirect_check` for the correct pattern.
 
-### v2.4.0 — 2026-06-20
-**Batch G: CI fixes, /api/me, mobile improvements**
+### 3. All four registries must stay in sync
+Adding a check: update `TOOLS` list in `tools/phase1.py` + `TASKS` dict in `core/seo_audit.py` + `TASK_DEFS` in `dashboard.js` + `UC_INFO` checks array in `dashboard.js`. Forget one → badge count wrong or check never runs.
 
-- CI SHA pinning corrected (39-char truncated SHAs → verified 40-char SHAs)
-- `/api/me` endpoint added — SPA reads this to skip `/api/users` for non-admins (eliminates 403 console noise)
-- `.tool-row` CSS added — layouts in 15+ tool panels were unstyled
-- Pre-push hook created at `.githooks/pre-push`
+### 4. VERSION bump required for every JS/CSS change
+`/app` route rewrites `dashboard.js?v=VERSION` and `dashboard.css?v=VERSION`. Change any JS/CSS without bumping VERSION → users get stale cached files until hard reload. Bump in `core/version.py` and update PROJECT_LOG version history.
 
----
+### 5. One gunicorn worker only
+`--workers 1` is NOT optional. SSE audit streams, cancellation flags, and run state are all in-process memory. Multiple workers = state split across processes = broken cancel, broken SSE, broken audit progress.
 
-### v2.3.0 — 2026-06-19
-**Page-type detection + specialist audit modules**
+### 6. `NO_AUTH=1` blocked on cloud
+`core/auth.py` → `_on_cloud_host()` detects Render/Fly/Railway/Heroku/GCloud/Azure. `NO_AUTH=1` on any cloud host raises `RuntimeError` at startup. Override requires `SEO_SUITE_ALLOW_NO_AUTH_CLOUD=1` (dangerous). Only use `NO_AUTH=1` for local dev.
 
-- `tools/page_type.py` — auto-detects course / blog / product / generic pages
-- `tools/course_audit.py` — 8-section course page audit (schema, CTAs, instructor, pricing, FAQ...)
-- `tools/blog_audit.py` — author / date / schema / OG / reading time audit
-- `tools/duplicate_content.py` — cross-URL duplicate content detector via SimHash
-- `tools/issue_scoring.py` — impact × effort scoring for audit issues; `scored_issues` in result shape
-- All four wired into dashboard: page-type detector, course audit, blog audit, duplicate scan panels
+### 7. CSP keeps `'unsafe-inline'` in script-src intentionally
+Dashboard has ~1000 inline `onclick="..."` attributes. Removing `'unsafe-inline'` broke every button (C-NEW2). Tracked as S-NEW. Do not remove it until all inline handlers are migrated to `addEventListener`.
 
----
+### 8. technical_seo is a composite use case
+`audit_single_url()` in `core/seo_audit.py` expands `technical_seo` in the `active` set to `{crawlability, on_page, site_health}` before dispatching checks. It never dispatches `technical_seo` directly. TASKS entry for it is `crawlability + on_page + site_health` keys (35 total).
 
-### v2.2.0 — 2026-06-19
-**Code quality refactors (Batches C–F)**
+### 9. Import `re` is at module level in phase1.py
+`import re` is between the `logging` and `threading` imports at line ~22. `image_optimization_check` uses `re.compile(r"image/(webp|avif)")` for BeautifulSoup source detection. Do not add `import re` locally inside a function — it already exists.
 
-Major refactors in `app/blueprints/audit.py`, `core/checker.py`, `tools/`:
-- Extracted `_run_audit_thread` from 170-line god function
-- Extracted `run_fns_parallel` / `run_phase` into `tools/_phase_runner.py`
-- Unified API error shape via `api_error()` helper
-- Replaced `dict-counter` hack with `itertools.count()`
-- Jinja2 template for HTML reports (replaced 200-line f-string)
-- `SCHEMA_BUILDERS` dispatch dict replaced 15-branch elif chain
-- `_check_public_url()` / `require_public_url` decorator replaced 10+ walrus patterns
-- Rate-limit + exponential backoff for GSC URL inspection (quota exhaustion protection)
-- `print()` → `logger` everywhere in Flask import path
-- CSV export standardized to 7-col format
+### 10. CI SHA pins must be exactly 40 hex chars, lowercase
+Prior incident: 39-char truncated SHAs and uppercase letters broke CI on every push. Verify any new action SHAs via GitHub API before committing. See commit `bde9d97` for the correct format.
+
+### 11. Data directory must be persistent on cloud
+Render free tier has no persistent disk — SQLite user store and all reports reset on every redeploy. Mount a persistent volume at `SEO_SUITE_DATA_DIR` for any production deploy. Free tier is demo/test only.
+
+### 12. `www_redirect_check` NXDOMAIN pattern — fetch then check separately
+`fetch_page(alt_url)` raises `ValueError` for non-existent www variants (SSRF guard hits DNS lookup). Pattern: wrap only the `fetch_page` call in try/except, set `resp = None` on any exception, then check `if resp is None → return pass`. See lines 1355-1380 in phase1.py.
 
 ---
 
-### v2.1.0 — 2026-06-18
-**Security hardening (Batches A–B) + UI/UX + content**
+## Open Items Backlog
 
-Security fixes (20 items):
-- CSRF deny-by-default — was an opt-in allowlist covering only 5 paths
-- TOTP brute-force prevention — rate limit + `_record_failed_login`
-- Admin user management throttled
-- `NO_AUTH=1` blocked on cloud hosts (Render/Fly/Railway/Heroku/GCloud/Azure)
-- SSRF guards via `validate_public_url()` + `safe_requests_get()`
-- XXE/OOB-fetch blocked: `XMLParser(resolve_entities=False, no_network=True)`
-- OpenAPI spec gated behind auth
-- `next` param tightened against open redirect
-- STARTTLS enforced (no cleartext fallback)
-- Dockerfile base image pinned by SHA256 digest
-- CI actions SHA-pinned (not tag-pinned)
-- COOP / CORP / Permissions-Policy headers added
-- `_failed_attempts` dict TTL-capped (unbounded memory growth)
-- Login history paginated (was flat 500-row read)
-- Configurable `SEO_SUITE_LIMITER_URI` for Redis-backed rate limiting
-
-UI/UX fixes (12 items):
-- 4 undefined CSS variables (`--surface-1`, `--bg-2`, `--c-surface2`, `--c-border2`) defined
-- Skip link added for keyboard accessibility
-- `<span class="label">` → `<label for="...">` for screen reader compatibility
-- Modal ARIA roles (`role="dialog"`, `aria-modal`, `aria-label="Close"`)
-- Sidebar collapse state persisted to localStorage
-- Mobile bottom nav dead link corrected
-- `dashboard.js?v=VERSION` cache-busting on the `/app` route
-- `/health` endpoint now returns `version` field (nav logo was showing "v?")
-
-Content:
-- H1 benefit-led rewrite: "Run technical SEO audits free. No SaaS fees, no data leaks."
-- Per-page meta descriptions added
-- Stub pages: `/privacy`, `/terms`, `/changelog`
-- Blog pillar posts, trust signals, CTA hierarchy fix
-
----
-
-### v2.0.0 — 2026-06-17
-**Initial public-ready release**
-
-Core features: Indexing checker, 7 use-case SEO audit (SSE streaming), 40+ tools, GSC integration, Schema/robots/sitemap/hreflang generators, IndexNow, AI assistant (Groq), multi-user + TOTP, reports (HTML/Excel/CSV/PDF), dark mode.
-
----
-
-## Open Items
-
-### Security
-| ID | Priority | Item |
+### P1 — Critical / High Impact
+| ID | Area | Item |
 |---|---|---|
-| S15 | LOW | Playwright `--no-sandbox` on attacker HTML — fix: remove or use user namespace sandboxing |
-| S-NEW | MED | Migrate ~1000 inline `onclick` handlers to `addEventListener` so CSP `unsafe-inline` can be removed |
+| P1 | Product | First-run onboarding wizard — new users see zero guidance, no domain → preset flow |
+| P2 | Product | Client/project grouping in Reports panel — flat timestamp list, no domain label |
+| P3 | Product | Cross-URL issue aggregation — no "37 pages missing H1" summary view |
+| CT3 | Content | Trust signals on home page — no GitHub stars badge, no user count, no testimonials |
+| S-NEW | Security | Migrate ~1000 inline `onclick` handlers to `addEventListener` — unblocks CSP tightening |
 
-### Code Quality
-| ID | Priority | Item |
+### P2 — Phase 0 Blockers (must fix before new feature work)
+| ID | Item | Blocks |
 |---|---|---|
-| C20 | LOW | `generate_html` 200-line f-string → Jinja2 template (`core/checker.py:30474`) |
-| C24 | LOW | Three URL-validation idioms (`_reject_unsafe`, `_require_public_url`, `is_safe_url`) — consolidate to one |
-| C25 | LOW | `/api/reports/*` responses missing `ok` key — standardize shape |
+| PH0-1 | Sitemap SSRF fix — `sitemap_parser.py` bypasses safe wrapper | Sitemap Audit feature |
+| PH0-2 | Schema validation SSRF fix — hidden schema validator follows redirects unsafely | Rich Results UI |
+| PH0-3 | Path anchoring consistency — runtime data splits dirs when app launched outside repo root | All new report tools |
+| PH0-4 | Numeric request validation — malformed payloads → 500s in several routes | Any new tool endpoint |
+| PH0-5 | Use-case sitemap fallback — sitemap mode audits the XML when expansion fails | Sitemap-mode audits |
+| PH0-6 | robots.txt fetch bypasses SSRF wrapper | Crawlability feature work |
 
-### Product / UX
-| ID | Priority | Item |
-|---|---|---|
-| P1 | HIGH | First-run onboarding wizard — new users land with zero guidance |
-| P2 | HIGH | Client/project grouping in Reports panel — flat timestamp list, no domain label |
-| P3 | HIGH | Cross-URL issue aggregation in audit results — no "37 pages missing H1" view |
-| P4 | MED | API docs + webhook output for developer users |
-| P6 | MED | Multiple schedule slots (currently one job per install) |
-| P7 | MED | Team/role management UI in Settings (backend exists, no UI) |
-| P8 | LOW | GitHub install link missing from marketing nav/footer |
-| P9 | LOW | Screaming Frog CSV not accepted as URL source |
+### P3 — Code Quality (low urgency)
+| ID | Item |
+|---|---|
+| C20 | `generate_html` 200-line f-string → Jinja2 template (`core/checker.py:30474`) |
+| C24 | Three URL-validation idioms — consolidate `_reject_unsafe`, `_require_public_url`, `is_safe_url` |
+| C25 | `/api/reports/*` responses missing `ok` key |
+| S15 | Playwright `--no-sandbox` on attacker HTML (`app/blueprints/reports.py`) |
 
-### Content
-| ID | Priority | Item |
-|---|---|---|
-| CT3 | HIGH | Zero trust signals on home page (no GitHub stars, no quotes, no user count) |
-| CT11 | LOW | Tone inconsistency across marketing pages |
-| U5 | MED | Brand color `#6366f1` hardcoded in two CSS files — should be one token |
-| U11 | LOW | Command palette hidden on mobile (no tap-target for search palette) |
+### P4 — Product Features (future)
+| ID | Item |
+|---|---|
+| P4 | API docs + webhook output |
+| P6 | Multiple schedule slots (one job per install currently) |
+| P7 | Team/role management UI in Settings (backend exists) |
+| P8 | GitHub/install link missing from marketing nav/footer |
+| P9 | Screaming Frog CSV as URL source |
+| CT11 | Tone consistency across marketing pages |
+| U5 | Brand color `#6366f1` hardcoded in both CSS files — need single token |
+
+---
+
+## Session History
+
+| Session | Date | Version | Key Work |
+|---|---|---|---|
+| 1 | early 2026 | v1.0 | Initial commit — Flask app, SSE streaming, 7 audit use cases, phase1-4 tools, Docker, Render |
+| 2–5 | early 2026 | v1.x | Auth: argon2id, TOTP 2FA, server sessions, GDPR export/delete, login history |
+| 6–8 | early 2026 | v1.x | Blueprint split, `/metrics`, OpenAPI spec, observability, 238 tests |
+| 9–12 | 2026-05-26 | v1.x | Security hardening batch: 30 issues fixed (M-2/4/11/12, L-3/4/9 + more) |
+| 13–15 | early 2026 | v2.0 | Marketing site: public pages, blog, humanized copy, em-dash sweep |
+| 16–20 | 2026-06-14 | v2.0 | Tools & generators hardening: safe_error, xml_text, size-capped fetch_html, SSRF in schema_validator |
+| 21–25 | 2026-06-14 | v2.0 | Phase-A quick tools, link health, crawl intelligence, hreflang validator, robots.txt tester |
+| 26–28 | 2026-06-18 | v2.0 | Merged features: blog, humanized copy, multi-user auth, TOTP, GDPR |
+| 29–32 | 2026-06-18 | v2.1 | Full-codebase audit (129 files, 91 issues logged). Batch 1: 16 items fixed |
+| 33–36 | 2026-06-19 | v2.1 | Security batch S1-S20 (19/21 fixed). UI/UX batch U1-U12 (all fixed). Content CT1-CT11 (9/11 fixed) |
+| 37–40 | 2026-06-19 | v2.2 | Code quality batch C1-C25 (18/26 fixed): god function, phase runner, api_error, itertools.count, Jinja2 report, SCHEMA_BUILDERS |
+| 41–44 | 2026-06-19 | v2.3 | Specialist modules: page_type, course_audit, blog_audit, duplicate_detector, issue_scoring. Dashboard wiring for all 4. |
+| 45–48 | 2026-06-20 | v2.4 | Batch G: CI SHA pinning corrected, /api/me endpoint, .tool-row CSS, pre-push hook |
+| 49–51 | 2026-06-20 | v2.5 | Batch H: technical_seo use case (27 checks), mobile search tap-target, C25 partial |
+| 52 | 2026-06-21 | v2.5.1 | Check reclassification: hreflang+ttfb → crawlability, favicon → site_health, canonical+meta_robots removed from on_page. Fixed technical_seo badge (0 → correct). Updated USE_CASES "27 checks" string. |
+| 53–54 | 2026-06-22 | v2.6.0 | Batch I: 10 new checks (viewport, lang_attr, content_freshness, url_structure, canonical_loop, dns_health, www_redirect, http2, render_blocking, image_optimization). technical_seo now 35 checks. |
+| 55 | 2026-06-22 | v2.6.1 | 5 quality fixes: render_blocking thresholds, image_optimization smart filter, www_redirect NXDOMAIN→pass, canonical_loop missing canonical→warning, shared fetch_page cache for all HTML checks. |
+| 56 | 2026-06-22 | v2.6.1 | PROJECT_LOG.md rebuilt (account-switch proof), pre-push hook strengthened (5 new checks), README updated (8 use cases, PROJECT_LOG in docs table). |
 
 ---
 
 ## Roadmap
 
-### Phase 0 — Must Fix First (Unblocks later features)
-1. **Sitemap SSRF fix** — sitemap fetching bypasses safe request wrapper; blocks Sitemap Audit
-2. **Schema validation SSRF fix** — blocks Rich Results / Schema Validation UI
-3. **Path anchoring consistency** — runtime data splits dirs when app launched outside repo root
-4. **Numeric request validation** — malformed payloads → 500s; blocks any new tool endpoints
-5. **Use-case sitemap fallback fix** — sitemap mode audits the XML itself when expansion fails
-6. **`robots.txt` safe-fetch fix** — fetch still bypasses SSRF wrapper
+### Next: Phase 0 Blockers (before any new features)
+1. Sitemap SSRF fix
+2. Schema validation SSRF fix
+3. Path anchoring consistency
+4. Numeric request validation
+5. Use-case sitemap fallback fix
+6. robots.txt safe-fetch fix
 
-### Phase 1 — No Paid API (after Phase 0)
-- **Rich Results / Schema Validation UI** — backend route exists, just needs UI wiring
-- **Sitemap Audit** — in/out of sitemap, orphans, non-indexables, oversized warnings
-- **Bing Visibility Workspace** — URL inspection, search performance, sitemap status
-- **IndexNow Submission Tool** — action workflow after indexing diagnosis
-- **Trend Explorer** — free keyword trend comparison (no paid provider needed)
+### Phase 1 (after blockers, no paid API)
+Rich Results / Schema Validation UI → Sitemap Audit → Bing Visibility Workspace → IndexNow Submission Tool → Trend Explorer
 
-### Phase 2 — Authenticated Free-Platform Integrations
-- **Baseline GSC Opportunity Layer** — high-impression/low-CTR, decay detection, device splits
-- **Performance Opportunity Layer** — CWV risk grouping, repeated asset bottlenecks
-- **Groq AI Assistance Layer** — explain findings, draft fixes, meta variants (opt-in per panel)
+### Phase 2 (authenticated free-platform)
+Baseline GSC Opportunity Layer → Performance Opportunity Layer → Groq AI Assistance Layer (explain findings, draft fixes, meta variants)
 
-### Phase 3 — Paid / Metered Features
-- Content Gap / Competitor Gap
-- Backlink Reclamation workflow
-- AI Visibility / Citation Tracking
-- Paid-enriched GSC Opportunity Layer
+### Phase 3 (paid/metered)
+Content Gap / Competitor Gap → Backlink Reclamation → AI Visibility / Citation Tracking → Paid-enriched GSC
 
-**Canonical build order:** Phase 0 → Rich Results → Sitemap Audit → Bing Visibility → IndexNow → Trend Explorer → GSC Opportunity → Performance Opportunity → Groq AI → Content Gap → Backlink Reclamation → AI Visibility → Paid GSC
+Full detail: `TOOL_ROADMAP.md`
 
 ---
 
-## Architectural Decisions
+## Env Vars Quick Reference
 
-| Decision | Rationale |
-|---|---|
-| Single gunicorn worker (`--workers 1`) | SSE queues and run state live in process memory — multiple workers break state |
-| Vanilla JS SPA (no React/Vue) | Zero build step, zero NPM; matches the self-hosted philosophy |
-| SQLite for users/sessions | Persistent disk required anyway; no external DB dependency for auth |
-| `fetch_page()` shared cache (30-min TTL) | Prevents per-check HTTP requests during multi-check audits; ~10 checks share one fetch |
-| `validate_public_url()` + `safe_requests_get()` | All user-controlled URL fetches go through SSRF validation — SSRF is the highest-risk attack surface |
-| `httpx[http2]` for HTTP/2 detection | `requests` library is HTTP/1.1 only; `httpx` already in requirements |
-| `VERSION` in `core/version.py` | Single source of truth; `/app` route injects `?v=VERSION` for cache-busting |
-| CSRF deny-by-default | All mutation endpoints protected; exemptions must be explicit (`_CSRF_EXEMPT_PATHS`) |
-| `NO_AUTH` blocked on cloud hosts | Guards against accidental public exposure on Render/Fly/Railway/Heroku deploys |
+| Var | Required | Purpose |
+|---|---|---|
+| `SEO_SUITE_SECRET` | Prod | Flask session signing key |
+| `SEO_SUITE_DATA_DIR` | Optional | Data dir (default `./data`) |
+| `SEO_SUITE_COOKIE_SECURE` | Prod | `1` for HTTPS-only cookies |
+| `SEO_SUITE_LIMITER_URI` | Prod | Rate limiter backend (default `memory://`, use Redis URI for multi-instance) |
+| `NO_AUTH` / `SEO_SUITE_NO_AUTH` | Dev only | Disable auth — blocked on cloud |
+| `PAGESPEED_API_KEY` | Optional | Performance audit, PageSpeed |
+| `GROQ_API_KEY` | Optional | AI assistant, meta drafter |
+| `SERPAPI_KEY` | Optional | Rankings phase |
+| `MOZ_ACCESS_ID` + `MOZ_SECRET_KEY` | Optional | Domain Authority |
+| `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | Optional | Backlinks, keyword research |
+| `BING_WEBMASTER_API_KEY` | Optional | Bing tools, IndexNow |
+| `SMTP_HOST/PORT/USERNAME/PASSWORD` | Optional | Email notifications, password reset |
+| `SLACK_WEBHOOK_URL` | Optional | Slack notifications |
+| `SENTRY_DSN` | Optional | Error tracking |
 
 ---
 
-_Last updated: 2026-06-22 — v2.6.1_
+_Last updated: 2026-06-22 — Session 56 — v2.6.1_

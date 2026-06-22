@@ -66,7 +66,7 @@ const UC_DEFS = {
     desc:'Keyword positions · SERP features · competitor analysis · rank change · traffic share', requires:'SerpAPI key',
     formats:['url'], hint:'Live keyword rankings, SERP features, rank changes, traffic share estimate'},
   technical_seo: {label:'Technical SEO', icon:'⚙️', color:'#0F766E',bg:'#F0FDFA',
-    desc:'Crawlability · on-page · site health — 27 checks in one run, no API key needed', requires:null,
+    desc:'Crawlability · on-page · site health — 35 checks in one run, no API key needed', requires:null,
     formats:['url','csv'], hint:'Full technical audit: robots, redirects, title, schema, SSL, DNS, security headers and more'},
 };
 

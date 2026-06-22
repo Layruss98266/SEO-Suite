@@ -283,7 +283,7 @@ USE_CASES = {
         "icon": "⚙️",
         "color": "#0F766E",
         "bg": "#F0FDFA",
-        "desc": "Crawlability · on-page · site health — 27 checks, no API key required",
+        "desc": "Crawlability · on-page · site health — 35 checks, no API key required",
         "requires": None,
         "group": "Technical",
     },

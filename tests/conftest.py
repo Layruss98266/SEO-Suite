@@ -34,7 +34,10 @@ os.environ["SEO_SUITE_NO_AUTH"] = "1"
 #     to requiring auth so they 401 without a session or this flag).
 os.environ["SEO_SUITE_PUBLIC_DOCS"] = "1"
 
-# 4. Disable rate limiting during tests.
+# 4. Disable rate limiting during tests. Flask-Limiter 4.x requires BOTH the
+#    extension flag AND the app config key — setting only limiter.enabled=False
+#    does not prevent per-route @limiter.limit() decorators from firing.
+_server.app.config["RATELIMIT_ENABLED"] = False
 _server.limiter.enabled = False
 
 # 5. Disable password-strength + breach checks during tests.

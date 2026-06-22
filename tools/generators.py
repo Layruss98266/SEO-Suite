@@ -408,7 +408,10 @@ def _build_event(data: dict) -> dict:
     if data.get("end_date"):
         obj["endDate"] = data["end_date"]
     if data.get("location_address"):
-        obj["location"]["address"] = data["location_address"]
+        obj["location"]["address"] = {
+            "@type": "PostalAddress",
+            "streetAddress": data["location_address"],
+        }
     if data.get("image"):
         obj["image"] = data["image"]
     if data.get("url"):
@@ -827,7 +830,13 @@ def generate_sitemap(data: dict) -> dict:
             lines.append("  <url>")
             lines.append(f"    <loc>{xml_text(url)}</loc>")
             if entry.get("lastmod"):
-                lines.append(f"    <lastmod>{xml_text(entry['lastmod'])}</lastmod>")
+                lm = str(entry["lastmod"]).strip()
+                # Validate ISO 8601 date format (YYYY-MM-DD or YYYY-MM-DDThh:mm:ss*)
+                import re as _re
+                if _re.match(r"^\d{4}-\d{2}-\d{2}(T[\d:+\-Z.]+)?$", lm):
+                    lines.append(f"    <lastmod>{xml_text(lm)}</lastmod>")
+                else:
+                    warnings.append(f"Dropped invalid lastmod '{lm}' for {url} (use ISO 8601: YYYY-MM-DD)")
             cf = (entry.get("changefreq") or "").strip().lower()
             if cf:
                 if cf in _VALID_CHANGEFREQ:
@@ -898,6 +907,7 @@ def generate_hreflang(data: dict) -> dict:
             xd = str(data["xdefault_url"]).strip()
             if urlparse(xd).scheme in ("http", "https"):
                 tags.append(f'<link rel="alternate" hreflang="x-default" href="{xml_text(xd)}">')
+                header_vals.append(f'<{xml_text(xd)}>; rel="alternate"; hreflang="x-default"')
             else:
                 warnings.append(f"Dropped x-default URL with invalid scheme: {xd}")
 

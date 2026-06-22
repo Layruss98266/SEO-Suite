@@ -87,6 +87,12 @@ class TestAuthGating:
     def auth_client(self, monkeypatch):
         # Remove NO_AUTH so auth_enabled() checks the password hash below.
         monkeypatch.delenv("SEO_SUITE_NO_AUTH", raising=False)
+        # Use JSON backend so _is_locked_out() skips the persistent SQLite DB —
+        # prior test runs may have accumulated failures for "tester" in data/seo_suite.db
+        # which would trigger a 429 lockout even on the first POST in a fresh test.
+        monkeypatch.setenv("SEO_SUITE_USERS_BACKEND", "json")
+        import core.auth as _auth
+        _auth._failed_attempts.clear()
         from werkzeug.security import generate_password_hash
         monkeypatch.setenv("SEO_SUITE_USERNAME", "tester")
         monkeypatch.setenv("SEO_SUITE_PASSWORD_HASH", generate_password_hash("hunter2"))
@@ -245,6 +251,9 @@ class TestLoginNextRedirect:
     @pytest.fixture
     def auth_client(self, monkeypatch):
         monkeypatch.delenv("SEO_SUITE_NO_AUTH", raising=False)
+        monkeypatch.setenv("SEO_SUITE_USERS_BACKEND", "json")
+        import core.auth as _auth
+        _auth._failed_attempts.clear()
         from werkzeug.security import generate_password_hash
         monkeypatch.setenv("SEO_SUITE_USERNAME", "tester")
         monkeypatch.setenv("SEO_SUITE_PASSWORD_HASH", generate_password_hash("hunter2hunter2"))

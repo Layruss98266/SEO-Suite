@@ -142,10 +142,17 @@ def robots_check(url: str) -> dict:
             # against the SSRF allowlist — RobotFileParser.read() does its own
             # internal urllib fetch that bypasses our security wrapper.
             r = safe_requests_get(robots_url, timeout=8, headers=HEADERS)
-            rp = RobotFileParser()
-            rp.set_url(robots_url)
-            rp.parse(r.text.splitlines())
-            _cache_set(_robots_cache, _robots_cache_lock, base, (rp, time.time()))
+            if r.status_code == 404:
+                # 404 means no robots.txt — all crawlers allowed, not an error.
+                _cache_set(_robots_cache, _robots_cache_lock, base, ("absent", time.time()))
+            elif r.status_code != 200:
+                logger.warning("robots_check: unexpected status %s for %s", r.status_code, robots_url)
+                _cache_set(_robots_cache, _robots_cache_lock, base, (None, time.time()))
+            else:
+                rp = RobotFileParser()
+                rp.set_url(robots_url)
+                rp.parse(r.text.splitlines())
+                _cache_set(_robots_cache, _robots_cache_lock, base, (rp, time.time()))
         except (requests.RequestException, OSError, ValueError) as exc:
             logger.warning("robots_check fetch failed for %s: %s", robots_url, exc)
             _cache_set(_robots_cache, _robots_cache_lock, base, (None, time.time()))
@@ -154,6 +161,10 @@ def robots_check(url: str) -> dict:
     rp = cached[0] if cached else None
     if rp is None:
         return result(url, "robots", "warning", None, "Could not fetch robots.txt")
+    if rp == "absent":
+        return result(url, "robots", "pass", {"allowed": True, "googlebot": True},
+                      "No robots.txt (all crawlers allowed)",
+                      {"robots_url": robots_url, "crawl_delay": None})
 
     allowed = rp.can_fetch("*", url)
     googlebot = rp.can_fetch("Googlebot", url)
@@ -373,7 +384,8 @@ def image_alt_check(url: str) -> dict:
 
     images = soup.find_all("img")
     total = len(images)
-    missing_alt = [img.get("src", "") for img in images if not img.get("alt", "").strip()]
+    # Only flag truly absent alt attributes — alt="" is valid WCAG pattern for decorative images
+    missing_alt = [img.get("src", "") for img in images if img.get("alt") is None]
 
     if total == 0:
         return result(url, "image_alt", "pass", {}, "No images found")
@@ -637,15 +649,10 @@ def schema_check(url: str) -> dict:
     for m in micro:
         schemas_found.append({"format": "Microdata", "type": m.get("itemtype", "")})
 
-    # Open Graph
-    og_tags = soup.find_all("meta", property=lambda p: p and p.startswith("og:"))
-    if og_tags:
-        schemas_found.append({"format": "Open Graph", "type": f"{len(og_tags)} tags"})
-
-    # Twitter Card
-    tw_tags = soup.find_all("meta", attrs={"name": lambda n: n and n.startswith("twitter:")})
-    if tw_tags:
-        schemas_found.append({"format": "Twitter Card", "type": f"{len(tw_tags)} tags"})
+    # Open Graph and Twitter Card are social metadata, not structured data — track
+    # separately for information but do NOT count toward schema pass/fail.
+    og_count = len(soup.find_all("meta", property=lambda p: p and p.startswith("og:")))
+    tw_count = len(soup.find_all("meta", attrs={"name": lambda n: n and n.startswith("twitter:")}))
 
     s = "fail" if not schemas_found else "warning" if errors else "pass"
     msg = f"{len(schemas_found)} schema(s) found" if schemas_found else "No structured data found"
@@ -658,7 +665,12 @@ def schema_check(url: str) -> dict:
         s,
         schemas_found,
         msg,
-        {"errors": errors, "types": [sc["type"] for sc in schemas_found]},
+        {
+            "errors": errors,
+            "types": [sc["type"] for sc in schemas_found],
+            "og_tags": og_count,
+            "twitter_tags": tw_count,
+        },
     )
 
 
@@ -715,7 +727,6 @@ def ttfb_check(url: str) -> dict:
         for _ in resp.iter_content(1):
             break
         ttfb_ms = round((time.time() - start) * 1000)
-        total_ms = round((time.time() - start) * 1000)
 
         if ttfb_ms < 200:
             s, msg = "pass", f"Excellent TTFB: {ttfb_ms}ms"
@@ -736,7 +747,6 @@ def ttfb_check(url: str) -> dict:
                 "ttfb_ms": ttfb_ms,
                 "server": resp.headers.get("Server", ""),
                 "cache": resp.headers.get("X-Cache", ""),
-                "total_ms": total_ms,
             },
         )
     except (requests.RequestException, OSError) as e:
@@ -1240,9 +1250,13 @@ def lang_check(url: str) -> dict:
 
 def content_freshness_check(url: str) -> dict:
     """Check content freshness signals (Last-Modified header + in-page date meta)."""
+    from datetime import datetime, timezone
+    from email.utils import parsedate_to_datetime
+
     resp, soup = fetch_page(url)
     if resp is None or soup is None:
         return result(url, "content_freshness", "error", None, "Could not fetch page")
+
     last_modified = resp.headers.get("Last-Modified") or resp.headers.get("last-modified")
     date_signals = [
         ("meta[property='article:modified_time']", "content"),
@@ -1257,16 +1271,44 @@ def content_freshness_check(url: str) -> dict:
         if el and el.get(attr):
             visible_date = el.get(attr)
             break
-    has_signal = bool(last_modified or visible_date)
-    if last_modified:
-        msg = f"Last-Modified: {last_modified}"
-    elif visible_date:
-        msg = f"Published/modified date found: {visible_date[:40]}"
+
+    raw_date = last_modified or visible_date
+    if not raw_date:
+        return result(url, "content_freshness", "warning", None,
+                      "No freshness signals — add Last-Modified header or article:modified_time meta",
+                      {"last_modified": last_modified, "visible_date": visible_date})
+
+    # Parse the date and compare to today
+    parsed_dt = None
+    try:
+        if last_modified:
+            parsed_dt = parsedate_to_datetime(last_modified)
+        else:
+            parsed_dt = datetime.fromisoformat(visible_date.replace("Z", "+00:00"))
+    except Exception:
+        pass
+
+    if parsed_dt is None:
+        return result(url, "content_freshness", "pass", raw_date,
+                      f"Date signal found: {raw_date[:40]} (could not parse for age check)",
+                      {"last_modified": last_modified, "visible_date": visible_date})
+
+    now = datetime.now(timezone.utc)
+    if parsed_dt.tzinfo is None:
+        parsed_dt = parsed_dt.replace(tzinfo=timezone.utc)
+    age_days = (now - parsed_dt).days
+    age_months = age_days // 30
+
+    if age_days <= 365:
+        s, freshness = "pass", f"Updated {age_days} days ago"
+    elif age_days <= 730:
+        s, freshness = "warning", f"Content is ~{age_months} months old — consider refreshing"
     else:
-        msg = "No freshness signals — add Last-Modified header or article:modified_time meta"
-    return result(url, "content_freshness", "pass" if has_signal else "warning",
-                  last_modified or visible_date, msg,
-                  {"last_modified": last_modified, "visible_date": visible_date})
+        s, freshness = "fail", f"Content is ~{age_months} months old — likely stale"
+
+    return result(url, "content_freshness", s, raw_date, freshness,
+                  {"last_modified": last_modified, "visible_date": visible_date,
+                   "age_days": age_days})
 
 
 def url_structure_check(url: str) -> dict:

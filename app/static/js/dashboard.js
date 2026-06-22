@@ -446,6 +446,7 @@ function nav(el){
   // Refresh panel-specific data on navigate
   if(panelId==='home') { _stopRepAutoRefresh(); updateHomeStats(); }
   else if(panelId==='reports') loadReports();
+  else if(panelId==='settings') { _stopRepAutoRefresh(); loadTeamUsers(); }
   else { _stopRepAutoRefresh(); if(panelId==='trend') loadTrend(); }
 }
 function navTo(panelId){
@@ -871,6 +872,7 @@ function idxToggle(){
   _setRow('idx-src-row',  t==='sitemap'||t==='domain'||t==='multi');
   _setRow('idx-file-row', t==='csv');
   _setRow('idx-paste-row',t==='paste');
+  _setRow('idx-sf-csv-row',t==='sf-csv');
   if(t==='sitemap'||t==='domain'||t==='multi'){
     document.getElementById('idx-lbl').textContent=
       t==='sitemap'?'Sitemap URL':t==='domain'?'Domain':'Sitemap URLs (comma-separated)';
@@ -884,6 +886,7 @@ function audToggle(){
   _setRow('aud-file-row', t==='csv');
   _setRow('aud-paste-row',t==='paste');
   _setRow('aud-crawl-row',t==='crawl');
+  _setRow('aud-sf-csv-row',t==='sf-csv');
   if(t==='sitemap'||t==='domain'||t==='crawl'){
     document.getElementById('aud-lbl').textContent=
       t==='sitemap'?'Sitemap URL':t==='domain'?'Domain':'Start URL (crawl from here)';
@@ -891,6 +894,45 @@ function audToggle(){
       t==='sitemap'?'https://example.com/sitemap.xml':
       t==='domain'?'example.com':'https://example.com/';
   }
+}
+
+// ── Screaming Frog CSV import ─────────────────────────────────────────────────
+function parseSFCsv(file, colName){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const lines = e.target.result.split(/\r?\n/);
+      if(!lines.length) return reject('Empty file');
+      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+      const col = colName?.trim() || 'Address';
+      const idx = headers.findIndex(h => h.toLowerCase() === col.toLowerCase());
+      if(idx < 0) return reject('Column "' + col + '" not found. Headers: ' + headers.join(', '));
+      const urls = lines.slice(1).map(l => {
+        const cells = l.split(',');
+        return cells[idx]?.replace(/^"|"$/g,'').trim();
+      }).filter(u => u && u.startsWith('http'));
+      resolve(urls);
+    };
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+async function loadSFCsv(prefix){
+  const file = document.getElementById(prefix+'-sf-csv-file')?.files?.[0];
+  const col  = document.getElementById(prefix+'-sf-col-name')?.value || 'Address';
+  if(!file){ showToast('Select a CSV file first', 'warn'); return; }
+  try {
+    const urls = await parseSFCsv(file, col);
+    if(!urls.length){ showToast('No URLs found in that column', 'warn'); return; }
+    const ta = document.getElementById(prefix+'-paste');
+    if(ta){
+      ta.value = urls.join('\n');
+      // switch the radio to paste so the backend sees the textarea value
+      const radio = document.querySelector('input[name="'+prefix+'-type"][value="paste"]');
+      if(radio){ radio.checked = true; prefix==='idx' ? idxToggle() : audToggle(); }
+      showToast(urls.length + ' URLs loaded from SF CSV', 'ok');
+    }
+  } catch(e){ showToast(typeof e === 'string' ? e : 'CSV parse error', 'err'); }
 }
 
 // ── File upload ───────────────────────────────────────────────────────────────
@@ -1353,6 +1395,10 @@ function startAudit(){
   document.getElementById('aud-live-sub').textContent='Fetching URLs…';
   document.getElementById('aud-done-bar').classList.remove('visible');
   const _nsReset=document.getElementById('aud-next-steps'); if(_nsReset) _nsReset.style.display='none';
+  const _issBtnReset=document.getElementById('aud-issues-summary-btn');
+  if(_issBtnReset) _issBtnReset.style.display='none';
+  const _issPanelReset=document.getElementById('aud-issues-summary-panel');
+  if(_issPanelReset) _issPanelReset.style.display='none';
   _audLastReport=''; _audLastXlsx='';
 
   const kw=document.getElementById('aud-kw').value;
@@ -1546,6 +1592,70 @@ function audDone(ok){
 
 function openAudReport(){ if(_audLastReport) window.open('/api/open/'+_audLastReport,'_blank'); }
 
+// ── Issues Summary ────────────────────────────────────────────────────────────
+function buildIssuesSummary(){
+  // Aggregate from _audResultsMap: url -> [{tool, status, ...}, ...]
+  const issueMap = new Map(); // issueName -> [url, ...]
+  _audResultsMap.forEach((results, url) => {
+    (results||[]).forEach(r => {
+      if(r.status === 'fail' || r.status === 'error'){
+        const label = (r.tool||r.check||'Unknown check').replace(/_/g,' ');
+        if(!issueMap.has(label)) issueMap.set(label, []);
+        issueMap.get(label).push(url);
+      }
+    });
+  });
+
+  const panel = document.getElementById('issues-summary-content');
+  if(!panel) return;
+
+  if(issueMap.size === 0){
+    panel.innerHTML = '<div style="padding:12px;color:var(--c-muted)">No issues found — all checks passed.</div>';
+    return;
+  }
+
+  const sorted = [...issueMap.entries()].sort((a,b) => b[1].length - a[1].length);
+  const rows = sorted.map(([issue, urls]) => {
+    const urlList = urls.slice(0,5).map(u=>`<a href="${u}" target="_blank" style="display:block;font-size:11px;color:var(--c-link,#60a5fa);word-break:break-all">${u}</a>`).join('');
+    const more = urls.length > 5 ? `<span style="font-size:11px;color:var(--c-muted)">…and ${urls.length-5} more</span>` : '';
+    return `<tr>
+      <td style="padding:8px 10px;font-weight:500;white-space:nowrap">${issue}</td>
+      <td style="padding:8px 10px;text-align:center;font-weight:600;color:var(--c-red,#f87171)">${urls.length}</td>
+      <td style="padding:8px 10px">${urlList}${more}</td>
+    </tr>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div style="font-weight:600;margin-bottom:8px;font-size:13px">Issues across ${_audResultsMap.size} audited pages</div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="border-bottom:1px solid var(--c-border,#334)">
+          <th style="padding:6px 10px;text-align:left;color:var(--c-muted)">Issue</th>
+          <th style="padding:6px 10px;text-align:center;color:var(--c-muted)">Affected Pages</th>
+          <th style="padding:6px 10px;text-align:left;color:var(--c-muted)">URLs</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>`;
+}
+
+function toggleIssuesSummary(){
+  const panel = document.getElementById('aud-issues-summary-panel');
+  const btn = document.getElementById('aud-issues-summary-btn');
+  if(!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  if(isOpen){
+    panel.style.display = 'none';
+    if(btn) btn.textContent = '📋 Issues Summary';
+  } else {
+    buildIssuesSummary();
+    panel.style.display = 'block';
+    if(btn) btn.textContent = '▲ Hide Summary';
+  }
+}
+
 // ── Stream ────────────────────────────────────────────────────────────────────
 function streamAudit(){
   if(_audES) _audES.close();
@@ -1590,6 +1700,10 @@ function streamAudit(){
         dlBtn.href='/api/download/'+_audLastXlsx;
         dlBtn.style.display='inline-flex';
       }
+      const _issBtn1=document.getElementById('aud-issues-summary-btn');
+      if(_issBtn1){_issBtn1.style.display='inline-flex';_issBtn1.textContent='📋 Issues Summary';}
+      const _issPanel1=document.getElementById('aud-issues-summary-panel');
+      if(_issPanel1) _issPanel1.style.display='none';
       updateHomeStats();
       refreshReportsSilent();
       _audES.close();_audES=null;
@@ -1667,9 +1781,11 @@ function renderReports(){
   const q=(document.getElementById('rep-search')||{value:''}).value.toLowerCase();
   const clearBtn=document.getElementById('rep-search-clear');
   if(clearBtn) clearBtn.style.display=q?'':'none';
+  const proj=(document.getElementById('rep-project')||{value:''}).value.toLowerCase().trim();
   const sortVal=(document.getElementById('rep-sort')||{value:'newest'}).value;
   let list=_reportFilter==='all'?_allReports:_allReports.filter(r=>r.kind===_reportFilter);
   if(q) list=list.filter(r=>r.name.toLowerCase().includes(q));
+  if(proj) list=list.filter(r=>r.name.toLowerCase().includes(proj));
   list=[...list];
   if(sortVal==='oldest')       list.sort((a,b)=>a.name.localeCompare(b.name));
   else if(sortVal==='newest')  list.sort((a,b)=>b.name.localeCompare(a.name));
@@ -2116,6 +2232,7 @@ function saveSettings(){
     },
     slack:  {enabled:document.getElementById('cfg-slack')?.checked||false, webhook_url:document.getElementById('cfg-slack-webhook')?.value||''},
     teams:  {enabled:document.getElementById('cfg-teams')?.checked||false, webhook_url:document.getElementById('cfg-teams-webhook')?.value||''},
+    webhook_url: document.getElementById('cfg-webhook-url')?.value||'',
     gsc:    {
       enabled:          document.getElementById('cfg-gsc')?.checked||false,
       credentials_file: document.getElementById('cfg-gsc-creds')?.value.trim()||'gsc_credentials.json',
@@ -2258,6 +2375,8 @@ function loadSettings(){
     // Teams
     if(c.teams?.enabled){ _chk('cfg-teams', true); toggleNotifExpand('teams', true); }
     _set('cfg-teams-webhook', c.teams?.webhook_url);
+    // Generic webhook
+    _set('cfg-webhook-url', c.webhook_url);
     // Proxies
     if(Array.isArray(c.proxies) && c.proxies.length) {
       const el = document.getElementById('cfg-proxies');
@@ -2614,6 +2733,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('idx-badge')?.classList.add('tb-hidden');
   document.getElementById('aud-badge')?.classList.add('tb-hidden');
   sbRestoreGroups();
+  initOnboarding();
 
   // Touch/click navigation dropdowns (important for tablet and touch devices)
   document.querySelectorAll('.navbar .nav-has-dd').forEach(btn => {
@@ -3184,6 +3304,55 @@ const HELP_CONTENT = {
       </div>
     </div>
   `,
+  api: `
+    <h3>REST API Reference</h3>
+    <p style="font-size:12.5px;color:var(--text2);margin-bottom:14px">All endpoints are served by the local Flask server. No authentication required when running locally.</p>
+    <table class="help-api-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead>
+        <tr style="border-bottom:2px solid var(--c-border)">
+          <th style="text-align:left;padding:6px 10px 6px 0;color:var(--text2);font-weight:600;white-space:nowrap">Method &amp; Endpoint</th>
+          <th style="text-align:left;padding:6px 10px;color:var(--text2);font-weight:600">Description</th>
+          <th style="text-align:left;padding:6px 0 6px 10px;color:var(--text2);font-weight:600">Params / Body</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--c-border)">
+          <td style="padding:8px 10px 8px 0;white-space:nowrap"><code>GET /api/audit/start</code></td>
+          <td style="padding:8px 10px">Start a new SEO audit run</td>
+          <td style="padding:8px 0 8px 10px;color:var(--text2)"><code>url</code>, <code>limit</code>, <code>workers</code></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--c-border)">
+          <td style="padding:8px 10px 8px 0;white-space:nowrap"><code>GET /api/audit/status</code></td>
+          <td style="padding:8px 10px">Get current audit progress and status</td>
+          <td style="padding:8px 0 8px 10px;color:var(--text2)">—</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--c-border)">
+          <td style="padding:8px 10px 8px 0;white-space:nowrap"><code>POST /api/index/partial</code></td>
+          <td style="padding:8px 10px">Check indexation for a list of URLs</td>
+          <td style="padding:8px 0 8px 10px;color:var(--text2)"><code>{"urls": ["https://…"]}</code></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--c-border)">
+          <td style="padding:8px 10px 8px 0;white-space:nowrap"><code>GET /api/reports</code></td>
+          <td style="padding:8px 10px">List all saved audit reports</td>
+          <td style="padding:8px 0 8px 10px;color:var(--text2)">—</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 10px 8px 0;white-space:nowrap"><code>GET /health</code></td>
+          <td style="padding:8px 10px">Health check — returns app version</td>
+          <td style="padding:8px 0 8px 10px;color:var(--text2)"><code>{"status":"ok","version":"…"}</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 style="margin-top:20px">Example: start an audit</h3>
+    <pre class="help-pre">GET /api/audit/start?url=https://example.com&amp;limit=50&amp;workers=4</pre>
+    <h3>Example: check indexation</h3>
+    <pre class="help-pre">POST /api/index/partial
+Content-Type: application/json
+
+{"urls": ["https://example.com/page-1", "https://example.com/page-2"]}</pre>
+    <h3>Webhook (generic)</h3>
+    <p style="font-size:12.5px">Configure a <b>Webhook URL</b> in Settings → Notifications to receive a POST request with a JSON payload after each audit or indexing run completes. Useful for CI/CD pipelines and custom integrations.</p>
+  `,
   about: `
     <h3>SEO Suite</h3>
     <p>Version: <code id="help-version">…</code> · Self-hosted Flask app + Playwright browser automation</p>
@@ -3426,6 +3595,10 @@ streamAudit=function(){
         dlBtn.href='/api/download/'+_audLastXlsx;
         dlBtn.style.display='inline-flex';
       }
+      const _issBtn2=document.getElementById('aud-issues-summary-btn');
+      if(_issBtn2){_issBtn2.style.display='inline-flex';_issBtn2.textContent='📋 Issues Summary';}
+      const _issPanel2=document.getElementById('aud-issues-summary-panel');
+      if(_issPanel2) _issPanel2.style.display='none';
       updateHomeStats();
       refreshReportsSilent();
       _audES.close();_audES=null;
@@ -5268,6 +5441,123 @@ async function testNotify(channel) {
 function toggleScheduleExpand(show) {
   const el = document.getElementById('notif-expand-schedule');
   if (el) el.style.display = show ? '' : 'none';
+  if (show) renderScheduleList();
+}
+
+// ── P6: Multi-schedule list (localStorage-backed) ────────────────────────────
+
+const _SCHED_KEY = 'seo_suite_schedules';
+
+function _loadSchedules() {
+  try { return JSON.parse(localStorage.getItem(_SCHED_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function _saveSchedules(list) {
+  localStorage.setItem(_SCHED_KEY, JSON.stringify(list));
+  // Sync legacy hidden fields from first entry so saveSettings() still works
+  const first = list[0] || {};
+  const _setHidden = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  _setHidden('cfg-schedule-interval', first.interval || 'daily');
+  _setHidden('cfg-schedule-time',     first.time     || '');
+  _setHidden('cfg-schedule-sitemap',  first.sitemap  || '');
+  _setHidden('cfg-schedule-limit',    first.limit    || '');
+}
+
+function renderScheduleList() {
+  const wrap = document.getElementById('schedule-list-wrap');
+  if (!wrap) return;
+  const list = _loadSchedules();
+  if (!list.length) {
+    wrap.innerHTML = '<p class="u-text-muted u-fs-12" style="margin:4px 0 8px">No schedule entries yet. Click "+ Add Schedule" to add one.</p>';
+    return;
+  }
+  wrap.innerHTML = '<table class="tbl" style="width:100%;margin-bottom:8px"><thead><tr><th>Sitemap / Domain</th><th>Interval</th><th>Time</th><th>Limit</th><th></th></tr></thead><tbody>' +
+    list.map((e, i) =>
+      '<tr>' +
+      '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _esc(e.sitemap||'') + '">' + _esc(e.sitemap||'—') + '</td>' +
+      '<td>' + _esc(e.interval||'daily') + '</td>' +
+      '<td>' + _esc(e.time||'—') + '</td>' +
+      '<td>' + _esc(e.limit||'—') + '</td>' +
+      '<td><button class="btn btn-ghost btn-sm" onclick="scheduleRemoveEntry(' + i + ')">Remove</button></td>' +
+      '</tr>'
+    ).join('') +
+    '</tbody></table>';
+  _saveSchedules(list); // ensure hidden fields are synced
+}
+
+function scheduleAddRowToggle(show) {
+  const form = document.getElementById('schedule-add-form');
+  if (!form) return;
+  const visible = (show === undefined) ? form.style.display === 'none' : show;
+  form.style.display = visible ? '' : 'none';
+  if (visible) document.getElementById('sched-new-sitemap')?.focus();
+}
+
+function scheduleAddEntry() {
+  const sitemap  = (document.getElementById('sched-new-sitemap')?.value  || '').trim();
+  const interval =  document.getElementById('sched-new-interval')?.value || 'daily';
+  const time     = (document.getElementById('sched-new-time')?.value     || '').trim();
+  const limit    = (document.getElementById('sched-new-limit')?.value    || '').trim();
+  if (!sitemap) { toast('Sitemap / Domain URL is required', 'warn'); return; }
+  const list = _loadSchedules();
+  list.push({ sitemap, interval, time, limit });
+  _saveSchedules(list);
+  renderScheduleList();
+  scheduleAddRowToggle(false);
+  // Clear form
+  ['sched-new-sitemap','sched-new-time','sched-new-limit'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const sel = document.getElementById('sched-new-interval'); if (sel) sel.value = 'daily';
+  toast('Schedule entry added', 'success');
+}
+
+function scheduleRemoveEntry(idx) {
+  const list = _loadSchedules();
+  list.splice(idx, 1);
+  _saveSchedules(list);
+  renderScheduleList();
+  toast('Entry removed', 'success');
+}
+
+// ── P7: Team Management ───────────────────────────────────────────────────────
+
+function renderTeamUsers(users) {
+  const el = document.getElementById('team-users-list');
+  if (!el) return;
+  if (!users || !users.length) { el.innerHTML = '<p class="u-text-muted u-fs-12">No users yet.</p>'; return; }
+  el.innerHTML = '<table class="tbl" style="width:100%"><thead><tr><th>Username</th><th>Role</th><th></th></tr></thead><tbody>' +
+    users.map(u => '<tr><td>' + _esc(u.username) + '</td><td>' + (u.is_admin ? 'Admin' : 'User') + '</td><td><button class="btn btn-ghost btn-sm" onclick="deleteTeamUser(' + JSON.stringify(u.username) + ')">Remove</button></td></tr>').join('') +
+    '</tbody></table>';
+}
+
+function createTeamUser() {
+  const username = document.getElementById('new-user-email')?.value?.trim();
+  const password = document.getElementById('new-user-pass')?.value;
+  const is_admin = document.getElementById('new-user-admin')?.checked;
+  if (!username || !password) { toast('Username and password required', 'warn'); return; }
+  fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'}, body: JSON.stringify({username, password, is_admin}), credentials:'same-origin' })
+    .then(r=>r.json()).then(d => {
+      if (d.ok) { toast('User added', 'success'); loadTeamUsers(); }
+      else toast(d.error||'Failed', 'error');
+    }).catch(() => toast('Request failed', 'error'));
+}
+
+function deleteTeamUser(username) {
+  if (!confirm('Remove user "' + username + '"?')) return;
+  fetch('/api/users/' + encodeURIComponent(username), { method:'DELETE', headers:{'X-Requested-With':'XMLHttpRequest'}, credentials:'same-origin' })
+    .then(r=>r.json()).then(d => {
+      if (d.ok) { toast('User removed', 'success'); loadTeamUsers(); }
+      else toast(d.error||'Failed', 'error');
+    }).catch(() => toast('Request failed', 'error'));
+}
+
+function loadTeamUsers() {
+  fetch('/api/users', { credentials:'same-origin', headers:{'X-Requested-With':'XMLHttpRequest'} })
+    .then(r=>r.json()).then(d => {
+      // API returns {ok, users, me} — extract users array
+      const users = Array.isArray(d) ? d : (d && d.users ? d.users : null);
+      if (users) renderTeamUsers(users);
+    })
+    .catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -6766,6 +7056,7 @@ function renderDuplicateScan(d) {
     ${groupsHtml}`;
 }
 
+<<<<<<< HEAD
 
 // --- S-NEW: Centralised click delegation (replaces inline onclick) -----------
 document.addEventListener('click', function _delegatedClick(e) {
@@ -6946,6 +7237,7 @@ document.addEventListener('click', function _delegatedClick(e) {
     // Cannibalisation
     case 'switchCannibalTab': _call('switchCannibalTab', arg); break;
     // IndexNow
+    case 'toggleIssuesSummary': _call('toggleIssuesSummary'); break;
     case 'runIndexNow':       _call('runIndexNow'); break;
     case 'clearIndexNow':     _call('clearIndexNow'); break;
     default:
@@ -6953,3 +7245,15 @@ document.addEventListener('click', function _delegatedClick(e) {
         console.warn('[delegation] unknown data-action:', action, el);
   }
 });
+
+// ── Onboarding banner ─────────────────────────────────────────────────────
+function initOnboarding() {
+  if (localStorage.getItem('seo_suite_onboarded')) return;
+  const el = document.getElementById('onboarding-banner');
+  if (el) el.style.display = 'block';
+}
+function dismissOnboarding() {
+  localStorage.setItem('seo_suite_onboarded', '1');
+  const el = document.getElementById('onboarding-banner');
+  if (el) el.style.display = 'none';
+}

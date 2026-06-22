@@ -483,4 +483,16 @@
 
 ---
 
-_Last updated: 2026-06-22 — Batch H (Technical SEO use case, C25, U11, stale AUDIT_LOG sync). VERSION 2.5.0._
+### H-NEW5 `[REFACTOR]` `[x]` Check reorganization — correct classification across use cases
+- **Issue:** Several checks were in semantically wrong use cases: `hreflang` (crawl/indexing directive) and `ttfb` (server response/crawl budget) in `on_page`; `canonical` and `meta_robots` (crawler directives) duplicated across crawlability + on_page; `favicon` (infrastructure asset) in `on_page`.
+- **Fix:**
+  - `hreflang` + `ttfb` → moved from `on_page` → `crawlability` (both are crawl/indexing signals, not content)
+  - `canonical` + `meta_robots` → removed from `on_page` (kept only in `crawlability`, where they belong)
+  - `favicon` → moved from `on_page` → `site_health`
+  - `spf` / `dmarc` / `mx_records` → kept in `site_health` (DNS security / domain trust)
+- **Result:** crawlability: 10, on_page: 8, site_health: 9, technical_seo: 27 (unchanged total)
+- **Files:** `core/seo_audit.py` (TASKS + USE_CASES descs + dispatch blocks), `app/static/js/dashboard.js` (UC_DEFS + TASK_DEFS + UC_INFO), `agents.md` (check registry table)
+
+---
+
+_Last updated: 2026-06-22 — Batch H + check reorganization. VERSION 2.5.1._

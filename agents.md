@@ -60,6 +60,24 @@ python -m playwright install chromium --with-deps  # first time only
 | `SEO_SUITE_ALLOW_NO_AUTH_CLOUD` | Override cloud NO_AUTH block (dangerous) |
 | `SEO_SUITE_PUBLIC_DOCS` | `1` to expose `/openapi.yaml` + `/docs` publicly |
 
+## Use Case Check Registry (v2.5.1)
+| Use Case | Checks | Count |
+|---|---|---|
+| crawlability | robots, http_status, redirect, broken_links, internal_links, sitemap, canonical, meta_robots, hreflang, ttfb | 10 |
+| on_page | title, meta_description, headings, image_alt, word_count, readability, schema, og_tags | 8 |
+| site_health | ssl, domain_age, mixed_content, https_enforcement, security_headers, spf, dmarc, mx_records, favicon | 9 |
+| performance | pagespeed_mobile, pagespeed_desktop, mobile, gsc_url_inspection, lcp, cls, fcp, inp | 8 (API required) |
+| search_console | clicks_impressions, top_queries, position_tracker, ctr_analyzer, coverage_errors, sitemaps_status, manual_actions | 7 (GSC required) |
+| authority | backlinks, domain_authority, page_authority, referring_domains, domain_rank, broken_backlinks, nofollow_ratio, spam_score | 8 |
+| rankings | rank_tracker, serp_features, competitor, rank_change, traffic_share | 5 (SerpAPI required) |
+| technical_seo | composite of crawlability + on_page + site_health | 27 |
+
+**Classification rules:**
+- Crawl/indexing directives (canonical, meta_robots, hreflang) → crawlability
+- Server response time (ttfb) → crawlability (affects crawl budget)
+- Brand/infrastructure assets (favicon) → site_health
+- Content quality signals → on_page
+
 ## Architecture Notes
 - **Panel nav**: `navTo(panelId)` in dashboard.js toggles `.panel` divs. No React router.
 - **CSRF**: Deny-by-default. JS fetches `/api/csrf` on load, patches `window.fetch` to inject `X-CSRF-Token`. Exempt only: `/api/csrf`.

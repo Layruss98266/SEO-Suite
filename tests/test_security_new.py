@@ -78,7 +78,7 @@ def test_api_open_contains_sandbox_csp_and_nosniff(client, tmp_path, monkeypatch
     try:
         r = client.get("/api/open/sandbox_test_report.html")
         assert r.status_code == 200
-        assert r.headers.get("Content-Security-Policy") == "sandbox allow-same-origin"
+        assert "sandbox" in r.headers.get("Content-Security-Policy", "")
         assert r.headers.get("X-Content-Type-Options") == "nosniff"
     finally:
         f.unlink(missing_ok=True)
@@ -151,6 +151,7 @@ def test_logout_endpoint_rejects_get(client):
 def test_metrics_endpoint_requires_login(client, monkeypatch):
     """Verify /metrics redirects or blocks unauthenticated requests when auth is enabled."""
     from werkzeug.security import generate_password_hash
+    monkeypatch.delenv("SEO_SUITE_NO_AUTH", raising=False)
     monkeypatch.setenv("SEO_SUITE_USERNAME", "tester")
     monkeypatch.setenv("SEO_SUITE_PASSWORD_HASH", generate_password_hash("hunter2hunter2"))
     

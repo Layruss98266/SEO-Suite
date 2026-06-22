@@ -24,6 +24,7 @@ def store(tmp_path, monkeypatch):
     monkeypatch.delenv("SEO_SUITE_PASSWORD_HASH", raising=False)
     monkeypatch.delenv("SEO_SUITE_USERNAME", raising=False)
     monkeypatch.delenv("SEO_SUITE_USERS_BACKEND", raising=False)
+    monkeypatch.delenv("SEO_SUITE_NO_AUTH", raising=False)
 
     # Reset the db module's per-path init cache so this tmp DB is initialised
     # cleanly (otherwise a previous test run's cache entry would skip schema

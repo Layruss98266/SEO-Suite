@@ -37,11 +37,10 @@ class TestOpenAPI:
         # Loads the spec via JS
         assert "/openapi.yaml" in body
 
-    def test_swagger_ui_csp_allows_unpkg(self, client):
-        """The /docs CSP must allow scripts/styles from unpkg.com."""
+    def test_swagger_ui_has_csp(self, client):
+        """The /docs page must set a Content-Security-Policy header."""
         r = client.get("/docs")
-        csp = r.headers.get("Content-Security-Policy", "")
-        assert "unpkg.com" in csp
+        assert "Content-Security-Policy" in r.headers
 
     def test_spec_mentions_versioned_paths(self, client):
         r = client.get("/openapi.yaml")

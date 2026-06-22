@@ -17,6 +17,7 @@ Phase 1 SEO Tools — No API required
 15. TTFB Checker
 """
 
+import copy
 import json
 import logging
 import re
@@ -403,6 +404,7 @@ def word_count_check(url: str) -> dict:
     if not soup:
         return result(url, "word_count", "error", None, "Could not fetch page")
 
+    soup = copy.deepcopy(soup)
     for tag in soup(["script", "style", "nav", "footer", "header"]):
         tag.decompose()
 
@@ -755,6 +757,7 @@ def readability_check(url: str) -> dict:
     _, soup = fetch_page(url)
     if not soup:
         return result(url, "readability", "error", None, "Could not fetch page")
+    soup = copy.deepcopy(soup)
     for tag in soup(["script", "style", "nav", "footer", "header"]):
         tag.decompose()
     text = soup.get_text(separator=" ", strip=True)

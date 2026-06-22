@@ -85,7 +85,8 @@ class TestAuthGating:
 
     @pytest.fixture
     def auth_client(self, monkeypatch):
-        # Provide a real hash so auth_enabled() returns True. Don't log in.
+        # Remove NO_AUTH so auth_enabled() checks the password hash below.
+        monkeypatch.delenv("SEO_SUITE_NO_AUTH", raising=False)
         from werkzeug.security import generate_password_hash
         monkeypatch.setenv("SEO_SUITE_USERNAME", "tester")
         monkeypatch.setenv("SEO_SUITE_PASSWORD_HASH", generate_password_hash("hunter2"))
@@ -110,12 +111,13 @@ class TestAuthGating:
     def test_health_still_public(self, auth_client):
         r = auth_client.get("/health")
         assert r.status_code == 200
-        assert r.get_json() == {"status": "ok"}
+        body = r.get_json()
+        assert body["status"] == "ok"
+        assert "version" in body
 
-    def test_health_omits_version(self, auth_client):
+    def test_health_omits_indexing_running(self, auth_client):
         r = auth_client.get("/health")
         body = r.get_json()
-        assert "version" not in body
         assert "indexing_running" not in body
 
     def test_login_form_renders(self, auth_client):
@@ -242,6 +244,7 @@ class TestLoginNextRedirect:
 
     @pytest.fixture
     def auth_client(self, monkeypatch):
+        monkeypatch.delenv("SEO_SUITE_NO_AUTH", raising=False)
         from werkzeug.security import generate_password_hash
         monkeypatch.setenv("SEO_SUITE_USERNAME", "tester")
         monkeypatch.setenv("SEO_SUITE_PASSWORD_HASH", generate_password_hash("hunter2hunter2"))

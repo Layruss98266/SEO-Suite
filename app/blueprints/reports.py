@@ -197,6 +197,7 @@ def api_reports_delete_bulk():
             failed.append({"name": name, "error": "not found"})
     return jsonify(
         {
+            "ok": not bool(failed),
             "deleted": deleted,
             "failed": failed,
             "deleted_count": len(deleted),

@@ -164,6 +164,35 @@ TASKS = {
         {"id": "rank_change",    "label": "Rank change vs last run"},
         {"id": "traffic_share",  "label": "Estimated traffic share"},
     ],
+    "technical_seo": [
+        {"id": "robots",            "label": "robots.txt"},
+        {"id": "http_status",       "label": "HTTP status"},
+        {"id": "redirect",          "label": "Redirects"},
+        {"id": "broken_links",      "label": "Broken links"},
+        {"id": "internal_links",    "label": "Internal links"},
+        {"id": "sitemap",           "label": "Sitemap validation"},
+        {"id": "canonical",         "label": "Canonical URL"},
+        {"id": "meta_robots",       "label": "Meta robots / X-Robots-Tag"},
+        {"id": "title",             "label": "Title tag"},
+        {"id": "meta_description",  "label": "Meta description"},
+        {"id": "headings",          "label": "Headings (H1–H3)"},
+        {"id": "image_alt",         "label": "Image alt text"},
+        {"id": "word_count",        "label": "Word count"},
+        {"id": "readability",       "label": "Readability"},
+        {"id": "schema",            "label": "Schema markup"},
+        {"id": "hreflang",          "label": "Hreflang tags"},
+        {"id": "ttfb",              "label": "TTFB (response time)"},
+        {"id": "og_tags",           "label": "Open Graph / Twitter cards"},
+        {"id": "favicon",           "label": "Favicon"},
+        {"id": "ssl",               "label": "SSL / TLS grade"},
+        {"id": "domain_age",        "label": "Domain age & expiry"},
+        {"id": "mixed_content",     "label": "Mixed content"},
+        {"id": "https_enforcement", "label": "HTTPS enforcement"},
+        {"id": "security_headers",  "label": "Security headers"},
+        {"id": "spf",               "label": "SPF record"},
+        {"id": "dmarc",             "label": "DMARC policy"},
+        {"id": "mx_records",        "label": "MX records"},
+    ],
 }
 
 USE_CASES = {
@@ -229,6 +258,15 @@ USE_CASES = {
         "desc": "Keyword positions · SERP rank · competitor comparison",
         "requires": "serpapi_key",
         "group": "Visibility",
+    },
+    "technical_seo": {
+        "label": "Technical SEO",
+        "icon": "⚙️",
+        "color": "#0F766E",
+        "bg": "#F0FDFA",
+        "desc": "Crawlability · on-page · site health — 27 checks, no API key required",
+        "requires": None,
+        "group": "Technical",
     },
 }
 
@@ -381,6 +419,12 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         use_cases = uc
     elif use_cases is None:
         use_cases = list(USE_CASES.keys())
+
+    # Expand composite use case — technical_seo runs crawlability + on_page + site_health
+    if "technical_seo" in use_cases:
+        base = [uc for uc in use_cases if uc != "technical_seo"]
+        base += ["crawlability", "on_page", "site_health"]
+        use_cases = list(dict.fromkeys(base))  # dedupe, preserve order
 
     active = set(use_cases)
     task_filter = set(tasks) if tasks else None  # None = no filtering

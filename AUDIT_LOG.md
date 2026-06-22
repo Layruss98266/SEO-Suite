@@ -91,9 +91,9 @@
 - `.github/workflows/ci.yml`
 - **Fix:** Remove `continue-on-error` for direct-dep CVEs.
 
-### S18 `[LOW]` `[ ]` STARTTLS silent cleartext fallback
+### S18 `[LOW]` `[x]` STARTTLS silent cleartext fallback
 - `core/notifier.py` — STARTTLS unconditional; falls back silently to cleartext if server rejects.
-- **Fix:** Gate on config or fail hard.
+- **Fix:** `_secure_starttls()` already raises `SMTPNotSupportedError` if server doesn't advertise STARTTLS — no cleartext fallback. Confirmed in code review (Batch H).
 
 ### S19 `[LOW]` `[x]` _failed_attempts unbounded in-memory dict
 - `core/auth.py` — spam unique usernames → unbounded memory growth.
@@ -200,17 +200,17 @@
 - `core/checker.py:30474`
 - **Fix:** Move to Jinja2 template file.
 
-### C21 `[LOW]` `[ ]` generate_schema 15-branch elif chain
+### C21 `[LOW]` `[x]` generate_schema 15-branch elif chain
 - `tools/generators.py:34736`
-- **Fix:** Refactor to `BUILDERS = {"article": _build_article, …}` registry.
+- **Fix:** Already uses `SCHEMA_BUILDERS` dict registry — each schema type maps to a builder function. No elif chain in current code. Confirmed in code review (Batch H).
 
 ### C22 `[LOW]` `[x]` winsound beep in Flask import path
 - `core/checker.py:29836`
 - **Fix:** `beep()` now early-returns unless `SEO_SUITE_SOUND=1` is set. `winsound` import remains lazy (inside the function, win32-guarded) so Flask/gunicorn import path is silent and cross-platform clean.
 
-### C23 `[LOW]` `[ ]` i_counter dict-as-mutable-int hack
+### C23 `[LOW]` `[x]` i_counter dict-as-mutable-int hack
 - `app/blueprints/audit.py:22941`
-- **Fix:** `nonlocal` counter or `itertools.count()`.
+- **Fix:** Already uses `itertools.count()` in current code. Confirmed in code review (Batch H).
 
 ### C24 `[LOW]` `[ ]` Three URL-validation idioms
 - `_reject_unsafe()`, `_require_public_url()`, `is_safe_url()` — three different patterns for same thing.
@@ -395,15 +395,15 @@
 ## Fix Progress Summary
 | Category | Total | Fixed | Remaining |
 |----------|-------|-------|-----------|
-| Security | 21 | 18 | 3 (S15, S18, S-NEW inline handlers) |
-| Code Quality | 26 | 16 | 10 (C20–C25 + 4 others) |
-| UI/UX | 12 | 11 | 1 (U5, U11 partially) |
+| Security | 21 | 19 | 2 (S15, S-NEW inline handlers) |
+| Code Quality | 26 | 18 | 8 (C20, C22, C24, C25 + 4 others) |
+| UI/UX | 12 | 12 | 0 |
 | Content | 11 | 9 | 2 (CT3, CT11) |
 | Persona/Product | 9 | 1 | 8 (P1–P9 minus P5) |
-| NEW items | 7 | 7 | 0 |
-| **Total** | **86** | **62** | **24** |
+| NEW items (G+H) | 12 | 12 | 0 |
+| **Total** | **91** | **71** | **20** |
 
-*Last updated: 2026-06-19 (Batch G)*
+*Last updated: 2026-06-22 (Batch H)*
 
 ### U-NEW2 `[LOW]` `[x]` Nav logo shows "v?" — version missing from /health
 - `app/blueprints/misc.py` `/health` endpoint
@@ -461,6 +461,26 @@
 - **Fix:** `/app` handler rewrites both asset URLs to append `?v=<VERSION>`. Bumping `core.version.VERSION` invalidates the cache for every visitor.
 - **Commit:** `0e64cbb`
 
+### H-NEW1 `[FEAT]` `[x]` Technical SEO use case — 27 checks, no API key
+- **New use case:** `technical_seo` — combines crawlability + on-page + site_health into a single run.
+- **Backend:** Added to `TASKS` + `USE_CASES` dicts in `core/seo_audit.py`. `audit_single_url()` expands `technical_seo` in `active` set to `{crawlability, on_page, site_health}` before dispatch.
+- **Frontend:** Added to `UC_DEFS` + `TASK_DEFS` in `dashboard.js` — nav dropdown and sidebar auto-populate (no HTML changes needed).
+- **Coverage:** robots, HTTP status, redirects, broken links, internal links, sitemap, canonical, meta robots, title, meta description, headings, image alt, word count, readability, schema, hreflang, TTFB, OG tags, favicon, SSL, domain age, mixed content, HTTPS enforcement, security headers, SPF, DMARC, MX records.
+
+### H-NEW2 `[LOW]` `[x]` C25 — `/api/reports/delete_bulk` missing `ok` key
+- `app/blueprints/reports.py` `api_reports_delete_bulk()`
+- **Issue:** Response lacked top-level `"ok"` key, inconsistent with all other API endpoints.
+- **Fix:** Added `"ok": not bool(failed)` to response dict.
+
+### H-NEW3 `[LOW]` `[x]` U11 — Mobile search tap-target missing
+- `app/templates/dashboard.html` topbar + `app/static/css/dashboard.css`
+- **Issue:** `.tb-search` is `display:none` at ≤480px — no way to open command palette on mobile.
+- **Fix:** Added `.tb-mob-search` button (search icon SVG) that calls `openCmdPalette()`. Hidden on desktop; shown at ≤480px.
+
+### H-NEW4 `[LOW]` `[x]` S18, C21, C23 — stale open status in AUDIT_LOG
+- **Issue:** Three items marked `[ ]` were already fixed in code: S18 (`_secure_starttls` already raises on cleartext), C21 (`SCHEMA_BUILDERS` registry already exists), C23 (`itertools.count()` already used).
+- **Fix:** Marked all three `[x]` after code confirmation.
+
 ---
 
-_Last updated: 2026-06-19 — commit `ac0ab70` (37/79 + 4 new = 40 fixed; 1 new open S-NEW)_
+_Last updated: 2026-06-22 — Batch H (Technical SEO use case, C25, U11, stale AUDIT_LOG sync). VERSION 2.5.0._

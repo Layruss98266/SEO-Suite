@@ -125,7 +125,7 @@ body{
   background:linear-gradient(90deg,transparent 5%,rgba(99,102,241,.45) 50%,transparent 95%);
 }
 
-.tb-hamburger,.tb-icon-btn{
+.tb-hamburger,.tb-icon-btn,.tb-mob-search{
   cursor:pointer;background:rgba(255,255,255,.05);
   border:1px solid rgba(255,255,255,.08);
   border-radius:9px;width:36px;height:36px;
@@ -133,6 +133,7 @@ body{
   display:flex;align-items:center;justify-content:center;
   transition:all var(--t);flex-shrink:0;
 }
+.tb-mob-search{display:none}
 .tb-hamburger:hover,.tb-icon-btn:hover{
   background:rgba(255,255,255,.1);color:#fff;
   border-color:rgba(255,255,255,.18);
@@ -2728,4 +2729,8 @@ body.dark .home-strip-item-ai{background:rgba(99,102,241,.1);border-color:rgba(9
 
   /* Pagination controls wrap */
   .rep-pager{flex-wrap:wrap;justify-content:center;gap:8px}
+
+  /* Mobile search icon tap-target */
+  .tb-mob-search{display:flex}
+  .tb-mob-search:hover{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.18)}
 }

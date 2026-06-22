@@ -102,9 +102,10 @@ TASKS = {
         {"id": "sitemap",          "label": "Sitemap validation"},
         {"id": "canonical",        "label": "Canonical URL"},
         {"id": "meta_robots",      "label": "Meta robots / noindex"},
+        {"id": "hreflang",         "label": "Hreflang tags"},
+        {"id": "ttfb",             "label": "TTFB (response time)"},
     ],
     "on_page": [
-        {"id": "canonical",        "label": "Canonical URL"},
         {"id": "title",            "label": "Title tag"},
         {"id": "meta_description", "label": "Meta description"},
         {"id": "headings",         "label": "Headings (H1–H3)"},
@@ -112,11 +113,7 @@ TASKS = {
         {"id": "word_count",       "label": "Word count"},
         {"id": "readability",      "label": "Readability"},
         {"id": "schema",           "label": "Schema markup"},
-        {"id": "hreflang",         "label": "Hreflang tags"},
-        {"id": "ttfb",             "label": "TTFB (response time)"},
         {"id": "og_tags",          "label": "Open Graph / Twitter cards"},
-        {"id": "meta_robots",      "label": "Meta robots / X-Robots-Tag"},
-        {"id": "favicon",          "label": "Favicon"},
     ],
     "site_health": [
         {"id": "ssl",                "label": "SSL / TLS grade"},
@@ -127,6 +124,7 @@ TASKS = {
         {"id": "spf",                "label": "SPF record"},
         {"id": "dmarc",              "label": "DMARC policy"},
         {"id": "mx_records",         "label": "MX records"},
+        {"id": "favicon",            "label": "Favicon"},
     ],
     "performance": [
         {"id": "pagespeed_mobile",  "label": "PageSpeed — Mobile"},
@@ -165,6 +163,7 @@ TASKS = {
         {"id": "traffic_share",  "label": "Estimated traffic share"},
     ],
     "technical_seo": [
+        # crawlability (10)
         {"id": "robots",            "label": "robots.txt"},
         {"id": "http_status",       "label": "HTTP status"},
         {"id": "redirect",          "label": "Redirects"},
@@ -172,7 +171,10 @@ TASKS = {
         {"id": "internal_links",    "label": "Internal links"},
         {"id": "sitemap",           "label": "Sitemap validation"},
         {"id": "canonical",         "label": "Canonical URL"},
-        {"id": "meta_robots",       "label": "Meta robots / X-Robots-Tag"},
+        {"id": "meta_robots",       "label": "Meta robots / noindex"},
+        {"id": "hreflang",          "label": "Hreflang tags"},
+        {"id": "ttfb",              "label": "TTFB (response time)"},
+        # on_page (8)
         {"id": "title",             "label": "Title tag"},
         {"id": "meta_description",  "label": "Meta description"},
         {"id": "headings",          "label": "Headings (H1–H3)"},
@@ -180,10 +182,8 @@ TASKS = {
         {"id": "word_count",        "label": "Word count"},
         {"id": "readability",       "label": "Readability"},
         {"id": "schema",            "label": "Schema markup"},
-        {"id": "hreflang",          "label": "Hreflang tags"},
-        {"id": "ttfb",              "label": "TTFB (response time)"},
         {"id": "og_tags",           "label": "Open Graph / Twitter cards"},
-        {"id": "favicon",           "label": "Favicon"},
+        # site_health (9)
         {"id": "ssl",               "label": "SSL / TLS grade"},
         {"id": "domain_age",        "label": "Domain age & expiry"},
         {"id": "mixed_content",     "label": "Mixed content"},
@@ -192,6 +192,7 @@ TASKS = {
         {"id": "spf",               "label": "SPF record"},
         {"id": "dmarc",             "label": "DMARC policy"},
         {"id": "mx_records",        "label": "MX records"},
+        {"id": "favicon",           "label": "Favicon"},
     ],
 }
 
@@ -437,12 +438,14 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         from tools.phase1 import (
             broken_link_check,
             canonical_check,
+            hreflang_check,
             http_status_check,
             internal_links_check,
             meta_robots_check,
             redirect_check,
             robots_check,
             sitemap_validate,
+            ttfb_check,
         )
         crawl_fns = [
             (robots_check,         "robots"),
@@ -453,6 +456,8 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
             (sitemap_validate,     "sitemap"),
             (canonical_check,      "canonical"),
             (meta_robots_check,    "meta_robots"),
+            (hreflang_check,       "hreflang"),
+            (ttfb_check,           "ttfb"),
         ]
         crawl_fns = [(fn, tid) for fn, tid in crawl_fns if _keep(tid)]
         if crawl_fns:
@@ -462,22 +467,16 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
 
     if "on_page" in active:
         from tools.phase1 import (
-            canonical_check,
-            favicon_check,
             heading_check,
-            hreflang_check,
             image_alt_check,
             meta_description_check,
-            meta_robots_check,
             og_check,
             readability_check,
             schema_check,
             title_check,
-            ttfb_check,
             word_count_check,
         )
         onpage_fns = [
-            (canonical_check,        "canonical"),
             (title_check,            "title"),
             (meta_description_check, "meta_description"),
             (heading_check,          "headings"),
@@ -485,11 +484,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
             (word_count_check,       "word_count"),
             (readability_check,      "readability"),
             (schema_check,           "schema"),
-            (hreflang_check,         "hreflang"),
-            (ttfb_check,             "ttfb"),
             (og_check,               "og_tags"),
-            (meta_robots_check,      "meta_robots"),
-            (favicon_check,          "favicon"),
         ]
         onpage_fns = [(fn, tid) for fn, tid in onpage_fns if _keep(tid)]
         if onpage_fns:
@@ -501,6 +496,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
         from tools.phase1 import (
             dmarc_check,
             domain_age_check,
+            favicon_check,
             https_enforcement_check,
             mixed_content_check,
             mx_records_check,
@@ -517,6 +513,7 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
             (spf_check,                "spf"),
             (dmarc_check,              "dmarc"),
             (mx_records_check,         "mx_records"),
+            (favicon_check,            "favicon"),
         ]
         sh_fns = [(fn, tid) for fn, tid in sh_fns if _keep(tid)]
         if sh_fns:

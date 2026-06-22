@@ -19,6 +19,7 @@ Phase 1 SEO Tools — No API required
 
 import json
 import logging
+import re
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -1201,78 +1202,72 @@ def mx_records_check(url: str) -> dict:
 
 def viewport_check(url: str) -> dict:
     """Check for mobile viewport meta tag."""
-    try:
-        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        vp = soup.find("meta", attrs={"name": "viewport"})
-        if vp:
-            content = vp.get("content", "")
-            has_width = "width=device-width" in content
-            s = "pass" if has_width else "warning"
-            msg = (f"Viewport: {content}" if has_width
-                   else f"Viewport missing width=device-width — current: {content}")
-            return result(url, "viewport", s, {"content": content}, msg,
-                          {"has_width_device": has_width})
-        return result(url, "viewport", "fail", None,
-                      'Missing <meta name="viewport"> — mobile rendering undefined',
-                      {"found": False})
-    except (requests.RequestException, OSError, ValueError) as exc:
-        return result(url, "viewport", "error", None, str(exc))
+    resp, soup = fetch_page(url)
+    if resp is None or soup is None:
+        return result(url, "viewport", "error", None, "Could not fetch page")
+    vp = soup.find("meta", attrs={"name": "viewport"})
+    if vp:
+        content = vp.get("content", "")
+        has_width = "width=device-width" in content
+        s = "pass" if has_width else "warning"
+        msg = (f"Viewport: {content}" if has_width
+               else f"Viewport missing width=device-width — current: {content}")
+        return result(url, "viewport", s, {"content": content}, msg,
+                      {"has_width_device": has_width})
+    return result(url, "viewport", "fail", None,
+                  'Missing <meta name="viewport"> — mobile rendering undefined',
+                  {"found": False})
 
 
 def lang_check(url: str) -> dict:
     """Check for html lang attribute."""
-    try:
-        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        html_tag = soup.find("html")
-        lang = html_tag.get("lang", "").strip() if html_tag else ""
-        if lang:
-            return result(url, "lang_attr", "pass", lang,
-                          f'HTML lang attribute set: "{lang}"',
-                          {"lang": lang})
-        return result(url, "lang_attr", "fail", None,
-                      "Missing lang attribute on <html> tag — affects accessibility and hreflang",
-                      {"found": False})
-    except (requests.RequestException, OSError, ValueError) as exc:
-        return result(url, "lang_attr", "error", None, str(exc))
+    resp, soup = fetch_page(url)
+    if resp is None or soup is None:
+        return result(url, "lang_attr", "error", None, "Could not fetch page")
+    html_tag = soup.find("html")
+    lang = html_tag.get("lang", "").strip() if html_tag else ""
+    if lang:
+        return result(url, "lang_attr", "pass", lang,
+                      f'HTML lang attribute set: "{lang}"',
+                      {"lang": lang})
+    return result(url, "lang_attr", "fail", None,
+                  "Missing lang attribute on <html> tag — affects accessibility and hreflang",
+                  {"found": False})
 
 
 def content_freshness_check(url: str) -> dict:
     """Check content freshness signals (Last-Modified header + in-page date meta)."""
-    try:
-        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
-        last_modified = resp.headers.get("Last-Modified") or resp.headers.get("last-modified")
-        soup = BeautifulSoup(resp.text, "html.parser")
-        date_signals = [
-            ("meta[property='article:modified_time']", "content"),
-            ("meta[property='article:published_time']", "content"),
-            ("time[datetime]", "datetime"),
-            ("meta[name='date']", "content"),
-        ]
-        visible_date = None
-        for selector, attr in date_signals:
-            el = soup.select_one(selector)
-            if el and el.get(attr):
-                visible_date = el.get(attr)
-                break
-        has_signal = bool(last_modified or visible_date)
-        if last_modified:
-            msg = f"Last-Modified: {last_modified}"
-        elif visible_date:
-            msg = f"Published/modified date found: {visible_date[:40]}"
-        else:
-            msg = "No freshness signals — add Last-Modified header or article:modified_time meta"
-        return result(url, "content_freshness", "pass" if has_signal else "warning",
-                      last_modified or visible_date, msg,
-                      {"last_modified": last_modified, "visible_date": visible_date})
-    except (requests.RequestException, OSError, ValueError) as exc:
-        return result(url, "content_freshness", "error", None, str(exc))
+    resp, soup = fetch_page(url)
+    if resp is None or soup is None:
+        return result(url, "content_freshness", "error", None, "Could not fetch page")
+    last_modified = resp.headers.get("Last-Modified") or resp.headers.get("last-modified")
+    date_signals = [
+        ("meta[property='article:modified_time']", "content"),
+        ("meta[property='article:published_time']", "content"),
+        ("time[datetime]", "datetime"),
+        ("meta[name='date']", "content"),
+        ("meta[name='revised']", "content"),
+    ]
+    visible_date = None
+    for selector, attr in date_signals:
+        el = soup.select_one(selector)
+        if el and el.get(attr):
+            visible_date = el.get(attr)
+            break
+    has_signal = bool(last_modified or visible_date)
+    if last_modified:
+        msg = f"Last-Modified: {last_modified}"
+    elif visible_date:
+        msg = f"Published/modified date found: {visible_date[:40]}"
+    else:
+        msg = "No freshness signals — add Last-Modified header or article:modified_time meta"
+    return result(url, "content_freshness", "pass" if has_signal else "warning",
+                  last_modified or visible_date, msg,
+                  {"last_modified": last_modified, "visible_date": visible_date})
 
 
 def url_structure_check(url: str) -> dict:
     """Check URL structure quality: length, casing, params, slug cleanliness."""
-    import re
     from urllib.parse import parse_qs
     issues = []
     parsed = urlparse(url)
@@ -1302,18 +1297,27 @@ def url_structure_check(url: str) -> dict:
 
 
 def canonical_loop_check(url: str) -> dict:
-    """Detect canonical redirect chains and loops."""
+    """Detect canonical redirect chains and loops. Warns when no canonical is set."""
     MAX_HOPS = 5
     visited = [url]
     current = url
+    first_hop = True
     try:
         for _ in range(MAX_HOPS):
-            resp = safe_requests_get(current, timeout=10, headers=HEADERS)
-            soup = BeautifulSoup(resp.text, "html.parser")
+            resp, soup = fetch_page(current)
+            if resp is None or soup is None:
+                return result(url, "canonical_loop", "error", None,
+                              f"Could not fetch {current}")
             tag = soup.find("link", rel="canonical")
             if not tag or not tag.get("href"):
+                if first_hop:
+                    return result(url, "canonical_loop", "warning", None,
+                                  "No canonical tag found — add self-referencing canonical for clarity",
+                                  {"suggestion": f'<link rel="canonical" href="{url}">'})
+                # Chain terminates cleanly at an intermediate hop
                 return result(url, "canonical_loop", "pass", None,
-                              "No canonical chain detected", {"hops": visited})
+                              f"Canonical chain terminates at {current}", {"hops": visited})
+            first_hop = False
             canon_url = tag["href"].strip()
             if not canon_url.startswith("http"):
                 canon_url = urljoin(current, canon_url)
@@ -1349,7 +1353,14 @@ def www_redirect_check(url: str) -> dict:
     alt_domain = domain[4:] if has_www else f"www.{domain}"
     alt_url = f"{scheme}://{alt_domain}/"
     try:
-        resp = safe_requests_get(alt_url, timeout=10, headers=HEADERS)
+        resp, _ = fetch_page(alt_url)
+    except (requests.RequestException, OSError, ValueError):
+        resp = None
+    if resp is None:
+        return result(url, "www_redirect", "pass", None,
+                      f"www variant ({alt_domain}) not reachable — no duplicate content risk",
+                      {"tested_url": alt_url, "nxdomain": True})
+    try:
         final_netloc = urlparse(resp.url).netloc
         is_consolidated = final_netloc == domain
         if is_consolidated:
@@ -1364,7 +1375,7 @@ def www_redirect_check(url: str) -> dict:
         return result(url, "www_redirect", "pass", resp.url,
                       f"{alt_url} returned {resp.status_code}",
                       {"tested_url": alt_url, "status": resp.status_code})
-    except (requests.RequestException, OSError, ValueError) as exc:
+    except Exception as exc:
         return result(url, "www_redirect", "error", None, str(exc))
 
 
@@ -1389,73 +1400,95 @@ def http2_check(url: str) -> dict:
 
 
 def render_blocking_check(url: str) -> dict:
-    """Check for render-blocking JS and CSS in <head>."""
-    try:
-        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        head = soup.find("head") or soup
-        blocking_scripts = [
-            s.get("src", "")[:100]
-            for s in head.find_all("script", src=True)
-            if not s.get("async") and not s.get("defer") and s.get("type") != "module"
-        ]
-        blocking_styles = [
-            lk.get("href", "")[:100]
-            for lk in head.find_all("link", rel="stylesheet")
-            if not lk.get("media") or lk.get("media") in ("", "all")
-        ]
-        total = len(blocking_scripts) + len(blocking_styles)
-        s = "fail" if total > 5 else "warning" if total > 2 else "pass"
+    """Check for render-blocking JS and CSS in <head>.
+
+    JS (no async/defer): >0 = warning, >2 = fail  — high impact on TBT/INP
+    CSS (media=all/empty): >6 = warning, >12 = fail — lower impact, common in real sites
+    """
+    resp, soup = fetch_page(url)
+    if resp is None or soup is None:
+        return result(url, "render_blocking", "error", None, "Could not fetch page")
+    head = soup.find("head") or soup
+    blocking_scripts = [
+        sc.get("src", "")[:100]
+        for sc in head.find_all("script", src=True)
+        if not sc.get("async") and not sc.get("defer") and sc.get("type") != "module"
+    ]
+    blocking_styles = [
+        lk.get("href", "")[:100]
+        for lk in head.find_all("link", rel="stylesheet")
+        if not lk.get("media") or lk.get("media") in ("", "all")
+    ]
+    js_c = len(blocking_scripts)
+    css_c = len(blocking_styles)
+    total = js_c + css_c
+    if js_c > 2 or css_c > 12:
+        s = "fail"
+    elif js_c > 0 or css_c > 6:
+        s = "warning"
+    else:
+        s = "pass"
+    if total:
         msg = (f"{total} render-blocking resources "
-               f"({len(blocking_scripts)} scripts, {len(blocking_styles)} stylesheets)"
-               if total else "No render-blocking resources detected")
-        return result(url, "render_blocking", s, total, msg,
-                      {"blocking_scripts": blocking_scripts[:5],
-                       "blocking_styles": blocking_styles[:5],
-                       "total": total})
-    except (requests.RequestException, OSError, ValueError) as exc:
-        return result(url, "render_blocking", "error", None, str(exc))
+               f"({js_c} scripts without async/defer, {css_c} stylesheets)")
+    else:
+        msg = "No render-blocking resources detected"
+    return result(url, "render_blocking", s, total, msg,
+                  {"blocking_scripts": blocking_scripts[:5],
+                   "blocking_styles": blocking_styles[:5],
+                   "scripts": js_c, "stylesheets": css_c})
 
 
 def image_optimization_check(url: str) -> dict:
-    """Check image lazy loading, WebP/AVIF usage, and missing dimensions."""
-    try:
-        resp = safe_requests_get(url, timeout=10, headers=HEADERS)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        images = soup.find_all("img")
-        if not images:
-            return result(url, "image_optimization", "pass", 0, "No images found", {})
-        total = len(images)
-        lazy = sum(1 for img in images if img.get("loading") == "lazy")
-        missing_dims = sum(
-            1 for img in images if not img.get("width") or not img.get("height")
-        )
-        webp_img = sum(
-            1 for img in images
-            if ".webp" in img.get("src", "").lower()
-            or ".avif" in img.get("src", "").lower()
-        )
-        webp_src = len(
-            soup.find_all("source",
-                          type=lambda t: t and ("webp" in t or "avif" in t))
-        )
-        modern = webp_img + webp_src
-        issues = []
-        if total > 3 and lazy < total * 0.5:
-            issues.append(f"Only {lazy}/{total} images use lazy loading")
-        if missing_dims > total * 0.3:
-            issues.append(f"{missing_dims}/{total} images missing width/height (CLS risk)")
-        if total > 3 and modern < total * 0.3:
-            issues.append(f"Low WebP/AVIF usage ({modern}/{total} images)")
-        s = "fail" if len(issues) > 2 else "warning" if issues else "pass"
-        msg = ("; ".join(issues) if issues
-               else (f"{total} images — lazy: {lazy}, "
-                     f"modern format: {modern}, dims set: {total - missing_dims}"))
-        return result(url, "image_optimization", s, total, msg,
-                      {"total": total, "lazy_loaded": lazy, "modern_format": modern,
-                       "missing_dims": missing_dims})
-    except (requests.RequestException, OSError, ValueError) as exc:
-        return result(url, "image_optimization", "error", None, str(exc))
+    """Check image lazy loading, WebP/AVIF usage, missing dimensions, and LCP hint.
+
+    Skips data: URIs (inline images) and aria-hidden decorative images from dim check.
+    """
+    resp, soup = fetch_page(url)
+    if resp is None or soup is None:
+        return result(url, "image_optimization", "error", None, "Could not fetch page")
+    images = soup.find_all("img")
+    if not images:
+        return result(url, "image_optimization", "pass", 0, "No images found", {})
+    total = len(images)
+    # Content images only (skip data: URIs and decorative images for CLS check)
+    content_imgs = [
+        img for img in images
+        if not img.get("src", "").startswith("data:")
+        and img.get("aria-hidden") != "true"
+        and img.get("role") != "presentation"
+    ]
+    lazy = sum(1 for img in images if img.get("loading") == "lazy")
+    missing_dims = sum(
+        1 for img in content_imgs
+        if not img.get("width") or not img.get("height")
+    )
+    webp_img = sum(
+        1 for img in images
+        if ".webp" in img.get("src", "").lower()
+        or ".avif" in img.get("src", "").lower()
+    )
+    webp_src = len(soup.find_all("source", type=re.compile(r"image/(webp|avif)")))
+    modern = webp_img + webp_src
+    has_fetchpriority = any(img.get("fetchpriority") == "high" for img in images)
+    issues = []
+    content_c = len(content_imgs)
+    if content_c > 3 and lazy < content_c * 0.5:
+        issues.append(f"Only {lazy}/{content_c} content images use lazy loading")
+    if content_c > 0 and missing_dims > content_c * 0.3:
+        issues.append(f"{missing_dims}/{content_c} images missing width/height (CLS risk)")
+    if content_c > 3 and modern < content_c * 0.3:
+        issues.append(f"Low WebP/AVIF usage ({modern}/{content_c} images)")
+    if not has_fetchpriority and content_c > 0:
+        issues.append("No fetchpriority=high on any image — consider marking the LCP image")
+    s = "fail" if len(issues) > 2 else "warning" if issues else "pass"
+    msg = ("; ".join(issues) if issues
+           else (f"{content_c} images — lazy: {lazy}, "
+                 f"modern format: {modern}, dims set: {content_c - missing_dims}"))
+    return result(url, "image_optimization", s, total, msg,
+                  {"total": total, "content_images": content_c, "lazy_loaded": lazy,
+                   "modern_format": modern, "missing_dims": missing_dims,
+                   "has_fetchpriority": has_fetchpriority})
 
 
 # ══════════════════════════════════════════════════════════════════════════════

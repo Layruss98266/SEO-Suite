@@ -7056,8 +7056,6 @@ function renderDuplicateScan(d) {
     ${groupsHtml}`;
 }
 
-<<<<<<< HEAD
-
 // --- S-NEW: Centralised click delegation (replaces inline onclick) -----------
 document.addEventListener('click', function _delegatedClick(e) {
   var el = e.target.closest('[data-action]');

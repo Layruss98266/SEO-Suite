@@ -268,15 +268,15 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 | CT3 | Content | Trust signals on home page — no GitHub stars badge, no user count, no testimonials |
 | S-NEW | Security | Migrate ~1000 inline `onclick` handlers to `addEventListener` — unblocks CSP tightening |
 
-### P2 — Phase 0 Blockers (must fix before new feature work)
-| ID | Item | Blocks |
+### P2 — Phase 0 Blockers ✅ ALL RESOLVED
+| ID | Item | Status |
 |---|---|---|
-| PH0-1 | Sitemap SSRF fix — `sitemap_parser.py` bypasses safe wrapper | Sitemap Audit feature |
-| PH0-2 | Schema validation SSRF fix — hidden schema validator follows redirects unsafely | Rich Results UI |
-| PH0-3 | Path anchoring consistency — runtime data splits dirs when app launched outside repo root | All new report tools |
-| PH0-4 | Numeric request validation — malformed payloads → 500s in several routes | Any new tool endpoint |
-| PH0-5 | Use-case sitemap fallback — sitemap mode audits the XML when expansion fails | Sitemap-mode audits |
-| PH0-6 | robots.txt fetch bypasses SSRF wrapper | Crawlability feature work |
+| PH0-1 | Sitemap SSRF fix — `sitemap_parser.py` bypasses safe wrapper | **FIXED** pre-v2.6.2 — `_validate_url` + `safe_requests_get` |
+| PH0-2 | Schema validation SSRF fix — schema validator follows redirects unsafely | **FIXED** pre-v2.6.2 — `fetch_html` → `safe_requests_get` |
+| PH0-3 | Path anchoring consistency — data dirs hardcoded, ignore `SEO_SUITE_DATA_DIR` | **FIXED** v2.6.3 — `checker.py` + `seo_audit.py` respect env var |
+| PH0-4 | Numeric request validation — malformed payloads → 500s | **FIXED** pre-v2.6.2 — `_int` helper guards numeric fields |
+| PH0-5 | Use-case sitemap fallback — no error on empty sitemap expansion | **FIXED** pre-v2.6.2 — `api_usecase_run` returns 400 |
+| PH0-6 | robots.txt fetch bypasses SSRF wrapper | **FIXED** pre-v2.6.2 — `phase1.py` uses `safe_requests_get` |
 
 ### P3 — Code Quality (low urgency)
 | ID | Item |
@@ -329,18 +329,18 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 
 ## Audit Findings — 2026-06-22
 
-> Produced by 3-agent parallel audit. None of these are fixed yet — this is the findings backlog.
-> Fix priority: CRITICAL → HIGH → then by user priority.
+> Produced by 3-agent parallel audit (Session 57). Sessions 58–59 resolved all CRITICAL + HIGH items and most MEDIUM/LOW.
+> Remaining open items are marked **OPEN**; resolved items marked **FIXED**.
 
 ### Test Suite — 66 Failures
 
-| Count | Root Cause | Files | Fix |
+| Count | Root Cause | Files | Status |
 |---|---|---|---|
-| ~50 | `conftest.py` doesn't isolate `core.auth._USERS_DB`. Real user in `data/seo_suite.db` makes auth active. All `@login_required` endpoints return 401 instead of expected 400/200. | `tests/conftest.py`, `core/auth.py` | Patch `conftest.py` to monkeypatch `core.auth._USERS_DB = {}` before each test, or use `NO_AUTH=1` env var in test env. |
-| 2 | Stale `/health` assertions — U-NEW2 added `version` field, but test still checks `{"status": "ok"}` only. Line 118 directly contradicts the fix (`assert "version" not in body`). | `tests/test_review_fixes.py:113,118` | Delete line 118, update line 113 to include `version` key. |
-| 1 | CSP `unpkg.com` removed by S5 hardening, but test still asserts it exists. | `tests/test_openapi.py:44` | Update assertion to not require `unpkg.com`. |
-| 10 | All 10 Batch I checks absent from `WEIGHTS` dict AND `_SCORE_EXCLUDED`. `TestScoringWeights::test_weighted_or_excluded_tasks_are_partitioned` fails for every one. | `tests/test_usecases.py`, `core/seo_audit.py`, `tools/issue_scoring.py` | Add all 10 to `WEIGHTS` in `seo_audit.py` and `_SCORE_TABLE` in `issue_scoring.py`. |
-| 3 | Same 401 root cause — `/metrics` requires auth. | `tests/test_metrics.py` | Same conftest.py fix above covers this. |
+| ~50 | `conftest.py` doesn't isolate `core.auth._USERS_DB`. Real user in `data/seo_suite.db` makes auth active. | `tests/conftest.py`, `core/auth.py` | **FIXED** v2.6.2 — `SEO_SUITE_USERS_BACKEND=json` + `_failed_attempts.clear()` in auth_client fixtures |
+| 2 | Stale `/health` assertions — `version` field added but not asserted. | `tests/test_review_fixes.py:113,118` | **FIXED** v2.6.2 |
+| 1 | CSP `unpkg.com` removed but test still asserts it. | `tests/test_openapi.py:44` | **FIXED** v2.6.2 |
+| 10 | Batch I checks absent from `WEIGHTS` + `_SCORE_EXCLUDED`. | `core/seo_audit.py`, `tools/issue_scoring.py` | **FIXED** v2.6.2 |
+| 3 | `/metrics` requires auth — same 401 root cause. | `tests/test_metrics.py` | **FIXED** v2.6.2 |
 
 **Zero-coverage checks (all 10 Batch I — no tests exist):**
 `viewport_check`, `lang_check`, `content_freshness_check`, `url_structure_check`, `canonical_loop_check`, `www_redirect_check`, `http2_check`, `render_blocking_check`, `image_optimization_check`, `dns_health_check`
@@ -354,34 +354,32 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 
 ### phase1.py — Check Issues
 
-#### CRITICAL
-| Check | Issue | Impact |
+#### CRITICAL — all fixed v2.6.2
+| Check | Issue | Status |
 |---|---|---|
-| `word_count_check` (~line 406) | Calls `tag.decompose()` on cached soup object. Mutates shared `_page_cache`. All subsequent checks on same URL get corrupted DOM. | Produces wrong results for every check run after word_count on any URL. |
-| `readability_check` (~line 758) | Same `tag.decompose()` mutation on cached soup. Same corruption. | Same as above. |
+| `word_count_check` | `tag.decompose()` on cached soup mutates shared `_page_cache` — corrupts DOM for all subsequent checks. | **FIXED** v2.6.2 — deepcopy before decompose |
+| `readability_check` | Same `tag.decompose()` mutation on cached soup. | **FIXED** v2.6.2 — deepcopy before decompose |
 
-> **Fix:** Deep-copy soup before any check that calls `decompose()`: `soup = copy.copy(cached_soup)` — or switch to `extract()` which is reversible, or `get_text()` on a fresh tree.
+#### HIGH — all fixed v2.6.2
+| Check | Issue | Status |
+|---|---|---|
+| `robots_check` | 404 response fed into parser — returns pass on empty body. | **FIXED** v2.6.2 |
+| `content_freshness_check` | Never compares extracted date to today — always passes. | **FIXED** v2.6.2 |
+| `image_alt_check` | `alt=""` (decorative) treated as missing alt — false positive. | **FIXED** v2.6.2 |
+| `ttfb_check` | `total_ms == ttfb_ms` — measuring full load twice instead of TTFB. | **FIXED** v2.6.2 |
+| `schema_check` | OG `<meta property="og:*">` tags counted as structured data — inflates schema count. | **FIXED** v2.6.2 |
 
-#### HIGH
-| Check | Issue |
-|---|---|
-| `robots_check` | 404 response fed into parser. Returns contradictory status/message (parser sees empty file = pass, but should fail). |
-| `content_freshness_check` | Never compares extracted date to today. Returns `pass` regardless of how old the article is. Date extraction only, no staleness logic. |
-| `image_alt_check` | `alt=""` (decorative image pattern) treated as missing alt — false positive on WCAG-correct empty alts. |
-| `ttfb_check` | `total_ms == ttfb_ms` — measuring the same value twice. `total_ms` is full load; TTFB should be time-to-first-byte only. Wrong metric. |
-| `schema_check` | Open Graph `<meta property="og:*">` tags counted as structured data schemas — inflates schema count. Should count only JSON-LD + Microdata + RDFa. |
-
-#### MEDIUM
+#### MEDIUM — OPEN (low urgency, no test failures)
 | Check | Issue |
 |---|---|
 | `http_status_check` | No retry on transient 5xx — single failure marks site as broken. |
-| `redirect_check` | Does not detect redirect chains with mixed HTTP/HTTPS mid-chain. |
+| `redirect_check` | Does not detect mixed HTTP/HTTPS mid-chain redirects. |
 | `canonical_check` | Does not handle `rel=canonical` in HTTP headers — only `<link>` tag. |
 | `heading_check` | Multiple H1 issues counted but not scored separately from missing H1. |
 | `url_structure_check` | Dynamic param detection (`?id=`) flags clean paginated URLs. |
 | `dns_health_check` | NS record check uses `socket.getaddrinfo` — doesn't distinguish NXDOMAIN from timeout. |
 
-#### LOW
+#### LOW — OPEN
 | Check | Issue |
 |---|---|
 | `meta_description_check` | Pixel-width estimate uses fixed char width — inaccurate for CJK/wide chars. |
@@ -392,75 +390,64 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 
 ### generators.py — Issues
 
-#### HIGH
-| Generator | Issue |
-|---|---|
-| `event` schema | `location.address` is plain string. Should be `PostalAddress` object (required by Google Rich Results). Will fail rich result eligibility. |
-| hreflang (HTTP header variant) | `x-default` link missing from generated HTTP Link header output. Standard requires it. |
-| sitemap | `lastmod` field not date-validated — accepts any string. Should enforce ISO 8601 date format. |
+#### HIGH — all fixed v2.6.2
+| Generator | Issue | Status |
+|---|---|---|
+| `event` schema | `location.address` plain string — should be `PostalAddress` object. | **FIXED** v2.6.2 |
+| hreflang (HTTP header variant) | `x-default` missing from HTTP Link header output. | **FIXED** v2.6.2 |
+| sitemap | `lastmod` not ISO 8601 validated — accepts any string. | **FIXED** v2.6.2 |
 
-#### MEDIUM
-| Generator | Issue |
-|---|---|
-| meta tags | `<meta name="title">` generated — non-standard, ignored by Google. Only `<title>` tag is valid for page title. |
-| review schema | Standalone `Review` type generated — deprecated by Google 2023. Should be embedded in Product/LocalBusiness. |
-| jobposting schema | Missing `applicantLocationRequirements` + `jobLocationType` (required for remote jobs since 2020). |
-| product schema | `Offer` object missing `url` field — reduces rich result confidence. |
-| article schema | `author.url` not always populated — affects E-E-A-T signals in structured data. |
+#### MEDIUM — all fixed v2.6.3
+| Generator | Issue | Status |
+|---|---|---|
+| meta tags | `<meta name="title">` generated — non-standard, ignored by Google. | **FIXED** v2.6.3 |
+| review schema | Standalone `Review` deprecated by Google Sept 2023 — no warning emitted. | **FIXED** v2.6.3 — deprecation warning added |
+| jobposting schema | Missing `applicantLocationRequirements` + `jobLocationType` for remote jobs. | **FIXED** v2.6.3 |
+| product schema | `Offer` object missing `url` field. | **FIXED** v2.6.3 |
+| article schema | `author.url` not always populated. | **N/A** — field exists in template + builder; user omission, not a code bug |
 
-#### LOW
-| Generator | Issue |
-|---|---|
-| robots.txt | Generated `Sitemap:` directive URL not validated as absolute `https://` URL. |
-| hreflang (tag variant) | No validation that `hreflang` value matches BCP 47 lang code format. |
-| schema (all types) | `@context` hardcoded as `"https://schema.org"` — fine, but not using `"http://schema.org"` for older parsers. Minor. |
+#### LOW — all fixed v2.6.3
+| Generator | Issue | Status |
+|---|---|---|
+| robots.txt | `Sitemap:` URL not validated as absolute `https://`. | **FIXED** v2.6.3 |
+| hreflang (tag variant) | No BCP 47 validation on `hreflang` value. | **N/A** — `_LOCALE_RE` regex already validates |
+| schema (all types) | `@context` hardcoded — no impact, intentional. | **WONTFIX** |
 
 ---
 
 ### issue_scoring.py — Gaps
 
-All 10 Batch I checks missing from `_SCORE_TABLE`. Scores default to 0 — issues from these checks won't affect the audit score.
+**FIXED v2.6.2** — all 10 Batch I checks added to `_SCORE_TABLE` and `WEIGHTS`.
 
-**Missing entries:**
-`viewport`, `lang_attr`, `content_freshness`, `url_structure`, `canonical_loop`, `dns_health`, `www_redirect`, `http2`, `render_blocking`, `image_optimization`
-
-**Dead entry:** `"h1"` key in `_SCORE_TABLE` — no check emits `tool="h1"`. Headings check emits `tool="headings"`. `"h1"` is dead code.
+**FIXED v2.6.3** — dead `"h1"` key removed from `_SCORE_TABLE`.
 
 ---
 
 ### seo_audit.py — Dispatch Issues
 
-| Severity | Issue |
-|---|---|
-| HIGH | `WEIGHTS` dict missing 8 of 10 Batch I checks. Only `dns_health` present. All others excluded from weighted score. |
-| MEDIUM | `render_blocking` + `image_optimization` excluded from `technical_seo` expansion (line 443-447 only adds crawlability+on_page+site_health). No comment explaining why. Needs doc or intentional include. |
-| MEDIUM | Task ID `"crawlability"` used as task label inside performance block (line 143 `{"id": "crawlability", "label": "GSC URL inspection"}`). Shadows the use-case key. Confusing + fragile. |
-| MEDIUM | `_REQUIRES_MSG` credential guard for performance emits "not configured" error even when `render_blocking` and `image_optimization` ran fine (they need no API key). Message is misleading. |
-| LOW | No `__all__` — importing `*` from `seo_audit` would pull in test helpers. |
+| Severity | Issue | Status |
+|---|---|---|
+| HIGH | `WEIGHTS` missing 8 of 10 Batch I checks. | **FIXED** v2.6.2 |
+| MEDIUM | `render_blocking` + `image_optimization` excluded from `technical_seo` expansion — no comment explaining why. | **FIXED** v2.6.2 — comment added |
+| MEDIUM | Task ID `"crawlability"` shadows use-case key. | **FIXED** v2.6.2 — renamed `gsc_crawl_inspection` |
+| MEDIUM | `_REQUIRES_MSG` misleading — implies render_blocking/image_optimization also need API key. | **FIXED** v2.6.3 — message clarified |
+| LOW | No `__all__`. | **FIXED** v2.6.3 |
 
 ---
 
 ### tools.py (app routes) — Validation Gaps
 
-| Severity | Issue |
-|---|---|
-| HIGH | Generator routes pass raw user-submitted dicts to generator functions with no field sanitization. No type coercion, no max-length enforcement. |
-| MEDIUM | `schema_type` path parameter not validated against allowlist before dispatch — unknown type reaches generator lookup, returns unhelpful `KeyError`. |
-| LOW | No rate-limiting on generator endpoints beyond global limiter. Could be abused for CPU-heavy schema generation. |
+| Severity | Issue | Status |
+|---|---|---|
+| HIGH | Generator routes: no body-size guard — oversized payloads reach generators unchecked. | **FIXED** v2.6.3 — 200 KB limit on 5 generator routes |
+| MEDIUM | `schema_type` not validated against allowlist before dispatch. | **FIXED** v2.6.2 — allowlist check returns 400 |
+| LOW | No per-endpoint rate limiting on generators beyond global limiter. | **OPEN** — low priority |
 
 ---
 
 ## Roadmap
 
-### Next: Phase 0 Blockers (before any new features)
-1. Sitemap SSRF fix
-2. Schema validation SSRF fix
-3. Path anchoring consistency
-4. Numeric request validation
-5. Use-case sitemap fallback fix
-6. robots.txt safe-fetch fix
-
-### Phase 1 (after blockers, no paid API)
+### Next: Phase 1 features (Phase 0 blockers all resolved ✅, no paid API)
 Rich Results / Schema Validation UI → Sitemap Audit → Bing Visibility Workspace → IndexNow Submission Tool → Trend Explorer
 
 ### Phase 2 (authenticated free-platform)

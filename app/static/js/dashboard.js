@@ -7268,30 +7268,100 @@ document.addEventListener('click', function _delegatedClick(e) {
     case 'addBcItem':          _call('addBcItem'); break;
     case 'removeClosest':      { var _rc=arg&&el.closest(arg); if(_rc) _rc.remove(); break; }
     case 'removeParent':       if(el.parentNode) el.parentNode.remove(); break;
+    case 'loadSFCsv':          _call('loadSFCsv', arg); break;
+    case 'createTeamUser':     _call('createTeamUser'); break;
+    case 'dismissOnboarding':  _call('dismissOnboarding'); break;
+    case 'scheduleAddRowToggle':
+      if (typeof scheduleAddRowToggle === 'function') {
+        scheduleAddRowToggle(arg === 'false' ? false : (arg === 'true' ? true : undefined));
+      }
+      break;
+    case 'scheduleAddEntry':   _call('scheduleAddEntry'); break;
+    case 'toggleKeyVis':       if (typeof toggleKeyVis === 'function') toggleKeyVis(el); break;
     default:
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
         console.warn('[delegation] unknown data-action:', action, el);
   }
 });
 
-// --- S-NEW: Centralised change delegation (checkboxes in innerHTML) ----------
+// --- S-NEW: Centralised change delegation ------------------------------------
 document.addEventListener('change', function _delegatedChange(e) {
-  var el = e.target;
-  if (!el.matches('input[type=checkbox]')) return;
+  var el = e.target.closest('[data-change-action]');
+  if (!el) return;
   var action = el.dataset.changeAction;
-  if (!action) return;
   var arg  = el.dataset.arg  || null;
   var arg2 = el.dataset.arg2 || null;
+  var checked = el.checked;
+  var val = el.value;
+  function _call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (typeof window[fn] === 'function') return window[fn].apply(null, args);
+  }
   switch (action) {
-    case 'toggleTask':
-      if (typeof toggleTask === 'function') toggleTask(arg, arg2);
-      break;
-    case 'toggleSelectAllReports':
-      if (typeof toggleSelectAllReports === 'function') toggleSelectAllReports(el.checked);
-      break;
-    case 'toggleReportSelection':
-      if (typeof toggleReportSelection === 'function') toggleReportSelection(arg, el.checked);
-      break;
+    case 'toggleTask':              _call('toggleTask', arg, arg2); break;
+    case 'toggleSelectAllReports':  _call('toggleSelectAllReports', checked); break;
+    case 'toggleReportSelection':   _call('toggleReportSelection', arg, checked); break;
+    case 'idxToggle':               _call('idxToggle'); break;
+    case 'idxFileChange':           _call('idxFileChange', e); break;
+    case 'audToggle':               _call('audToggle'); break;
+    case 'audFileChange':           _call('audFileChange', e); break;
+    case 'loadProfile':             _call('loadProfile', val); break;
+    case 'loadSchemaForm':          _call('loadSchemaForm', val); break;
+    case 'renderReports':           _call('renderReports'); break;
+    case 'updateSettingBadges':     _call('updateSettingBadges'); break;
+    case 'toggleNotifEmail':        _call('toggleNotifExpand','email',checked); _call('updateSettingBadges'); break;
+    case 'toggleNotifSlack':        _call('toggleNotifExpand','slack',checked); _call('updateSettingBadges'); break;
+    case 'toggleNotifTeams':        _call('toggleNotifExpand','teams',checked); _call('updateSettingBadges'); break;
+    case 'toggleScheduleExpand':    _call('toggleScheduleExpand', checked); _call('updateSettingBadges'); break;
+    case 'toggleXDefault':          _call('toggleXDefault', checked); break;
+  }
+});
+
+// --- S-NEW: Centralised input delegation -------------------------------------
+document.addEventListener('input', function _delegatedInput(e) {
+  var el = e.target.closest('[data-input-action]');
+  if (!el) return;
+  var action = el.dataset.inputAction;
+  var val = el.value;
+  function _call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (typeof window[fn] === 'function') return window[fn].apply(null, args);
+  }
+  switch (action) {
+    case 'tbSearch':              _call('tbSearch', val); break;
+    case 'cmdSearch':             _call('cmdSearch', val); break;
+    case 'renderReports':         _call('renderReports'); break;
+    case 'filterSettings':        _call('filterSettings', val); break;
+    case 'metaLenUpdate':         _call('metaLenUpdate'); break;
+    case 'updateMetaSerpPreview': _call('updateMetaSerpPreview'); break;
+  }
+});
+
+// --- S-NEW: hide images with data-hide-on-error when load fails -------------
+document.addEventListener('error', function(e){
+  var t = e.target;
+  if (t && t.tagName === 'IMG' && t.hasAttribute('data-hide-on-error')) {
+    t.style.display = 'none';
+  }
+}, true);
+
+// --- S-NEW: Centralised keydown delegation -----------------------------------
+document.addEventListener('keydown', function _delegatedKeydown(e) {
+  var el = e.target.closest('[data-keydown-action]');
+  if (!el) return;
+  var action = el.dataset.keydownAction;
+  var arg = el.dataset.arg || null;
+  function _call(fn) { if (typeof window[fn] === 'function') return window[fn](); }
+  if (action === 'tbSearchKey') {
+    if (typeof tbSearchKey === 'function') tbSearchKey(e);
+    return;
+  }
+  if (action === 'cmdKey') {
+    if (typeof cmdKey === 'function') cmdKey(e);
+    return;
+  }
+  if (action === 'enterRun' && e.key === 'Enter' && arg) {
+    _call(arg);
   }
 });
 

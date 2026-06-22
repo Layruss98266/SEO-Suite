@@ -1,7 +1,7 @@
 # SEO Suite — Master Project Log
 
 > **ACCOUNT-SWITCH PROOF. Read every section before touching any code.**
-> Last updated: 2026-06-22 (Session 60). Current VERSION: **2.6.4**
+> Last updated: 2026-06-22 (Session 61). Current VERSION: **2.6.6**
 
 ---
 
@@ -9,7 +9,7 @@
 
 ```
 1. cd "C:\Users\Surya L\Desktop\AI Agents\SEO Suite"
-2. Verify version:  python -c "from core.version import VERSION; print(VERSION)"  → 2.6.4
+2. Verify version:  python -c "from core.version import VERSION; print(VERSION)"  → 2.6.6
 3. Verify checks:   python -c "from core.seo_audit import TASKS; [print(k,len(v)) for k,v in TASKS.items()]"
    crawlability=12, on_page=11, site_health=12, performance=10, technical_seo=35
    search_console=7, authority=8, rankings=5
@@ -77,7 +77,7 @@ www_redirect_check, http2_check, render_blocking_check, image_optimization_check
 
 ## Order of Execution (Phases)
 
-> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → v2.6.2 → v2.6.3 → **v2.6.4** ← current
+> v1.0 → v1.x → v2.0 → v2.1 → v2.2 → v2.3 → v2.4 → v2.5 → v2.5.1 → v2.6.0 → v2.6.1 → v2.6.2 → v2.6.3 → v2.6.4 → v2.6.5 → **v2.6.6** ← current
 
 ### PHASE 1 — Initial Build ✅ COMPLETE (v1.0)
 Flask app, blueprint split, SQLite auth, Playwright, SSE streaming, Docker/Render/Fly deploy, `/metrics` endpoint, OpenAPI spec, initial SEO audit checks.
@@ -171,7 +171,7 @@ Completed full inline onclick migration (355 → 0), phase1.py check correctness
 | `core/checker.py` | Main audit orchestrator — runs phases, saves progress, GSC integration |
 | `core/auth.py` | `login_required`, `admin_required`, cloud detection, `_failed_attempts` TTL cache |
 | `core/db.py` | SQLite helpers — users, sessions, login history, TOTP |
-| `core/version.py` | Single source of truth: `VERSION = "2.6.4"` |
+| `core/version.py` | Single source of truth: `VERSION = "2.6.6"` |
 | `core/notifier.py` | SMTP/Slack/Teams notifications |
 | `app/middleware.py` | CSP headers, CSRF deny-by-default |
 | `app/state.py` | `CFG` dict, `_check_public_url()`, `require_public_url` decorator |
@@ -240,8 +240,39 @@ Adding a check: update `TOOLS` list in `tools/phase1.py` + `TASKS` dict in `core
 ### 6. `NO_AUTH=1` blocked on cloud
 `core/auth.py` → `_on_cloud_host()` detects Render/Fly/Railway/Heroku/GCloud/Azure. `NO_AUTH=1` on any cloud host raises `RuntimeError` at startup. Override requires `SEO_SUITE_ALLOW_NO_AUTH_CLOUD=1` (dangerous). Only use `NO_AUTH=1` for local dev.
 
-### 7. CSP `'unsafe-inline'` — S-NEW migration complete, CSP tightening now possible
-All 355 inline `onclick` handlers in dashboard.html + base.html migrated to `data-action` event delegation (v2.6.4). Single delegation handler in dashboard.js covers 140+ actions. `'unsafe-inline'` can now be removed from script-src CSP to fully close S-NEW. See scripts/migrate_onclick.py for the idempotent transformation script.
+### 7. CSP `'unsafe-inline'` REMOVED from script-src — NEVER reintroduce inline handlers
+As of v2.6.6, CSP is `script-src 'self'` (no `unsafe-inline`). **Any** inline event handler attribute will silently break in the browser with CSP violation. This includes ALL of:
+- `onclick="…"`, `onchange="…"`, `oninput="…"`
+- `onkeydown="…"`, `onkeyup="…"`, `onsubmit="…"`
+- `onmouseover/out`, `onfocus/blur`, `onload`, `onerror`
+
+Also blocked in JS-generated HTML strings — when `innerHTML = '...onclick="…"...'`, the runtime-inserted handler is **just as blocked** as a static one.
+
+**Migration pattern:**
+```html
+<!-- ❌ Blocked -->
+<button onclick="foo('bar')">x</button>
+<input oninput="search(this.value)">
+<input onchange="toggle(this.checked)" type="checkbox">
+<img onerror="this.style.display='none'">
+
+<!-- ✅ Use data-* delegation -->
+<button data-action="foo" data-arg="bar">x</button>
+<input data-input-action="search">
+<input data-change-action="toggle" type="checkbox">
+<img data-hide-on-error>
+```
+
+Three delegation listeners live in `app/static/js/dashboard.js` (search for `S-NEW`):
+- `click` → reads `data-action` + `data-arg`/`data-arg2`
+- `change` → reads `data-change-action` (passes `checked`/`value` automatically)
+- `input` → reads `data-input-action` (passes `value`)
+- `keydown` → reads `data-keydown-action` (special `enterRun` action with `data-arg=funcName`)
+- Plus a global `error` listener that hides `<img data-hide-on-error>` on load failure
+
+**Adding new buttons/forms:** add a case to the relevant `switch` in the delegation handler, NOT an inline handler.
+
+**Property-assignment form is fine:** `el.onclick = fn` in JS is a property, not an HTML attribute — CSP allows it.
 
 ### 8. technical_seo is a composite use case
 `audit_single_url()` in `core/seo_audit.py` expands `technical_seo` in the `active` set to `{crawlability, on_page, site_health}` before dispatching checks. It never dispatches `technical_seo` directly. TASKS entry for it is `crawlability + on_page + site_health` keys (35 total).
@@ -257,6 +288,94 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 
 ### 12. `www_redirect_check` NXDOMAIN pattern — fetch then check separately
 `fetch_page(alt_url)` raises `ValueError` for non-existent www variants (SSRF guard hits DNS lookup). Pattern: wrap only the `fetch_page` call in try/except, set `resp = None` on any exception, then check `if resp is None → return pass`. See lines 1355-1380 in phase1.py.
+
+---
+
+## Common Issues & Fixes
+
+Things that have broken before and how to fix them. Read this before debugging "weird" issues.
+
+### 1. "Use cases not clickable" / "Buttons do nothing" / CSP console errors
+**Symptom:** Browser console shows `Executing inline event handler violates the following Content Security Policy directive 'script-src 'self''`.
+**Cause:** New code introduced an inline `on<event>="…"` attribute. CSP is locked to `'self'` only since v2.6.5 (see Gotcha #7).
+**Fix:**
+1. Grep: `grep -rE "on(click|change|input|keydown|keyup|submit|focus|blur|error|load)=" app/templates app/static/js`
+2. Convert each match to `data-action` / `data-change-action` / `data-input-action` / `data-keydown-action`
+3. Add the corresponding case to the delegation `switch` in `dashboard.js`
+4. **Both static HTML and JS-generated `innerHTML` strings must follow the rule.**
+
+### 2. "Use cases grid empty" / "All buttons broken at once"
+**Symptom:** Console shows `SyntaxError: Unexpected token '<<'` or any other parse error at top level of `dashboard.js`.
+**Cause:** Stray git conflict marker (`<<<<<<<`, `=======`, `>>>>>>>`) left in the file after a merge.
+**Fix:** `grep -n "<<<<<<\|======\|>>>>>>" app/static/js/dashboard.js` — remove every marker. Always run `node --check app/static/js/dashboard.js` after resolving JS merge conflicts.
+
+### 3. "VERSION bump forgotten — users see stale UI"
+**Symptom:** New JS/CSS deployed but users still see old behavior. Hard-refresh fixes it for one user.
+**Cause:** `/app` route injects `dashboard.js?v=VERSION` and `dashboard.css?v=VERSION`. Without a bump, browsers use cached files.
+**Fix:** Bump `core/version.py` in the SAME commit as any JS/CSS change. Pre-push hook checks this.
+
+### 4. "Worktree agents made wrong edits / reverted recent work"
+**Symptom:** Subagent dispatched with `isolation: "worktree"` writes files based on old code state, undoing recent fixes.
+**Cause:** Worktree agents read `.agentmaster/codebase.xml` — a snapshot taken at session start, not live state.
+**Fix:** Do not dispatch worktree agents for editing tasks after substantial commits this session. Use main working tree directly, or refresh repomix first: `/agent-master repomix refresh`.
+
+### 5. "Tests pass locally, fail on Render / cloud host"
+**Symptom:** App starts but every request returns 500 or "NO_AUTH refused on cloud".
+**Cause:** `NO_AUTH=1` is blocked on cloud (Render/Fly/Railway/Heroku/GCloud/Azure detected via env signals).
+**Fix:** Set up real admin user via `/signup` or `python -m core.db create_admin` before first request. Override only with `SEO_SUITE_ALLOW_NO_AUTH_CLOUD=1` (dangerous, never recommended for prod).
+
+### 6. "Reports endpoint returns array, frontend expects object"
+**Symptom:** Reports panel shows nothing or crashes with "d.length undefined".
+**Cause:** `api_reports` and `api_history` return raw arrays. Adding `{"ok": true, ...}` wrapper breaks 6+ JS call sites.
+**Fix:** ONLY add `ok` key to object-returning routes (`api_reports_delete`, `api_reports_delete_all`, `api_reports_summary` XLSX path). Array-returning routes stay as arrays.
+
+### 7. "soup cache mutation breaks downstream checks"
+**Symptom:** `word_count_check` or `readability_check` returns wrong/zero values intermittently.
+**Cause:** Both functions modified the shared `soup` from `fetch_page()` cache via `decompose()`. Next check on same URL sees mutated DOM.
+**Fix:** Always `copy.deepcopy(soup)` before mutating. Already fixed in v2.6.2 — keep this in mind for any new check that calls `soup.find(...).decompose()` or removes elements.
+
+### 8. "auth_client fixture leaks state between tests"
+**Symptom:** Random ~50 test failures with "Too many failed attempts" or "User exists".
+**Cause:** `core.auth._USERS_DB` and `_failed_attempts` persist between tests when SQLite backend is used.
+**Fix:** In `tests/conftest.py`, set `SEO_SUITE_USERS_BACKEND=json` and call `_failed_attempts.clear()` in fixtures. Already done in v2.6.2.
+
+### 9. "Pre-push hook fails on commits with binary diffs"
+**Symptom:** Pre-push secret-scan flags binary files as containing "AKIA…" tokens.
+**Cause:** Hook greps file content without skipping binary.
+**Fix:** Hook excludes `*.png|*.jpg|*.pdf|*.xlsx|*.db` via `--include` filter. Ensure `data/` is git-ignored.
+
+### 10. "validate_public_url raises but check still hangs"
+**Symptom:** Audit appears stuck on a URL for >2 minutes.
+**Cause:** `fetch_page()` catches `RequestException` and `OSError` but NOT `ValueError`. A check calling `fetch_page` directly without wrapping `ValueError` produces an unhandled exception that the ThreadPoolExecutor swallows silently.
+**Fix:** Pattern from `www_redirect_check`:
+```python
+try:
+    resp, soup = fetch_page(url)
+except ValueError:
+    resp, soup = None, None
+if resp is None or soup is None:
+    return {...}
+```
+
+### 11. "Render free tier loses data after each deploy"
+**Symptom:** All users + reports gone after redeploy.
+**Cause:** Render free tier has no persistent disk. SQLite + reports live in `data/` which resets on every redeploy.
+**Fix:** Either accept the demo-only nature OR mount a persistent volume at `SEO_SUITE_DATA_DIR=/var/data` (paid tier required).
+
+### 12. "Schedule never fires"
+**Symptom:** Cron schedule set in Settings UI but reports never auto-generate.
+**Cause:** App uses single-worker gunicorn (`--workers 1`). If the worker restarts (deploy, OOM, idle scale-down on Render free), the in-memory scheduler resets.
+**Fix:** For reliable scheduling, run an external cron hitting `/api/cron/run` with a shared secret. The Settings UI is best-effort only.
+
+### 13. "Repomix snapshot is stale, agents read old code"
+**Symptom:** Subagents quote code that has since been refactored or fixed.
+**Cause:** `.agentmaster/codebase.xml` is created at session start and reused. After many commits, it's outdated.
+**Fix:** Run `/agent-master repomix refresh` after substantial changes mid-session.
+
+### 14. "Merge conflict in dashboard.html/.js after a long-running feature branch"
+**Symptom:** Conflicts in 4+ files including dashboard, hard to resolve.
+**Cause:** Both branches added inline-onclick that's now invalid (post v2.6.5 CSP lock).
+**Fix:** Resolve conflicts → IMMEDIATELY grep for any remaining `on<event>=` in HTML+JS innerHTML → fix all → `node --check app/static/js/dashboard.js` → tests → commit.
 
 ---
 
@@ -328,6 +447,7 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 | 58 | 2026-06-22 | v2.6.2 | Fixed all audit findings P1–P5: soup deepcopy (CRITICAL), 66→0 test failures (auth lockout root cause = SQLite _failed_attempts persistence), phase1.py correctness (image_alt, ttfb, schema, content_freshness, robots), generators.py (PostalAddress, hreflang x-default header, sitemap ISO 8601), WEIGHTS+_SCORE_TABLE Batch I gaps, task ID collision gsc_crawl_inspection, schema_type allowlist. |
 | 59 | 2026-06-22 | v2.6.3 | Remaining audit items + Phase 0 path anchoring: removed non-standard meta name="title", review schema deprecation warning, jobposting remote fields (jobLocationType + applicantLocationRequirements), product Offer url, robots.txt Sitemap URL validation, dead "h1" key from _SCORE_TABLE, _REQUIRES_MSG improvement, __all__ in seo_audit, SEO_SUITE_DATA_DIR respected in checker.py + seo_audit.py, body-size guard (200 KB) on 5 generator routes. |
 | 60 | 2026-06-22 | v2.6.4 | S-NEW complete: all 355 inline onclick handlers migrated to data-action event delegation (scripts/migrate_onclick.py idempotent, 140+ delegation cases). phase1.py: 5xx retry, mixed-proto redirect detection, HTTP Link header canonical fallback, pagination param exclusion in url_structure, CJK-aware meta description pixel widths, hreflang lang_verification field. reports.py: ok key on 3 object-returning routes. tools.py: 200 KB body guard + 30/min rate limit via register(app,limiter). dashboard.css: --brand token. 578/578 tests. |
+| 61 | 2026-06-22 | v2.6.5–6 | Full CSP lockdown — `script-src 'self'` (no unsafe-inline). Post-merge cleanup of remaining ~70 inline event handlers (onclick/onchange/oninput/onkeydown/onerror) that came back from Batch H merge or were in JS-generated innerHTML. New change/input/keydown delegation listeners. data-hide-on-error pattern for img fallback. Added "Common Issues & Fixes" section to PROJECT_LOG (14 entries) so future sessions can self-diagnose. Pushed to Render. |
 
 ---
 

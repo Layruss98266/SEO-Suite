@@ -33,12 +33,12 @@
 
   <div class="tb-search" data-action="openCmdPalette" style="cursor:pointer">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    <input id="tb-search-input" placeholder="Jump to…" oninput="tbSearch(this.value)" onkeydown="tbSearchKey(event)">
+    <input id="tb-search-input" placeholder="Jump to…" data-input-action="tbSearch" data-keydown-action="tbSearchKey">
     <span class="tb-search-kbd">Ctrl K</span>
     <div class="tb-search-results" id="tb-search-results"></div>
   </div>
 
-  <button class="tb-mob-search tb-icon-btn" onclick="openCmdPalette()" title="Search" aria-label="Open search" style="display:none">
+  <button class="tb-mob-search tb-icon-btn" data-action="openCmdPalette" title="Search" aria-label="Open search" style="display:none">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
   </button>
 
@@ -572,7 +572,7 @@
         <div class="onboarding-step"><span class="step-num">3</span> <strong>Explore Use Cases</strong> for guided workflows tailored to common SEO tasks.</div>
       </div>
     </div>
-    <button class="onboarding-dismiss" onclick="dismissOnboarding()" aria-label="Dismiss">✕</button>
+    <button class="onboarding-dismiss" data-action="dismissOnboarding" aria-label="Dismiss">✕</button>
   </div>
 </div>
   <div class="home-hero-card">
@@ -686,12 +686,12 @@
       <div class="fg-full">
         <span class="label">Input type</span>
         <div class="radio-row">
-          <label><input type="radio" name="idx-type" value="sitemap" checked onchange="idxToggle()"> Sitemap URL</label>
-          <label><input type="radio" name="idx-type" value="domain" onchange="idxToggle()"> Domain</label>
-          <label><input type="radio" name="idx-type" value="multi" onchange="idxToggle()"> Multiple sitemaps</label>
-          <label><input type="radio" name="idx-type" value="csv" onchange="idxToggle()"> CSV / Excel file</label>
-          <label><input type="radio" name="idx-type" value="paste" onchange="idxToggle()"> Paste URLs</label>
-          <label><input type="radio" name="idx-type" value="sf-csv" onchange="idxToggle()"> Screaming Frog CSV</label>
+          <label><input type="radio" name="idx-type" value="sitemap" checked data-change-action="idxToggle"> Sitemap URL</label>
+          <label><input type="radio" name="idx-type" value="domain" data-change-action="idxToggle"> Domain</label>
+          <label><input type="radio" name="idx-type" value="multi" data-change-action="idxToggle"> Multiple sitemaps</label>
+          <label><input type="radio" name="idx-type" value="csv" data-change-action="idxToggle"> CSV / Excel file</label>
+          <label><input type="radio" name="idx-type" value="paste" data-change-action="idxToggle"> Paste URLs</label>
+          <label><input type="radio" name="idx-type" value="sf-csv" data-change-action="idxToggle"> Screaming Frog CSV</label>
         </div>
       </div>
       <div class="fg-full" id="idx-src-row">
@@ -706,7 +706,7 @@
              ondragleave="this.classList.remove('drag')"
              ondrop="idxFileDrop(event)">
           <input type="file" id="idx-file" accept=".csv,.xlsx,.xls,.tsv,.txt"
-                 style="display:none" onchange="idxFileChange(event)">
+                 style="display:none" data-change-action="idxFileChange">
           <div class="dz-icon">📂</div>
           <div class="dz-text">
             <div class="dz-title" id="idx-dz-title">Click or drop a file here</div>
@@ -724,7 +724,7 @@
         <div class="tool-row">
           <input type="file" id="idx-sf-csv-file" accept=".csv" class="input" style="flex:1">
           <input class="input" id="idx-sf-col-name" placeholder="URL column (default: Address)" style="width:220px">
-          <button class="btn btn-primary btn-sm" onclick="loadSFCsv('idx')">Import URLs</button>
+          <button class="btn btn-primary btn-sm" data-action="loadSFCsv" data-arg="idx">Import URLs</button>
         </div>
         <div class="u-text-muted u-fs-12 u-mt-6">Screaming Frog exports the 'Address' column by default. The importer will extract all http/https URLs from that column.</div>
       </div>
@@ -866,12 +866,12 @@
       <div class="fg-full">
         <span class="label">Input type</span>
         <div class="radio-row">
-          <label><input type="radio" name="aud-type" value="sitemap" checked onchange="audToggle()"> Sitemap URL</label>
-          <label><input type="radio" name="aud-type" value="domain" onchange="audToggle()"> Domain</label>
-          <label><input type="radio" name="aud-type" value="crawl" onchange="audToggle()"> Crawl from URL</label>
-          <label><input type="radio" name="aud-type" value="csv" onchange="audToggle()"> CSV / Excel file</label>
-          <label><input type="radio" name="aud-type" value="paste" onchange="audToggle()"> Paste URLs</label>
-          <label><input type="radio" name="aud-type" value="sf-csv" onchange="audToggle()"> Screaming Frog CSV</label>
+          <label><input type="radio" name="aud-type" value="sitemap" checked data-change-action="audToggle"> Sitemap URL</label>
+          <label><input type="radio" name="aud-type" value="domain" data-change-action="audToggle"> Domain</label>
+          <label><input type="radio" name="aud-type" value="crawl" data-change-action="audToggle"> Crawl from URL</label>
+          <label><input type="radio" name="aud-type" value="csv" data-change-action="audToggle"> CSV / Excel file</label>
+          <label><input type="radio" name="aud-type" value="paste" data-change-action="audToggle"> Paste URLs</label>
+          <label><input type="radio" name="aud-type" value="sf-csv" data-change-action="audToggle"> Screaming Frog CSV</label>
         </div>
       </div>
       <div class="fg-full" id="aud-src-row">
@@ -886,7 +886,7 @@
              ondragleave="this.classList.remove('drag')"
              ondrop="audFileDrop(event)">
           <input type="file" id="aud-file" accept=".csv,.xlsx,.xls,.tsv,.txt"
-                 style="display:none" onchange="audFileChange(event)">
+                 style="display:none" data-change-action="audFileChange">
           <div class="dz-icon">📂</div>
           <div class="dz-text">
             <div class="dz-title" id="dz-title">Click or drop a file here</div>
@@ -904,7 +904,7 @@
         <div class="tool-row">
           <input type="file" id="aud-sf-csv-file" accept=".csv" class="input" style="flex:1">
           <input class="input" id="aud-sf-col-name" placeholder="URL column (default: Address)" style="width:220px">
-          <button class="btn btn-primary btn-sm" onclick="loadSFCsv('aud')">Import URLs</button>
+          <button class="btn btn-primary btn-sm" data-action="loadSFCsv" data-arg="aud">Import URLs</button>
         </div>
         <div class="u-text-muted u-fs-12 u-mt-6">Screaming Frog exports the 'Address' column by default. The importer will extract all http/https URLs from that column.</div>
       </div>
@@ -927,7 +927,7 @@
       <div class="fg-full">
         <label class="label" for="aud-profile">Saved profile</label>
         <div class="u-flex u-gap-8 u-flex-wrap">
-          <select class="input u-flex-1" id="aud-profile" onchange="loadProfile(this.value)" style="min-width:160px">
+          <select class="input u-flex-1" id="aud-profile" data-change-action="loadProfile" style="min-width:160px">
             <option value="">— Select a profile —</option>
           </select>
           <button class="btn btn-ghost btn-sm" data-action="saveProfile">💾 Save current</button>
@@ -1079,11 +1079,11 @@
       <button class="tab-btn" data-action="filterReports" data-arg="audit">SEO Audit</button>
     </div>
     <div class="u-flex-1 u-min-w-200" style="position:relative">
-      <input class="rep-search u-w-full" id="rep-search" placeholder="🔍  Search reports…" oninput="renderReports()" style="padding-right:32px">
+      <input class="rep-search u-w-full" id="rep-search" placeholder="🔍  Search reports…" data-input-action="renderReports" style="padding-right:32px">
       <button class="u-text-muted u-fs-14" data-action="clearRepSearch" title="Clear search" id="rep-search-clear" style="display:none" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;line-height:1">✕</button>
     </div>
-    <input class="rep-search" id="rep-project" placeholder="Filter by project…" oninput="renderReports()" style="width:160px">
-    <select class="rep-sort" id="rep-sort" onchange="renderReports()" title="Sort reports">
+    <input class="rep-search" id="rep-project" placeholder="Filter by project…" data-input-action="renderReports" style="width:160px">
+    <select class="rep-sort" id="rep-sort" data-change-action="renderReports" title="Sort reports">
       <option value="newest">↓ Newest</option>
       <option value="oldest">↑ Oldest</option>
       <option value="score-desc">Score ↓</option>
@@ -1201,7 +1201,7 @@
       <div class="page-sub">Manage your API credentials, keys, and alerts locally in your private config file. Your keys are masked for security. Leave any masked fields alone to keep their currently saved values.</div>
     </div>
     <div class="u-flex u-items-center" style="gap:10px;flex-shrink:0">
-      <input class="input" type="search" placeholder="🔍 Filter settings…" oninput="filterSettings(this.value)" style="width:200px">
+      <input class="input" type="search" placeholder="🔍 Filter settings…" data-input-action="filterSettings" style="width:200px">
       <button class="btn btn-primary" data-action="saveSettings">💾 Save Settings</button>
     </div>
   </div>
@@ -1431,7 +1431,7 @@
           <div class="s-label">Email Reports <span class="cfg-badge" id="badge-email"></span></div>
           <div class="s-desc">Send the complete HTML report to your email inbox after every run.</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="cfg-email" onchange="updateSettingBadges()"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-email" data-change-action="updateSettingBadges"><span class="slider"></span></label>
       </div>
 
       <div class="settings-row">
@@ -1439,7 +1439,7 @@
           <div class="s-label">Slack <span class="cfg-badge" id="badge-slack"></span></div>
           <div class="s-desc">Send a notification summary or indexing alert straight to your Slack channel webhook.</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="cfg-slack" onchange="toggleNotifExpand('slack',this.checked);updateSettingBadges()"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-slack" data-change-action="toggleNotifSlack"><span class="slider"></span></label>
       </div>
       <div class="notif-expand" id="notif-expand-slack">
         <label class="label" for="cfg-slack-webhook">Slack Webhook URL</label>
@@ -1451,7 +1451,7 @@
           <div class="s-label">Microsoft Teams <span class="cfg-badge" id="badge-teams"></span></div>
           <div class="s-desc">Send a clear run summary directly to your Microsoft Teams channel incoming webhook.</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="cfg-teams" onchange="toggleNotifExpand('teams',this.checked);updateSettingBadges()"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-teams" data-change-action="toggleNotifTeams"><span class="slider"></span></label>
       </div>
       <div class="notif-expand" id="notif-expand-teams">
         <label class="label" for="cfg-teams-webhook">Teams Webhook URL</label>
@@ -1463,7 +1463,7 @@
           <div class="s-label">Email (SMTP) <span class="cfg-badge" id="badge-email-smtp"></span></div>
           <div class="s-desc">Configure your mail server credentials to send HTML reports.</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="cfg-email-toggle" onchange="toggleNotifExpand('email',this.checked);updateSettingBadges()"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-email-toggle" data-change-action="toggleNotifEmail"><span class="slider"></span></label>
       </div>
       <div class="notif-expand" id="notif-expand-email">
         <div class="form-grid u-gap-8">
@@ -1481,7 +1481,7 @@
           <div class="s-label">Webhook URL (generic)</div>
           <div class="s-desc">POST a JSON payload to this URL after each audit or indexing run completes. Useful for CI/CD pipelines and custom integrations.</div>
         </div>
-        <div class="key-wrap u-w-220"><input class="input" id="cfg-webhook-url" placeholder="https://…/webhook"><button class="key-eye" type="button" onclick="toggleKeyVis(this)" title="Show/hide">👁</button></div>
+        <div class="key-wrap u-w-220"><input class="input" id="cfg-webhook-url" placeholder="https://…/webhook"><button class="key-eye" type="button" data-action="toggleKeyVis" title="Show/hide">👁</button></div>
       </div>
 
       <!-- Test notification buttons -->
@@ -1517,7 +1517,7 @@
           <div class="s-label">Enable Scheduled Indexing <span class="cfg-badge" id="badge-schedule"></span></div>
           <div class="s-desc">Set indexing checks to run automatically on a recurring schedule and email the results.</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="cfg-schedule" onchange="toggleScheduleExpand(this.checked);updateSettingBadges()"><span class="slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="cfg-schedule" data-change-action="toggleScheduleExpand"><span class="slider"></span></label>
       </div>
       <div class="notif-expand" id="notif-expand-schedule">
         <!-- Hidden legacy fields kept so existing saveSettings() code still reads them (synced from first schedule entry) -->
@@ -1529,7 +1529,7 @@
         <!-- ── Schedule List ── -->
         <div class="u-flex u-items-center u-justify-between u-mb-8">
           <div class="s-label" style="margin:0">Schedule Entries</div>
-          <button class="btn btn-ghost btn-sm" onclick="scheduleAddRowToggle()">+ Add Schedule</button>
+          <button class="btn btn-ghost btn-sm" data-action="scheduleAddRowToggle">+ Add Schedule</button>
         </div>
 
         <!-- Inline add-entry form (hidden by default) -->
@@ -1557,8 +1557,8 @@
             </div>
           </div>
           <div class="u-flex u-gap-8 u-mt-10">
-            <button class="btn btn-primary btn-sm" onclick="scheduleAddEntry()">Save Entry</button>
-            <button class="btn btn-ghost btn-sm" onclick="scheduleAddRowToggle(false)">Cancel</button>
+            <button class="btn btn-primary btn-sm" data-action="scheduleAddEntry">Save Entry</button>
+            <button class="btn btn-ghost btn-sm" data-action="scheduleAddRowToggle" data-arg="false">Cancel</button>
           </div>
         </div>
 
@@ -1611,7 +1611,7 @@
         <input class="input" id="new-user-email" placeholder="username" style="width:160px">
         <input class="input" type="password" id="new-user-pass" placeholder="password" style="width:130px">
         <label class="u-flex u-items-center u-gap-6" style="font-size:13px"><input type="checkbox" id="new-user-admin"> Admin</label>
-        <button class="btn btn-primary btn-sm" onclick="createTeamUser()">Add User</button>
+        <button class="btn btn-primary btn-sm" data-action="createTeamUser">Add User</button>
       </div>
     </div>
 
@@ -1643,7 +1643,7 @@
       <!-- URL / Domain / Sitemap input -->
       <div class="fg-full" id="uc-text-row">
         <label class="label" id="uc-input-label" for="uc-url">Page URL</label>
-        <input class="input" id="uc-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runUseCase()">
+        <input class="input" id="uc-url" placeholder="https://example.com/page" data-keydown-action="enterRun" data-arg="runUseCase">
       </div>
       <!-- CSV / XLSX file upload -->
       <div class="fg-full" id="uc-file-row" style="display:none">
@@ -1744,16 +1744,16 @@
   <div class="card u-mb-16">
     <span class="label">Schema Type</span>
     <div class="radio-row u-flex-wrap u-gap-8 u-mt-8">
-      <label><input type="radio" name="schema-type" value="article"       onchange="loadSchemaForm(this.value)" checked> Article</label>
-      <label><input type="radio" name="schema-type" value="faq"           onchange="loadSchemaForm(this.value)"> FAQ</label>
-      <label><input type="radio" name="schema-type" value="product"       onchange="loadSchemaForm(this.value)"> Product</label>
-      <label><input type="radio" name="schema-type" value="breadcrumb"    onchange="loadSchemaForm(this.value)"> Breadcrumb</label>
-      <label><input type="radio" name="schema-type" value="localbusiness" onchange="loadSchemaForm(this.value)"> Local Business</label>
-      <label><input type="radio" name="schema-type" value="video"         onchange="loadSchemaForm(this.value)"> Video</label>
-      <label><input type="radio" name="schema-type" value="event"         onchange="loadSchemaForm(this.value)"> Event</label>
-      <label><input type="radio" name="schema-type" value="howto"         onchange="loadSchemaForm(this.value)"> HowTo</label>
-      <label><input type="radio" name="schema-type" value="person"        onchange="loadSchemaForm(this.value)"> Person</label>
-      <label><input type="radio" name="schema-type" value="organization"  onchange="loadSchemaForm(this.value)"> Organization</label>
+      <label><input type="radio" name="schema-type" value="article"       data-change-action="loadSchemaForm" checked> Article</label>
+      <label><input type="radio" name="schema-type" value="faq"           data-change-action="loadSchemaForm"> FAQ</label>
+      <label><input type="radio" name="schema-type" value="product"       data-change-action="loadSchemaForm"> Product</label>
+      <label><input type="radio" name="schema-type" value="breadcrumb"    data-change-action="loadSchemaForm"> Breadcrumb</label>
+      <label><input type="radio" name="schema-type" value="localbusiness" data-change-action="loadSchemaForm"> Local Business</label>
+      <label><input type="radio" name="schema-type" value="video"         data-change-action="loadSchemaForm"> Video</label>
+      <label><input type="radio" name="schema-type" value="event"         data-change-action="loadSchemaForm"> Event</label>
+      <label><input type="radio" name="schema-type" value="howto"         data-change-action="loadSchemaForm"> HowTo</label>
+      <label><input type="radio" name="schema-type" value="person"        data-change-action="loadSchemaForm"> Person</label>
+      <label><input type="radio" name="schema-type" value="organization"  data-change-action="loadSchemaForm"> Organization</label>
     </div>
   </div>
   <div class="u-flex u-gap-16 u-flex-wrap u-items-start">
@@ -1953,7 +1953,7 @@
       <div id="hreflang-rows"></div>
       <div class="u-mt-12" style="padding-top:12px;border-top:1px solid var(--border)">
         <label class="u-flex u-items-center u-gap-8 u-fs-13 u-mb-8">
-          <input type="checkbox" id="hreflang-xdefault" onchange="toggleXDefault(this.checked)"> Include x-default fallback
+          <input type="checkbox" id="hreflang-xdefault" data-change-action="toggleXDefault"> Include x-default fallback
         </label>
         <input class="input" id="hreflang-xdefault-url" placeholder="x-default URL" style="display:none">
       </div>
@@ -2006,11 +2006,11 @@
       <div class="form-grid">
         <div class="fg-full">
           <label class="label" for="meta-title">Page Title <span class="u-fw-400 u-text-muted" id="meta-title-len"></span></label>
-          <input class="input" id="meta-title" placeholder="My Page Title" oninput="metaLenUpdate()">
+          <input class="input" id="meta-title" placeholder="My Page Title" data-input-action="metaLenUpdate">
         </div>
         <div class="fg-full">
           <label class="label" for="meta-desc">Meta Description <span class="u-fw-400 u-text-muted" id="meta-desc-len"></span></label>
-          <textarea class="input" id="meta-desc" rows="3" placeholder="A short description of the page…" oninput="metaLenUpdate()"></textarea>
+          <textarea class="input" id="meta-desc" rows="3" placeholder="A short description of the page…" data-input-action="metaLenUpdate"></textarea>
         </div>
         <div class="fg-full">
           <label class="label" for="meta-keywords">Keywords <span class="u-fw-400 u-text-muted">(comma-separated)</span></label>
@@ -2018,7 +2018,7 @@
         </div>
         <div class="fg-full">
           <label class="label" for="meta-canonical">Canonical URL</label>
-          <input class="input" id="meta-canonical" placeholder="https://example.com/page/" oninput="updateMetaSerpPreview()">
+          <input class="input" id="meta-canonical" placeholder="https://example.com/page/" data-input-action="updateMetaSerpPreview">
         </div>
         <div>
           <label class="label" for="meta-robots">Robots directive</label>
@@ -2045,7 +2045,7 @@
         </div>
         <div class="fg-full">
           <label class="label" for="meta-og-sitename">OG Site Name</label>
-          <input class="input" id="meta-og-sitename" placeholder="My Website" oninput="updateMetaSerpPreview()">
+          <input class="input" id="meta-og-sitename" placeholder="My Website" data-input-action="updateMetaSerpPreview">
         </div>
         <div class="fg-full">
           <label class="label" for="meta-tw-site">Twitter Site Handle <span class="u-fw-400 u-text-muted">(@handle)</span></label>
@@ -2115,7 +2115,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="serp-url">Page URL</label>
-        <input class="input" id="serp-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runSerpPreview()">
+        <input class="input" id="serp-url" placeholder="https://example.com/page" data-keydown-action="enterRun" data-arg="runSerpPreview">
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
@@ -2131,7 +2131,7 @@
       <div class="section-title u-mb-12">Google Desktop Preview</div>
       <div class="serp-card" id="serp-card-google">
         <div class="serp-site-row">
-          <img class="serp-favicon" id="serp-favicon" src="" alt="" onerror="this.style.display='none'">
+          <img class="serp-favicon" id="serp-favicon" src="" alt="" data-hide-on-error>
           <div>
             <div class="serp-site" id="serp-site-name"></div>
             <div class="serp-breadcrumb" id="serp-breadcrumb"></div>
@@ -2206,7 +2206,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="redir-url">URL to check</label>
-        <input class="input" id="redir-url" placeholder="https://example.com/old-page" onkeydown="if(event.key==='Enter')runRedirectChain()">
+        <input class="input" id="redir-url" placeholder="https://example.com/old-page" data-keydown-action="enterRun" data-arg="runRedirectChain">
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
@@ -2251,7 +2251,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="hdrs-url">URL</label>
-        <input class="input" id="hdrs-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runHttpHeaders()">
+        <input class="input" id="hdrs-url" placeholder="https://example.com" data-keydown-action="enterRun" data-arg="runHttpHeaders">
       </div>
       <div class="u-flex u-gap-8" style="align-items:flex-end">
         <button class="btn btn-primary" data-action="runHttpHeaders">Fetch Headers</button>
@@ -2298,7 +2298,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="kw-url">URL</label>
-        <input class="input" id="kw-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runKeywordDensity()">
+        <input class="input" id="kw-url" placeholder="https://example.com/page" data-keydown-action="enterRun" data-arg="runKeywordDensity">
       </div>
       <div>
         <label class="label" for="kw-top">Top N keywords</label>
@@ -2349,7 +2349,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="ratio-url">URL</label>
-        <input class="input" id="ratio-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCodeTextRatio()">
+        <input class="input" id="ratio-url" placeholder="https://example.com" data-keydown-action="enterRun" data-arg="runCodeTextRatio">
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
@@ -2397,7 +2397,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="comp-url">URL</label>
-        <input class="input" id="comp-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCompression()">
+        <input class="input" id="comp-url" placeholder="https://example.com" data-keydown-action="enterRun" data-arg="runCompression">
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
@@ -2441,7 +2441,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="schema-url">URL to validate</label>
-        <input class="input" id="schema-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runSchemaValidation()">
+        <input class="input" id="schema-url" placeholder="https://example.com/page" data-keydown-action="enterRun" data-arg="runSchemaValidation">
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
@@ -2558,7 +2558,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="smap-url">Sitemap URL</label>
-        <input class="input" id="smap-url" placeholder="https://example.com/sitemap.xml" onkeydown="if(event.key==='Enter')runSitemapAudit()">
+        <input class="input" id="smap-url" placeholder="https://example.com/sitemap.xml" data-keydown-action="enterRun" data-arg="runSitemapAudit">
       </div>
       <div class="fg-full">
         <div class="u-flex u-gap-8">
@@ -3123,7 +3123,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="robots-test-url">URL to test (any page on the site)</label>
-        <input class="input" id="robots-test-url" placeholder="https://example.com/any-page" onkeydown="if(event.key==='Enter')runRobotsTester()">
+        <input class="input" id="robots-test-url" placeholder="https://example.com/any-page" data-keydown-action="enterRun" data-arg="runRobotsTester">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" data-action="runRobotsTester">Test robots.txt</button>
@@ -3175,7 +3175,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="hreflang-val-url">Page URL to validate</label>
-        <input class="input" id="hreflang-val-url" placeholder="https://example.com/en/page" onkeydown="if(event.key==='Enter')runHreflangValidator()">
+        <input class="input" id="hreflang-val-url" placeholder="https://example.com/en/page" data-keydown-action="enterRun" data-arg="runHreflangValidator">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" data-action="runHreflangValidator">Validate</button>
@@ -3219,7 +3219,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="lh-url">Page URL to scan</label>
-        <input class="input" id="lh-url" placeholder="https://example.com/about" onkeydown="if(event.key==='Enter')runLinkHealth()">
+        <input class="input" id="lh-url" placeholder="https://example.com/about" data-keydown-action="enterRun" data-arg="runLinkHealth">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" data-action="runLinkHealth">Scan Links</button>
@@ -3262,7 +3262,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="ci-url">Site URL (root domain)</label>
-        <input class="input" id="ci-url" placeholder="https://example.com" onkeydown="if(event.key==='Enter')runCrawlIntel()">
+        <input class="input" id="ci-url" placeholder="https://example.com" data-keydown-action="enterRun" data-arg="runCrawlIntel">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" data-action="runCrawlIntel">Analyse Crawl Access</button>
@@ -3312,7 +3312,7 @@
       </div>
       <div class="fg-full">
         <label class="label" for="cs-kw">Target keyword</label>
-        <input class="input" id="cs-kw" placeholder="your target keyword" onkeydown="if(event.key==='Enter')runContentSerp()">
+        <input class="input" id="cs-kw" placeholder="your target keyword" data-keydown-action="enterRun" data-arg="runContentSerp">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" data-action="runContentSerp">Analyse</button>
@@ -3350,7 +3350,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="pt-url">URL</label>
-        <input class="input" id="pt-url" placeholder="https://example.com/page" onkeydown="if(event.key==='Enter')runPageType()">
+        <input class="input" id="pt-url" placeholder="https://example.com/page" data-keydown-action="enterRun" data-arg="runPageType">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" id="pt-btn" data-action="runPageType">Detect Page Type</button>
@@ -3381,7 +3381,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="ca-url">Course URL</label>
-        <input class="input" id="ca-url" placeholder="https://example.com/courses/..." onkeydown="if(event.key==='Enter')runCourseAudit()">
+        <input class="input" id="ca-url" placeholder="https://example.com/courses/..." data-keydown-action="enterRun" data-arg="runCourseAudit">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" id="ca-btn" data-action="runCourseAudit">Run Course Audit</button>
@@ -3412,7 +3412,7 @@
     <div class="form-grid">
       <div class="fg-full">
         <label class="label" for="ba-url">Blog URL</label>
-        <input class="input" id="ba-url" placeholder="https://example.com/blog/..." onkeydown="if(event.key==='Enter')runBlogAudit()">
+        <input class="input" id="ba-url" placeholder="https://example.com/blog/..." data-keydown-action="enterRun" data-arg="runBlogAudit">
       </div>
       <div class="fg-full u-flex u-gap-8">
         <button class="btn btn-primary" id="ba-btn" data-action="runBlogAudit">Run Blog Audit</button>
@@ -3608,7 +3608,7 @@
   <div class="cmd-palette" data-action="stopPropagation">
     <div class="cmd-search-row">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input class="cmd-search-input" id="cmd-input" placeholder="Jump to anything…" oninput="cmdSearch(this.value)" onkeydown="cmdKey(event)" autocomplete="off" spellcheck="false">
+      <input class="cmd-search-input" id="cmd-input" placeholder="Jump to anything…" data-input-action="cmdSearch" data-keydown-action="cmdKey" autocomplete="off" spellcheck="false">
       <span class="cmd-esc">ESC</span>
     </div>
     <div class="cmd-results" id="cmd-results"></div>

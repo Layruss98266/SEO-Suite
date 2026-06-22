@@ -1,7 +1,7 @@
 # SEO Suite — Master Project Log
 
 > **ACCOUNT-SWITCH PROOF. Read every section before touching any code.**
-> Last updated: 2026-06-22 (Session ~55+). Current VERSION: **2.6.1**
+> Last updated: 2026-06-22 (Session 57). Current VERSION: **2.6.1**
 
 ---
 
@@ -317,6 +317,130 @@ Render free tier has no persistent disk — SQLite user store and all reports re
 | 53–54 | 2026-06-22 | v2.6.0 | Batch I: 10 new checks (viewport, lang_attr, content_freshness, url_structure, canonical_loop, dns_health, www_redirect, http2, render_blocking, image_optimization). technical_seo now 35 checks. |
 | 55 | 2026-06-22 | v2.6.1 | 5 quality fixes: render_blocking thresholds, image_optimization smart filter, www_redirect NXDOMAIN→pass, canonical_loop missing canonical→warning, shared fetch_page cache for all HTML checks. |
 | 56 | 2026-06-22 | v2.6.1 | PROJECT_LOG.md rebuilt (account-switch proof), pre-push hook strengthened (5 new checks), README updated (8 use cases, PROJECT_LOG in docs table). |
+| 57 | 2026-06-22 | v2.6.1 | Comprehensive audit: 3 parallel agents → 66 test failures, 30+ phase1.py issues, 15+ generators.py issues, scoring/dispatch gaps. Findings in PROJECT_LOG Audit section. |
+
+---
+
+## Audit Findings — 2026-06-22
+
+> Produced by 3-agent parallel audit. None of these are fixed yet — this is the findings backlog.
+> Fix priority: CRITICAL → HIGH → then by user priority.
+
+### Test Suite — 66 Failures
+
+| Count | Root Cause | Files | Fix |
+|---|---|---|---|
+| ~50 | `conftest.py` doesn't isolate `core.auth._USERS_DB`. Real user in `data/seo_suite.db` makes auth active. All `@login_required` endpoints return 401 instead of expected 400/200. | `tests/conftest.py`, `core/auth.py` | Patch `conftest.py` to monkeypatch `core.auth._USERS_DB = {}` before each test, or use `NO_AUTH=1` env var in test env. |
+| 2 | Stale `/health` assertions — U-NEW2 added `version` field, but test still checks `{"status": "ok"}` only. Line 118 directly contradicts the fix (`assert "version" not in body`). | `tests/test_review_fixes.py:113,118` | Delete line 118, update line 113 to include `version` key. |
+| 1 | CSP `unpkg.com` removed by S5 hardening, but test still asserts it exists. | `tests/test_openapi.py:44` | Update assertion to not require `unpkg.com`. |
+| 10 | All 10 Batch I checks absent from `WEIGHTS` dict AND `_SCORE_EXCLUDED`. `TestScoringWeights::test_weighted_or_excluded_tasks_are_partitioned` fails for every one. | `tests/test_usecases.py`, `core/seo_audit.py`, `tools/issue_scoring.py` | Add all 10 to `WEIGHTS` in `seo_audit.py` and `_SCORE_TABLE` in `issue_scoring.py`. |
+| 3 | Same 401 root cause — `/metrics` requires auth. | `tests/test_metrics.py` | Same conftest.py fix above covers this. |
+
+**Zero-coverage checks (all 10 Batch I — no tests exist):**
+`viewport_check`, `lang_check`, `content_freshness_check`, `url_structure_check`, `canonical_loop_check`, `www_redirect_check`, `http2_check`, `render_blocking_check`, `image_optimization_check`, `dns_health_check`
+
+**Other coverage gaps:**
+- No test for `/health/ready` endpoint
+- No test for `conftest.py` DB isolation itself
+- `test_settings_security.py` — 4 more 401 failures (same root cause)
+
+---
+
+### phase1.py — Check Issues
+
+#### CRITICAL
+| Check | Issue | Impact |
+|---|---|---|
+| `word_count_check` (~line 406) | Calls `tag.decompose()` on cached soup object. Mutates shared `_page_cache`. All subsequent checks on same URL get corrupted DOM. | Produces wrong results for every check run after word_count on any URL. |
+| `readability_check` (~line 758) | Same `tag.decompose()` mutation on cached soup. Same corruption. | Same as above. |
+
+> **Fix:** Deep-copy soup before any check that calls `decompose()`: `soup = copy.copy(cached_soup)` — or switch to `extract()` which is reversible, or `get_text()` on a fresh tree.
+
+#### HIGH
+| Check | Issue |
+|---|---|
+| `robots_check` | 404 response fed into parser. Returns contradictory status/message (parser sees empty file = pass, but should fail). |
+| `content_freshness_check` | Never compares extracted date to today. Returns `pass` regardless of how old the article is. Date extraction only, no staleness logic. |
+| `image_alt_check` | `alt=""` (decorative image pattern) treated as missing alt — false positive on WCAG-correct empty alts. |
+| `ttfb_check` | `total_ms == ttfb_ms` — measuring the same value twice. `total_ms` is full load; TTFB should be time-to-first-byte only. Wrong metric. |
+| `schema_check` | Open Graph `<meta property="og:*">` tags counted as structured data schemas — inflates schema count. Should count only JSON-LD + Microdata + RDFa. |
+
+#### MEDIUM
+| Check | Issue |
+|---|---|
+| `http_status_check` | No retry on transient 5xx — single failure marks site as broken. |
+| `redirect_check` | Does not detect redirect chains with mixed HTTP/HTTPS mid-chain. |
+| `canonical_check` | Does not handle `rel=canonical` in HTTP headers — only `<link>` tag. |
+| `heading_check` | Multiple H1 issues counted but not scored separately from missing H1. |
+| `url_structure_check` | Dynamic param detection (`?id=`) flags clean paginated URLs. |
+| `dns_health_check` | NS record check uses `socket.getaddrinfo` — doesn't distinguish NXDOMAIN from timeout. |
+
+#### LOW
+| Check | Issue |
+|---|---|
+| `meta_description_check` | Pixel-width estimate uses fixed char width — inaccurate for CJK/wide chars. |
+| `page_speed_check` | Falls back to timing `requests.get` when PageSpeed API absent — inaccurate proxy. |
+| `hreflang_check` | Doesn't verify target URL language matches declared lang attribute. |
+
+---
+
+### generators.py — Issues
+
+#### HIGH
+| Generator | Issue |
+|---|---|
+| `event` schema | `location.address` is plain string. Should be `PostalAddress` object (required by Google Rich Results). Will fail rich result eligibility. |
+| hreflang (HTTP header variant) | `x-default` link missing from generated HTTP Link header output. Standard requires it. |
+| sitemap | `lastmod` field not date-validated — accepts any string. Should enforce ISO 8601 date format. |
+
+#### MEDIUM
+| Generator | Issue |
+|---|---|
+| meta tags | `<meta name="title">` generated — non-standard, ignored by Google. Only `<title>` tag is valid for page title. |
+| review schema | Standalone `Review` type generated — deprecated by Google 2023. Should be embedded in Product/LocalBusiness. |
+| jobposting schema | Missing `applicantLocationRequirements` + `jobLocationType` (required for remote jobs since 2020). |
+| product schema | `Offer` object missing `url` field — reduces rich result confidence. |
+| article schema | `author.url` not always populated — affects E-E-A-T signals in structured data. |
+
+#### LOW
+| Generator | Issue |
+|---|---|
+| robots.txt | Generated `Sitemap:` directive URL not validated as absolute `https://` URL. |
+| hreflang (tag variant) | No validation that `hreflang` value matches BCP 47 lang code format. |
+| schema (all types) | `@context` hardcoded as `"https://schema.org"` — fine, but not using `"http://schema.org"` for older parsers. Minor. |
+
+---
+
+### issue_scoring.py — Gaps
+
+All 10 Batch I checks missing from `_SCORE_TABLE`. Scores default to 0 — issues from these checks won't affect the audit score.
+
+**Missing entries:**
+`viewport`, `lang_attr`, `content_freshness`, `url_structure`, `canonical_loop`, `dns_health`, `www_redirect`, `http2`, `render_blocking`, `image_optimization`
+
+**Dead entry:** `"h1"` key in `_SCORE_TABLE` — no check emits `tool="h1"`. Headings check emits `tool="headings"`. `"h1"` is dead code.
+
+---
+
+### seo_audit.py — Dispatch Issues
+
+| Severity | Issue |
+|---|---|
+| HIGH | `WEIGHTS` dict missing 8 of 10 Batch I checks. Only `dns_health` present. All others excluded from weighted score. |
+| MEDIUM | `render_blocking` + `image_optimization` excluded from `technical_seo` expansion (line 443-447 only adds crawlability+on_page+site_health). No comment explaining why. Needs doc or intentional include. |
+| MEDIUM | Task ID `"crawlability"` used as task label inside performance block (line 143 `{"id": "crawlability", "label": "GSC URL inspection"}`). Shadows the use-case key. Confusing + fragile. |
+| MEDIUM | `_REQUIRES_MSG` credential guard for performance emits "not configured" error even when `render_blocking` and `image_optimization` ran fine (they need no API key). Message is misleading. |
+| LOW | No `__all__` — importing `*` from `seo_audit` would pull in test helpers. |
+
+---
+
+### tools.py (app routes) — Validation Gaps
+
+| Severity | Issue |
+|---|---|
+| HIGH | Generator routes pass raw user-submitted dicts to generator functions with no field sanitization. No type coercion, no max-length enforcement. |
+| MEDIUM | `schema_type` path parameter not validated against allowlist before dispatch — unknown type reaches generator lookup, returns unhelpful `KeyError`. |
+| LOW | No rate-limiting on generator endpoints beyond global limiter. Could be abused for CPU-heavy schema generation. |
 
 ---
 

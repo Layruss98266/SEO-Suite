@@ -521,7 +521,7 @@ function tbSearch(q){
     box.classList.add('on'); return;
   }
   box.innerHTML=items.map((x,i)=>`
-    <div class="tb-search-result" data-i="${i}" onclick="tbJump(${i})">
+    <div class="tb-search-result" data-i="${i}" data-action="tbJump" data-arg="${i}">
       <span>${x.name}</span>
       <span class="tb-search-result-section">${x.section}</span>
     </div>`).join('');
@@ -615,7 +615,7 @@ function cmdSearch(q){
   box.innerHTML=Object.entries(groups).map(([section,items])=>`
     <div class="cmd-section-label">${section}</div>
     ${items.map(x=>`
-      <div class="cmd-item" data-i="${idx++}" onclick="cmdJump(${idx-1})">
+      <div class="cmd-item" data-i="${idx++}" data-action="cmdJump">
         <span>${x.name}</span>
         <span class="cmd-item-badge">${x.section}</span>
       </div>`).join('')}
@@ -652,7 +652,7 @@ function renderHomeUC(){
     const preview=(info.checks||[]).slice(0,3);
     const hasApi=!!info.api;
     return `
-    <div class="home-uc" style="--uc-accent:${uc.color}" data-uc-id="${id}" onclick="runSingleUC(this.dataset.ucId)">
+    <div class="home-uc" style="--uc-accent:${uc.color}" data-uc-id="${id}" data-action="runSingleUC">
       <div class="home-uc-accent"></div>
       <div class="home-uc-top">
         <div class="home-uc-icon" style="background:${uc.bg};color:${uc.color}">${uc.icon}</div>
@@ -689,7 +689,7 @@ function renderNavUC(){
   if(!list) return;
   list.innerHTML=Object.entries(UC_DEFS).map(([id,uc])=>`
     <a class="nav-dd-item" data-panel="uc-runner" data-section="Use Cases" data-name="${uc.label}"
-       onclick="navLink('uc-runner');openUseCase('${id}')">
+       data-action="navLinkOpenUC" data-arg="${id}">
       <span style="font-size:15px">${uc.icon}</span>
       <span>${uc.label}</span>
     </a>`).join('');
@@ -703,7 +703,7 @@ function renderSidebarUC(){
     const info=UC_INFO[id]||{};
     const n=(info.checks||[]).length;
     return `<div class="sb-item" data-panel="uc-runner" data-section="Use Cases" data-name="${uc.label}"
-        onclick="nav(this);openUseCase('${id}')">
+        data-action="navOpenUC" data-arg="${id}">
       <span class="si sb-uc-emoji" style="color:${uc.color}">${uc.icon}</span>
       <span class="sb-text">${uc.label}</span>
       ${n?`<span class="sb-uc-badge">${n}</span>`:''}
@@ -723,22 +723,22 @@ function renderUCSelector(){
     const taskBadge = sel && total > 0
       ? `<span class="uc-task-badge">${selTaskCount}/${total}</span>` : '';
     const expandBtn = sel && total > 1
-      ? `<button class="uc-expand-btn${isExpanded?' open':''}" onclick="event.stopPropagation();toggleExpandUC('${id}')" title="Choose specific tasks">
+      ? `<button class="uc-expand-btn${isExpanded?' open':''}" data-action="toggleExpandUC" data-arg="${id}" title="Choose specific tasks">
            <span class="uc-expand-label">${isExpanded?'Hide tasks':'Choose tasks'}</span>
            <span class="uc-expand-arrow">▾</span>
          </button>` : '';
     const taskList = sel && isExpanded
-      ? `<div class="uc-tasks" onclick="event.stopPropagation()">
+      ? `<div class="uc-tasks" data-action="stopPropagation">
           <div class="uc-tasks-head">
             <span class="uc-tasks-title">Select checks to run</span>
-            <button class="uc-tasks-toggle-all" onclick="toggleAllTasks('${id}')">
+            <button class="uc-tasks-toggle-all" data-action="toggleAllTasks" data-arg="${id}">
               ${selTaskCount===total?'Clear all':'Select all'}
             </button>
           </div>
           ${tasks.map(t=>{
             const on=selectedTasks[id].has(t.id);
             return `<label class="uc-task${on?' on':''}">
-              <input type="checkbox" ${on?'checked':''} onchange="toggleTask('${id}','${t.id}')">
+              <input type="checkbox" ${on?'checked':''} data-change-action="toggleTask" data-arg="${id}" data-arg2="${t.id}">
               <span class="uc-task-check"></span>
               <span class="uc-task-label">${t.label}</span>
             </label>`;
@@ -746,7 +746,7 @@ function renderUCSelector(){
         </div>` : '';
 
     return `<div class="uc-card${sel?' selected':''}${isExpanded?' expanded':''}" id="uc-${id}"
-        style="--uc-color:${uc.color};--uc-bg:${uc.bg}" onclick="toggleUC('${id}')">
+        style="--uc-color:${uc.color};--uc-bg:${uc.bg}" data-action="toggleUC" data-arg="${id}">
       <div class="uc-check">✓</div>
       <div class="uc-icon">${uc.icon}</div>
       <div class="uc-card-head">
@@ -1812,18 +1812,18 @@ function renderReports(){
         <input type="checkbox" id="rep-checkall"
                ${allSelected?'checked':''}
                ${someSelected&&!allSelected?'data-indeterminate="true"':''}
-               onchange="toggleSelectAllReports(this.checked)">
+               data-change-action="toggleSelectAllReports">
         <span class="rep-bulk-cb-box"></span>
         <span class="rep-bulk-checkall-text">
           ${_selectedReports.size?`<b>${_selectedReports.size} selected</b>`:`Select all (${list.length})`}
         </span>
       </label>
       <div class="rep-bulk-actions" style="${_selectedReports.size?'':'display:none'}">
-        <button class="btn btn-ghost btn-sm" onclick="clearReportSelection()">Clear</button>
-        <button class="btn btn-danger btn-sm" onclick="bulkDeleteReports()">🗑 Delete ${_selectedReports.size}</button>
+        <button class="btn btn-ghost btn-sm" data-action="clearReportSelection">Clear</button>
+        <button class="btn btn-danger btn-sm" data-action="bulkDeleteReports">🗑 Delete ${_selectedReports.size}</button>
       </div>
       <button class="btn btn-ghost btn-sm rep-bulk-deleteall"
-              style="margin-left:auto" onclick="deleteAllReports()" title="Delete every report">
+              style="margin-left:auto" data-action="deleteAllReports" title="Delete every report">
         ⚠ Delete all reports
       </button>
     </div>`;
@@ -1843,8 +1843,8 @@ function renderReports(){
     const pdfBtn=!isIdx?`<a href="/api/reports/pdf/${r.html_name}" class="btn-rep" style="text-decoration:none">⬇ PDF</a>`:'';
 
     return `<div class="rep-card${sel?' selected':''}" id="rc-${r.name.replace(/\./g,'-')}">
-      <label class="rep-card-cb" onclick="event.stopPropagation()">
-        <input type="checkbox" ${sel?'checked':''} onchange="toggleReportSelection('${r.name}',this.checked)">
+      <label class="rep-card-cb" data-action="stopPropagation">
+        <input type="checkbox" ${sel?'checked':''} data-change-action="toggleReportSelection" data-arg="${r.name}">
         <span class="rep-bulk-cb-box"></span>
       </label>
       <div class="rep-card-top">
@@ -1859,10 +1859,10 @@ function renderReports(){
         </div>
       </div>
       <div class="rep-card-actions">
-        <button class="btn-rep rp" onclick="openRep('${r.html_name||r.name}')">↗ Open HTML</button>
+        <button class="btn-rep rp" data-action="openRep" data-arg="${r.html_name||r.name}">↗ Open HTML</button>
         ${dlBtn}
         ${pdfBtn}
-        <button class="btn-rep del" onclick="deleteReport('${r.name}',this)" title="Delete report">🗑 Delete</button>
+        <button class="btn-rep del" data-action="deleteReport" data-arg="${r.name}" title="Delete report">🗑 Delete</button>
       </div>
     </div>`;
   }).join('')}</div>`;
@@ -2686,7 +2686,7 @@ function loadRecentReports(){
   <div class="empty-state-icon">📋</div>
   <div class="empty-state-title">No reports yet</div>
   <div class="empty-state-sub">Run an indexing check or SEO audit to generate your first report</div>
-  <div class="empty-state-action"><button class="btn btn-primary btn-sm" onclick="navTo('idx-run')">Start a check →</button></div>
+  <div class="empty-state-action"><button class="btn btn-primary btn-sm" data-action="navTo" data-arg="idx-run">Start a check →</button></div>
 </div>`;
       return;
     }
@@ -2694,7 +2694,7 @@ function loadRecentReports(){
       const isIdx=r.kind==='indexing';
       const cls=isIdx?'rep-icon-indexing':'rep-icon-audit';
       const icon=isIdx?'📊':'🔬';
-      return `<div class="home-recent-row" onclick="openRep('${r.html_name||r.name}')" title="${r.name}">
+      return `<div class="home-recent-row" data-action="openRep" data-arg="${r.html_name||r.name}" title="${r.name}">
         <div class="home-recent-icon ${cls}">${icon}</div>
         <div class="home-recent-body">
           <div class="home-recent-name">${r.name}</div>
@@ -3454,7 +3454,7 @@ function toast(msg, type='info', timeout=3500){
   const t=document.createElement('div');
   t.className='toast t-'+type;
   const icon={info:'ℹ️',success:'✓',warn:'⚠',error:'✕'}[type]||'•';
-  t.innerHTML=`<span class="toast-icon">${icon}</span><span class="toast-msg">${msg}</span><button class="toast-close" onclick="this.parentNode.remove()">×</button>`;
+  t.innerHTML=`<span class="toast-icon">${icon}</span><span class="toast-msg">${msg}</span><button class="toast-close" data-action="removeParent">×</button>`;
   stack.appendChild(t);
   setTimeout(()=>{t.classList.add('out'); setTimeout(()=>t.remove(),300);}, timeout);
 }
@@ -4347,7 +4347,7 @@ function _renderUcInfoPanel(uc) {
   if (relSection && relGrid && related.length) {
     relGrid.innerHTML = related.map(r => {
       const m = UC_META[r] || {};
-      return `<div class="uc-related-item" onclick="openUseCase('${r}')">
+      return `<div class="uc-related-item" data-action="openUseCase" data-arg="${r}">
         <span class="uc-related-icon">${m.icon||'🔍'}</span>${m.label||r}
       </div>`;
     }).join('');
@@ -5039,7 +5039,7 @@ function _renderGscOpps(d) {
     <td class="c-green"><b>+${r.est_extra_clicks.toLocaleString()}</b></td>
     <td style="font-size:11px">
       <div style="margin-bottom:6px">${r.action}</div>
-      <button class="btn btn-ghost btn-sm" onclick="runGscOppAiOptimize('${r.url.replace(/'/g, "\\'")}')">🤖 AI Optimize</button>
+      <button class="btn btn-ghost btn-sm" data-action="runGscOppAiOptimize" data-arg="${r.url.replace(/"/g,'&quot;')}">🤖 AI Optimize</button>
     </td>
   </tr>`).join('') || '<tr><td colspan="6" style="color:var(--c-muted)">No opportunities found</td></tr>';
 
@@ -5052,7 +5052,7 @@ function _renderGscOpps(d) {
   decTb.innerHTML = decRows.slice(0,50).map(r => `<tr>
     <td style="font-size:11px;word-break:break-all">
       <div style="margin-bottom:4px">${r.url}</div>
-      <button class="btn btn-ghost btn-xs" onclick="trackGscPosTrend('${r.url.replace(/'/g, "\\'")}')">📈 View Trend</button>
+      <button class="btn btn-ghost btn-xs" data-action="trackGscPosTrend" data-arg="${r.url.replace(/"/g,'&quot;')}">📈 View Trend</button>
     </td>
     <td>${r.pos_start}</td>
     <td>${r.pos_end}</td>
@@ -5070,7 +5070,7 @@ function _renderGscOpps(d) {
   canTb.innerHTML = canRows.slice(0,50).map((r, i) => `<tr>
     <td>
       <div style="font-weight:700;margin-bottom:4px">${r.query}</div>
-      <button class="btn btn-ghost btn-sm" onclick="visualiseCannibalization(${i})">🔍 Visualise</button>
+      <button class="btn btn-ghost btn-sm" data-action="visualiseCannibalization" data-arg="${i}">🔍 Visualise</button>
     </td>
     <td class="c-yellow">${r.competing_pages}</td>
     <td>${(r.total_impressions||0).toLocaleString()}</td>
@@ -5145,8 +5145,8 @@ async function runGscOppAiOptimize(url) {
         </div>
         ${v.rationale ? `<div style="font-size:11.5px;color:var(--c-muted);margin-top:6px;font-style:italic">💡 ${v.rationale}</div>` : ''}
         <div style="margin-top:10px;display:flex;gap:6px">
-          <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${v.title.replace(/'/g, "\\'")}') || toast('Title copied')">📋 Copy Title</button>
-          <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${v.description.replace(/'/g, "\\'")}') || toast('Description copied')">📋 Copy Desc</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyToClipboard" data-text="${v.title.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">📋 Copy Title</button>
+          <button class="btn btn-ghost btn-sm" data-action="copyToClipboard" data-text="${v.description.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">📋 Copy Desc</button>
         </div>
       </div>`;
     }).join('');
@@ -5478,7 +5478,7 @@ function renderScheduleList() {
       '<td>' + _esc(e.interval||'daily') + '</td>' +
       '<td>' + _esc(e.time||'—') + '</td>' +
       '<td>' + _esc(e.limit||'—') + '</td>' +
-      '<td><button class="btn btn-ghost btn-sm" onclick="scheduleRemoveEntry(' + i + ')">Remove</button></td>' +
+      '<td><button class="btn btn-ghost btn-sm" data-action="scheduleRemoveEntry" data-arg="' + i + '">Remove</button></td>' +
       '</tr>'
     ).join('') +
     '</tbody></table>';
@@ -5525,7 +5525,7 @@ function renderTeamUsers(users) {
   if (!el) return;
   if (!users || !users.length) { el.innerHTML = '<p class="u-text-muted u-fs-12">No users yet.</p>'; return; }
   el.innerHTML = '<table class="tbl" style="width:100%"><thead><tr><th>Username</th><th>Role</th><th></th></tr></thead><tbody>' +
-    users.map(u => '<tr><td>' + _esc(u.username) + '</td><td>' + (u.is_admin ? 'Admin' : 'User') + '</td><td><button class="btn btn-ghost btn-sm" onclick="deleteTeamUser(' + JSON.stringify(u.username) + ')">Remove</button></td></tr>').join('') +
+    users.map(u => '<tr><td>' + _esc(u.username) + '</td><td>' + (u.is_admin ? 'Admin' : 'User') + '</td><td><button class="btn btn-ghost btn-sm" data-action="deleteTeamUser" data-arg="' + _esc(u.username) + '">Remove</button></td></tr>').join('') +
     '</tbody></table>';
 }
 
@@ -5674,9 +5674,9 @@ async function runAiDraftMeta() {
         </div>
         ${v.rationale ? `<div style="font-size:11px;color:var(--c-muted);margin-top:6px;font-style:italic">💡 ${v.rationale}</div>` : ''}
         <button class="btn btn-ghost btn-sm" style="margin-top:8px"
-          onclick="navigator.clipboard.writeText(${JSON.stringify(v.title)});showToast('Title copied')">Copy title</button>
+          data-action="copyToClipboard" data-text="${v.title.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">Copy title</button>
         <button class="btn btn-ghost btn-sm" style="margin-top:8px;margin-left:6px"
-          onclick="navigator.clipboard.writeText(${JSON.stringify(v.description)});showToast('Description copied')">Copy desc</button>
+          data-action="copyToClipboard" data-text="${v.description.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">Copy desc</button>
       </div>`).join('') || '<div style="color:var(--c-muted)">No variants returned</div>';
     _show('ai-meta-result');
   } catch(e) { _hide('ai-meta-spinner'); _showErr('ai-meta-error', e.message); }
@@ -5928,14 +5928,14 @@ function renderSchemaForm(fields) {
     } else if (f.type === 'faq_repeater') {
       div.innerHTML += `
         <div id="sf-faq-items"></div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="addFaqItem()">+ Add Question</button>`;
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" data-action="addFaqItem">+ Add Question</button>`;
       container.appendChild(div);
       addFaqItem(); addFaqItem();
       return;
     } else if (f.type === 'breadcrumb_repeater') {
       div.innerHTML += `
         <div id="sf-bc-items"></div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="addBcItem()">+ Add Item</button>`;
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" data-action="addBcItem">+ Add Item</button>`;
       container.appendChild(div);
       addBcItem(); addBcItem(); addBcItem();
       return;
@@ -5951,7 +5951,7 @@ function addFaqItem() {
   div.className = 'gen-repeater';
   div.id = `faq-item-${_faqCount}`;
   div.innerHTML = `
-    <div class="gen-repeater-head">Q${_faqCount} <button class="btn btn-ghost btn-sm" onclick="this.closest('.gen-repeater').remove()">✕</button></div>
+    <div class="gen-repeater-head">Q${_faqCount} <button class="btn btn-ghost btn-sm" data-action="removeClosest" data-arg=".gen-repeater">✕</button></div>
     <div class="gen-field"><div class="gen-field-label">Question</div><input class="input faq-q" placeholder="Question text"></div>
     <div class="gen-field"><div class="gen-field-label">Answer</div><textarea class="input faq-a" rows="2" placeholder="Answer text"></textarea></div>`;
   document.getElementById('sf-faq-items').appendChild(div);
@@ -5964,7 +5964,7 @@ function addBcItem() {
   div.className = 'gen-repeater';
   div.id = `bc-item-${_bcCount}`;
   div.innerHTML = `
-    <div class="gen-repeater-head">Item ${_bcCount} <button class="btn btn-ghost btn-sm" onclick="this.closest('.gen-repeater').remove()">✕</button></div>
+    <div class="gen-repeater-head">Item ${_bcCount} <button class="btn btn-ghost btn-sm" data-action="removeClosest" data-arg=".gen-repeater">✕</button></div>
     <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
       <div><div class="gen-field-label">Name</div><input class="input bc-name" placeholder="Home"></div>
       <div><div class="gen-field-label">URL</div><input class="input bc-url" placeholder="https://example.com"></div>
@@ -6054,7 +6054,7 @@ function addRobotsRule() {
   div.innerHTML = `
     <div class="robots-rule-head">
       Rule ${_robotsRuleCount}
-      <button class="btn btn-ghost btn-sm" onclick="this.closest('.robots-rule').remove()">✕ Remove</button>
+      <button class="btn btn-ghost btn-sm" data-action="removeClosest" data-arg=".robots-rule">✕ Remove</button>
     </div>
     <div class="form-grid">
       <div class="fg-full"><label class="label" for="rr-ua-${_robotsRuleCount}">User-agent</label>
@@ -6152,7 +6152,7 @@ function addHreflangRow() {
   div.innerHTML = `
     <select class="input hl-locale"><option value="">— pick —</option>${opts}</select>
     <input class="input hl-url" placeholder="https://example.com/page/">
-    <button class="btn btn-ghost btn-sm" onclick="this.closest('.hreflang-row').remove()">✕</button>`;
+    <button class="btn btn-ghost btn-sm" data-action="removeClosest" data-arg=".hreflang-row">✕</button>`;
   document.getElementById('hreflang-rows').appendChild(div);
 }
 
@@ -7238,9 +7238,60 @@ document.addEventListener('click', function _delegatedClick(e) {
     case 'toggleIssuesSummary': _call('toggleIssuesSummary'); break;
     case 'runIndexNow':       _call('runIndexNow'); break;
     case 'clearIndexNow':     _call('clearIndexNow'); break;
+    // UC grid / sidebar
+    case 'runSingleUC':        _call('runSingleUC', el.dataset.ucId || arg); break;
+    case 'navLinkOpenUC':      _call('navLink','uc-runner'); _call('openUseCase', arg); break;
+    case 'navOpenUC':          if(typeof nav==='function') nav(el); _call('openUseCase', arg); break;
+    case 'openUseCase':        _call('openUseCase', arg); break;
+    case 'toggleUC':           _call('toggleUC', arg); break;
+    case 'toggleExpandUC':     e.stopPropagation(); _call('toggleExpandUC', arg); break;
+    case 'toggleAllTasks':     _call('toggleAllTasks', arg); break;
+    // Reports
+    case 'clearReportSelection': _call('clearReportSelection'); break;
+    case 'bulkDeleteReports':  _call('bulkDeleteReports'); break;
+    case 'deleteAllReports':   _call('deleteAllReports'); break;
+    case 'openRep':            _call('openRep', arg); break;
+    case 'deleteReport':       _call('deleteReport', arg, el); break;
+    // Search / command palette
+    case 'tbJump':             _call('tbJump', arg ? +arg : 0); break;
+    case 'cmdJump':            _call('cmdJump', el.dataset.i ? +el.dataset.i : 0); break;
+    // GSC / AI
+    case 'runGscOppAiOptimize': _call('runGscOppAiOptimize', arg); break;
+    case 'trackGscPosTrend':   _call('trackGscPosTrend', arg); break;
+    case 'visualiseCannibalization': _call('visualiseCannibalization', arg ? +arg : 0); break;
+    case 'copyToClipboard':    navigator.clipboard.writeText(el.dataset.text||arg||'').then(()=>_call('toast','Copied','success')).catch(()=>{}); break;
+    // Settings
+    case 'scheduleRemoveEntry': _call('scheduleRemoveEntry', arg ? +arg : 0); break;
+    case 'deleteTeamUser':     _call('deleteTeamUser', arg); break;
+    // Generators — repeater rows
+    case 'addFaqItem':         _call('addFaqItem'); break;
+    case 'addBcItem':          _call('addBcItem'); break;
+    case 'removeClosest':      { var _rc=arg&&el.closest(arg); if(_rc) _rc.remove(); break; }
+    case 'removeParent':       if(el.parentNode) el.parentNode.remove(); break;
     default:
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
         console.warn('[delegation] unknown data-action:', action, el);
+  }
+});
+
+// --- S-NEW: Centralised change delegation (checkboxes in innerHTML) ----------
+document.addEventListener('change', function _delegatedChange(e) {
+  var el = e.target;
+  if (!el.matches('input[type=checkbox]')) return;
+  var action = el.dataset.changeAction;
+  if (!action) return;
+  var arg  = el.dataset.arg  || null;
+  var arg2 = el.dataset.arg2 || null;
+  switch (action) {
+    case 'toggleTask':
+      if (typeof toggleTask === 'function') toggleTask(arg, arg2);
+      break;
+    case 'toggleSelectAllReports':
+      if (typeof toggleSelectAllReports === 'function') toggleSelectAllReports(el.checked);
+      break;
+    case 'toggleReportSelection':
+      if (typeof toggleReportSelection === 'function') toggleReportSelection(arg, el.checked);
+      break;
   }
 });
 

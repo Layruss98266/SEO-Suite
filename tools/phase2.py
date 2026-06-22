@@ -150,7 +150,7 @@ def crawlability_check(url: str, gsc_service, site_url: str = None) -> dict:
         s = "pass" if verdict == "PASS" else "warning" if verdict == "NEUTRAL" else "fail"
         msg = f"GSC: {verdict} | Crawled as: {crawled_as} | Fetch: {page_fetch}"
 
-        return result(url, "crawlability", s, verdict, msg, {
+        return result(url, "gsc_crawl_inspection", s, verdict, msg, {
             "verdict":         verdict,
             "crawled_as":      crawled_as,
             "last_crawl":      last_crawl,
@@ -164,7 +164,7 @@ def crawlability_check(url: str, gsc_service, site_url: str = None) -> dict:
 
     except Exception as e:
         logger.warning("crawlability_check GSC error for %s: %s", url, e)
-        return result(url, "crawlability", "error", None, f"GSC error: {e}")
+        return result(url, "gsc_crawl_inspection", "error", None, f"GSC error: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

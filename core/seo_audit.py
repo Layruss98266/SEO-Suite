@@ -140,7 +140,7 @@ TASKS = {
         {"id": "pagespeed_mobile",   "label": "PageSpeed — Mobile"},
         {"id": "pagespeed_desktop",  "label": "PageSpeed — Desktop"},
         {"id": "mobile",             "label": "Mobile vs Desktop gap"},
-        {"id": "crawlability",       "label": "GSC URL inspection"},
+        {"id": "gsc_crawl_inspection", "label": "GSC URL inspection"},
         {"id": "lcp",                "label": "LCP — Largest Contentful Paint"},
         {"id": "cls",                "label": "CLS — Cumulative Layout Shift"},
         {"id": "fcp",                "label": "FCP — First Contentful Paint"},
@@ -332,7 +332,7 @@ WEIGHTS = {
     "spf":               2,
     "dmarc":             2,
     "mx_records":        1,
-    "crawlability":      4,
+    "gsc_crawl_inspection": 4,
     # ── Performance / Core Web Vitals (phase 2) ───────────────────────────────
     # These were previously absent, so PageSpeed/CWV scored at the default
     # weight of 2 each — a site with terrible vitals could still score 90+.
@@ -448,7 +448,9 @@ def audit_single_url(url: str, cfg: dict, gsc_service=None,
     elif use_cases is None:
         use_cases = list(USE_CASES.keys())
 
-    # Expand composite use case — technical_seo runs crawlability + on_page + site_health
+    # Expand composite use case — technical_seo runs crawlability + on_page + site_health.
+    # render_blocking and image_optimization are intentionally excluded: they are dispatched
+    # in the "performance" use case so they appear alongside PageSpeed metrics in the UI.
     if "technical_seo" in use_cases:
         base = [uc for uc in use_cases if uc != "technical_seo"]
         base += ["crawlability", "on_page", "site_health"]

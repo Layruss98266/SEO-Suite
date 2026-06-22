@@ -722,8 +722,10 @@ def api_ai_draft_meta():
 @bp.route("/api/tools/schema_fields/<schema_type>")
 @login_required
 def api_schema_fields(schema_type):
-    from tools.generators import get_schema_fields
+    from tools.generators import SCHEMA_TEMPLATES, get_schema_fields
 
+    if schema_type.lower() not in SCHEMA_TEMPLATES:
+        return jsonify({"ok": False, "error": f"Unknown schema type: {schema_type}"}), 400
     return jsonify(get_schema_fields(schema_type))
 
 
@@ -735,8 +737,10 @@ def api_schema_generate():
     form_data = data.get("data", {})
     if not schema_type:
         return jsonify({"ok": False, "error": "schema_type required"}), 400
-    from tools.generators import generate_schema
+    from tools.generators import SCHEMA_TEMPLATES, generate_schema
 
+    if schema_type.lower() not in SCHEMA_TEMPLATES:
+        return jsonify({"ok": False, "error": f"Unknown schema type: {schema_type}"}), 400
     return jsonify(generate_schema(schema_type, form_data))
 
 

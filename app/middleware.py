@@ -79,13 +79,11 @@ def _set_security_headers(response):
         )
     response.headers.setdefault(
         "Content-Security-Policy",
-        # 'unsafe-inline' kept in script-src: the dashboard wires ~1000+
-        # buttons via inline onclick="..." attributes; removing it blocks
-        # every interaction.  TODO(S-NEW): migrate to addEventListener and
-        # tighten to nonces.
-        # 'unsafe-inline' kept in style-src because the UI uses many inline
-        # style attributes; removing it would require auditing ~500 elements.
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+        # 'unsafe-inline' removed from script-src (S-NEW complete: all
+        # inline onclick migrated to data-action delegation in v2.6.4).
+        # 'unsafe-inline' kept in style-src: UI uses many inline style
+        # attributes; removing requires auditing ~500 elements.
+        "default-src 'self'; script-src 'self'; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; connect-src 'self'",

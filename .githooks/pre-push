@@ -8,8 +8,29 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 warn() { echo "⚠  PRE-PUSH WARNING: $*" >&2; }
 info() { echo "ℹ  pre-push: $*" >&2; }
+block() { echo "🚫 PRE-PUSH BLOCKED: $*" >&2; exit 1; }
 
-# ── 1. VERSION drift check ────────────────────────────────────────────────────
+# Collect all files changed in the push range
+REMOTE="$1"
+URL="$2"
+CHANGED_FILES=""
+while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+  if [ "$LOCAL_SHA" = "0000000000000000000000000000000000000000" ]; then
+    continue  # deleting branch
+  fi
+  BASE="${REMOTE_SHA:-$(git rev-list --max-parents=0 HEAD)}"
+  if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+    BASE=$(git rev-list --max-parents=0 HEAD)
+  fi
+  CHANGED_FILES="$CHANGED_FILES $(git diff "$BASE" "$LOCAL_SHA" --name-only 2>/dev/null || true)"
+done
+
+# ── 1. No .env committed ──────────────────────────────────────────────────────
+if echo "$CHANGED_FILES" | tr ' ' '\n' | grep -qE '^\.env$|^\.env\.'; then
+  block ".env file in commit range. Remove it first."
+fi
+
+# ── 2. VERSION drift check ────────────────────────────────────────────────────
 VERSION=$(python - <<'PY'
 import sys; sys.path.insert(0, '.')
 try:
@@ -17,44 +38,55 @@ try:
 except Exception: print('unknown')
 PY
 )
+info "Current VERSION=$VERSION"
 
-# If AUDIT_LOG exists and mentions a different version in its header, warn.
-if [ -f "$REPO_ROOT/AUDIT_LOG.md" ]; then
-  LOG_DATE=$(head -5 "$REPO_ROOT/AUDIT_LOG.md" | grep -oP '\d{4}-\d{2}-\d{2}' | head -1 || true)
-  info "AUDIT_LOG last dated: ${LOG_DATE:-unknown}. Current VERSION=$VERSION"
+# ── 3. PROJECT_LOG.md must be updated alongside key source files ──────────────
+#    Trigger files: core/version.py, tools/phase1.py, core/seo_audit.py, app/static/js/dashboard.js
+TRIGGER_PATTERN='core/version\.py|tools/phase1\.py|core/seo_audit\.py|app/static/js/dashboard\.js'
+PROJECT_LOG_PATTERN='PROJECT_LOG\.md'
+
+if echo "$CHANGED_FILES" | tr ' ' '\n' | grep -qE "$TRIGGER_PATTERN"; then
+  if ! echo "$CHANGED_FILES" | tr ' ' '\n' | grep -qE "$PROJECT_LOG_PATTERN"; then
+    warn "Core source files changed but PROJECT_LOG.md was not updated."
+    warn "Update PROJECT_LOG.md (version history section) before pushing."
+    warn "Changed triggers: $(echo "$CHANGED_FILES" | tr ' ' '\n' | grep -E "$TRIGGER_PATTERN" | tr '\n' ' ')"
+    # Warning only — not blocking, to allow hotfixes
+  fi
 fi
 
-# ── 2. agents.md freshness ────────────────────────────────────────────────────
+# ── 4. README.md check — warn if version string is stale ─────────────────────
+if [ -f "$REPO_ROOT/README.md" ] && [ "$VERSION" != "unknown" ]; then
+  if ! grep -q "$VERSION" "$REPO_ROOT/README.md" 2>/dev/null; then
+    warn "README.md may not mention current VERSION=$VERSION. Update the version badge if applicable."
+  fi
+fi
+
+# ── 5. agents.md must exist ───────────────────────────────────────────────────
 if [ ! -f "$REPO_ROOT/agents.md" ]; then
   warn "agents.md missing — create it before pushing (see CLAUDE.md)."
 fi
 
-# ── 3. AUDIT_LOG progress table sync ─────────────────────────────────────────
+# ── 6. AUDIT_LOG open/fixed count ────────────────────────────────────────────
 if [ -f "$REPO_ROOT/AUDIT_LOG.md" ]; then
-  OPEN_ITEMS=$(grep -c '^\### .* `\[ \]`' "$REPO_ROOT/AUDIT_LOG.md" 2>/dev/null || echo 0)
-  FIXED_ITEMS=$(grep -c '^\### .* `\[x\]`' "$REPO_ROOT/AUDIT_LOG.md" 2>/dev/null || echo 0)
+  OPEN_ITEMS=$(grep -c '`\[ \]`' "$REPO_ROOT/AUDIT_LOG.md" 2>/dev/null || echo 0)
+  FIXED_ITEMS=$(grep -c '`\[x\]`' "$REPO_ROOT/AUDIT_LOG.md" 2>/dev/null || echo 0)
   info "AUDIT_LOG: $FIXED_ITEMS fixed, $OPEN_ITEMS open"
 fi
 
-# ── 4. No .env committed ──────────────────────────────────────────────────────
-if git diff --cached --name-only 2>/dev/null | grep -qE '^\.env$|^\.env\.'; then
-  echo "🚫 PRE-PUSH BLOCKED: .env file staged for commit. Remove it first." >&2
-  exit 1
+# ── 7. PROJECT_LOG.md must exist ─────────────────────────────────────────────
+if [ ! -f "$REPO_ROOT/PROJECT_LOG.md" ]; then
+  warn "PROJECT_LOG.md missing — create it to track version history and roadmap."
 fi
 
-# Check pushed commits too
-REMOTE="$1"
-URL="$2"
-while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
-  if [ "$LOCAL_SHA" = "0000000000000000000000000000000000000000" ]; then
-    continue  # deleting branch
-  fi
-  BASE="${REMOTE_SHA:-$(git rev-list --max-parents=0 HEAD)}"
-  if git diff "$BASE" "$LOCAL_SHA" --name-only 2>/dev/null | grep -qE '^\.env$|^\.env\.'; then
-    echo "🚫 PRE-PUSH BLOCKED: .env file in commit range $BASE..$LOCAL_SHA." >&2
-    exit 1
+# ── 8. Secrets scan in changed files ─────────────────────────────────────────
+SECRET_PATTERN='(api_key|apikey|secret|password|token|private_key)\s*=\s*["\x27][^"\x27]{8,}'
+for f in $(echo "$CHANGED_FILES" | tr ' ' '\n' | grep -vE '(\.md|\.txt|test_|_test\.py|\.example)' | sort -u); do
+  if [ -f "$REPO_ROOT/$f" ]; then
+    if grep -iqP "$SECRET_PATTERN" "$REPO_ROOT/$f" 2>/dev/null; then
+      warn "Possible hardcoded secret in $f — review before pushing."
+    fi
   fi
 done
 
-info "All checks passed. VERSION=$VERSION. Pushing..."
+info "All checks complete. Pushing..."
 exit 0

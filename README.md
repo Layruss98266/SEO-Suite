@@ -27,7 +27,7 @@ Create your admin account at `/signup` on first boot.
 
 **Audit & Indexation**
 - Indexing Checker — verify Google indexation via Search Console API or live Playwright browser; accepts sitemaps, domain crawl, CSV/XLSX, or pasted URLs
-- SEO Audit — 7 targeted use cases: Crawl Access · On-Page SEO · Site Health · Performance · Search Console · Authority · Rankings
+- SEO Audit — 8 use cases: Crawl Access · On-Page SEO · Site Health · Performance · Technical SEO (35-check composite) · Search Console · Authority · Rankings
 - Live SSE streaming for both indexing and audits; pause / resume / cancel / retry; cross-run diff
 
 **Tools**
@@ -113,6 +113,7 @@ Full guide: [`DEPLOYMENT.md`](DEPLOYMENT.md)
 | [`docs/USECASE_GUIDES.md`](docs/USECASE_GUIDES.md) | Walkthroughs for all 7 audit use cases |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Render, Fly.io, Docker, and VPS deployment guides |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Request flow, security model, threading, data persistence, observability |
+| [`PROJECT_LOG.md`](PROJECT_LOG.md) | Version history, all changes, open items, and feature roadmap |
 | [Swagger UI](http://localhost:8080/docs) | Interactive REST API docs — available at `/docs` when the app is running |
 
 ---

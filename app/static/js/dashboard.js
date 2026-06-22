@@ -352,6 +352,37 @@ const UC_INFO = {
       ],
     },
   },
+  technical_seo: {
+    desc: 'Comprehensive technical audit combining crawlability, on-page signals, and site health into a single run — the fastest way to get a complete technical picture of any URL without needing an API key.',
+    checks: [
+      'robots.txt','HTTP status','Redirects','Broken links','Internal links','Sitemap validation','Canonical URL','Meta robots / X-Robots-Tag',
+      'Title tag','Meta description','Headings (H1–H3)','Image alt text','Word count','Readability','Schema markup','Hreflang tags','TTFB (response time)','Open Graph / Twitter cards','Favicon',
+      'SSL / TLS grade','Domain age & expiry','Mixed content','HTTPS enforcement','Security headers','SPF record','DMARC policy','MX records',
+    ],
+    when: 'Use as your default first audit on any new URL or client site — covers everything you need before publishing, after a site migration, or for a technical SEO proposal.',
+    example:
+`URL: https://example.com/services
+  robots.txt        PASS   Allowed for Googlebot
+  HTTP status       PASS   200 OK
+  Redirects         PASS   No redirect chains
+  Canonical         PASS   Self-referencing canonical
+  Title             PASS   58 chars — "Services | Example"
+  Meta description  WARN   Missing — write 120–160 chars
+  H1                PASS   Exactly 1 H1 found
+  Schema            PASS   Organization schema detected
+  SSL grade         PASS   A+  (valid · 365 days remaining)
+  HTTPS enforcement PASS   HTTP → HTTPS redirect confirmed
+  Security headers  WARN   Missing: CSP, X-Frame-Options
+  DMARC             WARN   p=none  (set p=reject to enforce)
+  ─────────────────────────────────
+  Score: 72 / 100   Warnings: 3   Fails: 0`,
+    tips: [
+      'Upload a CSV to run all 27 checks across dozens of URLs in parallel',
+      'Use this as your default first-pass audit — then drill into crawlability or on-page for deeper analysis',
+      'Security header and DMARC warnings are DNS-level fixes — fast wins with big trust signals',
+    ],
+    api: null,
+  },
 };
 
 let selectedUC = new Set(Object.keys(UC_DEFS));
